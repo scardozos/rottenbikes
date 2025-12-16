@@ -68,10 +68,21 @@ func (s *HTTPServer) handleCreateBike(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		var pqErr *pq.Error
 		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
-			// duplicate key on numerical_id
-			w.WriteHeader(http.StatusConflict)
-			_, _ = w.Write([]byte("bike with this numerical_id already exists"))
-			return
+			// Distinguish by constraint/index name
+			switch pqErr.Constraint {
+			case "bikes_pkey":
+				w.WriteHeader(http.StatusConflict)
+				_, _ = w.Write([]byte("bike with this numerical_id already exists"))
+				return
+			case "bikes_hash_id_key":
+				w.WriteHeader(http.StatusConflict)
+				_, _ = w.Write([]byte("bike with this hash_id already exists"))
+				return
+			default:
+				w.WriteHeader(http.StatusConflict)
+				_, _ = w.Write([]byte("bike already exists (duplicate key)"))
+				return
+			}
 		}
 
 		log.Printf("create bike error: %v", err)
