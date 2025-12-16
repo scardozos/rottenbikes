@@ -1,18 +1,21 @@
 -- 0002_seed_sample_data.up.sql
 
--- Sample bikes
-INSERT INTO bikes (hash_id, is_electric)
-VALUES
-    ('bike_1_hash', FALSE),
-    ('bike_2_hash', TRUE),
-    ('bike_3_hash', FALSE);
-
 -- Sample posters
 INSERT INTO posters (email, username)
 VALUES
     ('alice@example.com', 'alice'),
     ('bob@example.com',   'bob'),
     ('carol@example.com', 'carol');
+
+-- Sample bikes (creator_id references posters.poster_id)
+INSERT INTO bikes (hash_id, is_electric, creator_id)
+VALUES
+    ('bike_1_hash', FALSE,
+        (SELECT poster_id FROM posters WHERE username = 'alice')),
+    ('bike_2_hash', TRUE,
+        (SELECT poster_id FROM posters WHERE username = 'alice')),
+    ('bike_3_hash', FALSE,
+        (SELECT poster_id FROM posters WHERE username = 'alice'));
 
 -- Sample reviews
 -- Alice reviews bike 1
@@ -96,8 +99,8 @@ INSERT INTO rating_aggregates (bike_numerical_id, subcategory, rating_sum, ratin
 SELECT
     r.bike_numerical_id,
     rr.subcategory,
-    SUM(rr.score)          AS rating_sum,
-    COUNT(*)               AS rating_count,
+    SUM(rr.score)                    AS rating_sum,
+    COUNT(*)                         AS rating_count,
     ROUND(AVG(rr.score)::numeric, 2) AS average_rating
 FROM review_ratings rr
 JOIN reviews r ON rr.review_id = r.review_id

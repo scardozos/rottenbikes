@@ -3,6 +3,7 @@ package domain
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 )
 
@@ -36,13 +37,13 @@ func ListBikes(ctx context.Context, db *sql.DB) ([]Bike, error) {
 	return bikes, rows.Err()
 }
 
-func CreateBike(ctx context.Context, db *sql.DB, numericalID int64, hashID *string, isElectric bool) (*Bike, error) {
+func CreateBike(ctx context.Context, db *sql.DB, numericalID int64, hashID *string, isElectric bool, creatorID int64) (*Bike, error) {
 	var b Bike
 	err := db.QueryRowContext(ctx, `
-		INSERT INTO bikes (numerical_id, hash_id, is_electric)
-		VALUES ($1, $2, $3)
+		INSERT INTO bikes (numerical_id, hash_id, is_electric, creator_id)
+		VALUES ($1, $2, $3, $4)
 		RETURNING numerical_id, hash_id, is_electric, created_ts, updated_ts
-	`, numericalID, hashID, isElectric).Scan(
+	`, numericalID, hashID, isElectric, creatorID).Scan(
 		&b.NumericalID,
 		&b.HashID,
 		&b.IsElectric,
@@ -50,7 +51,7 @@ func CreateBike(ctx context.Context, db *sql.DB, numericalID int64, hashID *stri
 		&b.UpdatedAt,
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("insert bike: %w", err)
 	}
 	return &b, nil
 }

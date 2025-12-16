@@ -48,6 +48,13 @@ func (s *HTTPServer) handleCreateBike(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	creatorID, ok := posterIDFromContext(r.Context())
+	if !ok {
+		w.WriteHeader(http.StatusUnauthorized)
+		_, _ = w.Write([]byte("unauthorized"))
+		return
+	}
+
 	var req createBikeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -64,7 +71,7 @@ func (s *HTTPServer) handleCreateBike(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
 
-	bike, err := domain.CreateBike(ctx, s.db, req.NumericalID, req.HashID, req.IsElectric)
+	bike, err := domain.CreateBike(ctx, s.db, req.NumericalID, req.HashID, req.IsElectric, creatorID)
 	if err != nil {
 		var pqErr *pq.Error
 		if errors.As(err, &pqErr) && pqErr.Code == "23505" {

@@ -13,7 +13,7 @@ import (
 )
 
 type createReviewRequest struct {
-	PosterID int64   `json:"poster_id"`
+	PosterID int64   `json:"poster_id"` // ignored/overridden by auth
 	Comment  *string `json:"comment"`
 	BikeImg  *string `json:"bike_img"`
 
@@ -39,9 +39,10 @@ func (s *HTTPServer) handleCreateBikeReview(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if req.PosterID == 0 {
-		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte("poster_id is required"))
+	posterID, ok := posterIDFromContext(r.Context())
+	if !ok {
+		w.WriteHeader(http.StatusUnauthorized)
+		_, _ = w.Write([]byte("unauthorized"))
 		return
 	}
 
@@ -49,9 +50,10 @@ func (s *HTTPServer) handleCreateBikeReview(w http.ResponseWriter, r *http.Reque
 	defer cancel()
 
 	reviewID, err := domain.CreateReviewWithRatings(ctx, s.db, domain.CreateReviewInput{
-		PosterID:   req.PosterID,
+		PosterID:   posterID,
 		BikeID:     bikeID,
 		Comment:    req.Comment,
+		BikeImg:    req.BikeImg,
 		Overall:    req.Overall,
 		Breaks:     req.Breaks,
 		Seat:       req.Seat,
@@ -59,7 +61,6 @@ func (s *HTTPServer) handleCreateBikeReview(w http.ResponseWriter, r *http.Reque
 		Power:      req.Power,
 		Pedals:     req.Pedals,
 	})
-
 	if err != nil {
 		if errors.Is(err, domain.ErrTooFrequentReview) {
 			w.WriteHeader(http.StatusTooManyRequests)
@@ -137,9 +138,11 @@ func (s *HTTPServer) handleUpdateReview(w http.ResponseWriter, r *http.Request, 
 		_, _ = w.Write([]byte("invalid JSON"))
 		return
 	}
-	if req.PosterID == 0 {
-		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte("poster_id is required"))
+
+	posterID, ok := posterIDFromContext(r.Context())
+	if !ok {
+		w.WriteHeader(http.StatusUnauthorized)
+		_, _ = w.Write([]byte("unauthorized"))
 		return
 	}
 
@@ -148,7 +151,7 @@ func (s *HTTPServer) handleUpdateReview(w http.ResponseWriter, r *http.Request, 
 
 	err := domain.UpdateReviewWithRatings(ctx, s.db, domain.UpdateReviewInput{
 		ReviewID:   reviewID,
-		PosterID:   req.PosterID,
+		PosterID:   posterID,
 		Comment:    req.Comment,
 		BikeImg:    req.BikeImg,
 		Overall:    req.Overall,
@@ -199,7 +202,7 @@ func (s *HTTPServer) handleGetReview(w http.ResponseWriter, r *http.Request, rev
 }
 
 type deleteReviewRequest struct {
-	PosterID int64 `json:"poster_id"`
+	PosterID int64 `json:"poster_id"` // ignored; auth used instead
 }
 
 // DELETE /reviews/{id}
@@ -209,22 +212,20 @@ func (s *HTTPServer) handleDeleteReview(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	var req deleteReviewRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte("invalid JSON"))
+	posterID, ok := posterIDFromContext(r.Context())
+	if !ok {
+		w.WriteHeader(http.StatusUnauthorized)
+		_, _ = w.Write([]byte("unauthorized"))
 		return
 	}
-	if req.PosterID == 0 {
-		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte("poster_id is required"))
-		return
-	}
+
+	// Body is not needed anymore, but accept and ignore to stay backward compatible.
+	_ = json.NewDecoder(r.Body).Decode(&deleteReviewRequest{})
 
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
-	if err := domain.DeleteReview(ctx, s.db, reviewID, req.PosterID); err != nil {
+	if err := domain.DeleteReview(ctx, s.db, reviewID, posterID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			w.WriteHeader(http.StatusNotFound)
 			return
