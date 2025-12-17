@@ -74,7 +74,7 @@ func New(service domain.Service, addr string) (*HTTPServer, error) {
 
 	s.server = &http.Server{
 		Addr:    addr,
-		Handler: mux,
+		Handler: corsMiddleware(mux),
 	}
 
 	return s, nil
@@ -177,4 +177,20 @@ func (s *HTTPServer) Start() error {
 func (s *HTTPServer) Shutdown(ctx context.Context) error {
 	log.Printf("Shutting down HTTP server on %s", s.server.Addr)
 	return s.server.Shutdown(ctx)
+}
+
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Allow all origins for now (dev/web UI on 8081)
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }
