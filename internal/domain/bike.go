@@ -16,7 +16,7 @@ type Bike struct {
 
 func (s *Store) ListBikes(ctx context.Context) ([]Bike, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT numerical_id, hash_id, is_electric
+		SELECT numerical_id, hash_id, is_electric, created_ts, updated_ts
 		FROM bikes
 		ORDER BY numerical_id
 	`)
@@ -28,7 +28,7 @@ func (s *Store) ListBikes(ctx context.Context) ([]Bike, error) {
 	var bikes []Bike
 	for rows.Next() {
 		var b Bike
-		if err := rows.Scan(&b.NumericalID, &b.HashID, &b.IsElectric); err != nil {
+		if err := rows.Scan(&b.NumericalID, &b.HashID, &b.IsElectric, &b.CreatedAt, &b.UpdatedAt); err != nil {
 			return nil, err
 		}
 		bikes = append(bikes, b)
