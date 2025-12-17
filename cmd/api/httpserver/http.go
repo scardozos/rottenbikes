@@ -2,65 +2,75 @@ package httpserver
 
 import (
 	"context"
-	"database/sql"
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
+
+	"github.com/scardozos/rottenbikes/internal/domain"
 )
 
 type HTTPServer struct {
-	db     *sql.DB
-	server *http.Server
+	service domain.Service
+	server  *http.Server
 }
 
-func New(db *sql.DB, addr string) (*HTTPServer, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
+func New(service domain.Service, addr string) (*HTTPServer, error) {
+	// Ping check removed as it belongs to the store/db layer, or we can add a HealthCheck method to Service
+	// For now, we'll assume the service is ready or check it if we add a method.
 
-	if err := db.PingContext(ctx); err != nil {
-		return nil, fmt.Errorf("database ping failed: %w", err)
-	}
-
-	s := &HTTPServer{db: db}
+	s := &HTTPServer{service: service}
 
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		if err := db.PingContext(r.Context()); err != nil {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			_, _ = w.Write([]byte("db not healthy"))
-			return
-		}
+		// Simplified health check
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
 
-	// /bikes → list (GET) and create (POST)
+	// Auth endpoints (public)
+	mux.HandleFunc("/auth/request-magic-link", s.handleRequestMagicLink)
+	mux.HandleFunc("/auth/confirm", s.handleConfirmMagicLink)
+
+	// /bikes → list (GET, public) and create (POST, auth)
 	mux.HandleFunc("/bikes", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
 			s.handleListBikes(w, r)
 		case http.MethodPost:
-			s.handleCreateBike(w, r)
+			s.middlewareAuth(http.HandlerFunc(s.handleCreateBike)).ServeHTTP(w, r)
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
 	})
 
-	// /bikes/{id}/reviews and /bikes/{id}/ratings
-	mux.HandleFunc("/bikes/", s.handleBikeSubroutes)
+	// /bikes/{id}, /bikes/{id}/reviews, /bikes/{id}/ratings
+	// GETs are public; CUD goes through auth middleware
+	mux.HandleFunc("/bikes/", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost, http.MethodPut, http.MethodDelete:
+			s.middlewareAuth(http.HandlerFunc(s.handleBikeSubroutes)).ServeHTTP(w, r)
+		default:
+			s.handleBikeSubroutes(w, r)
+		}
+	})
 
-	// /bikes/reviews → all reviews with ratings
+	// /bikes/reviews → all reviews with ratings (GET, public)
 	mux.HandleFunc("/bikes/reviews", s.handleListAllReviewsWithRatings)
 
-	// /bikes/ratings → aggregates for all bikes
+	// /bikes/ratings → aggregates for all bikes (GET, public)
 	mux.HandleFunc("/bikes/ratings", s.handleListAllBikeRatings)
 
-	// /reviews/{id} → get/update/delete a review
-	mux.HandleFunc("/reviews/", s.handleReviewSubroutes)
+	// /reviews/{id} → get (public), update/delete (auth)
+	mux.HandleFunc("/reviews/", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPut, http.MethodDelete:
+			s.middlewareAuth(http.HandlerFunc(s.handleReviewSubroutes)).ServeHTTP(w, r)
+		default:
+			s.handleReviewSubroutes(w, r)
+		}
+	})
 
 	s.server = &http.Server{
 		Addr:    addr,

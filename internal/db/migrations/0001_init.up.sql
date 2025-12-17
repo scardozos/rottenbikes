@@ -3,16 +3,35 @@ CREATE TABLE bikes (
     numerical_id    BIGSERIAL PRIMARY KEY,
     hash_id         TEXT        NOT NULL UNIQUE,
     is_electric     BOOLEAN     NOT NULL DEFAULT FALSE,
+    creator_id      BIGINT      NOT NULL,
     created_ts      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_ts      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    updated_ts      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT fk_bikes_creator
+        FOREIGN KEY (creator_id) REFERENCES posters (poster_id)
+        ON DELETE RESTRICT
 );
 
 -- posters (users who post reviews)
 CREATE TABLE posters (
-    poster_id   BIGSERIAL PRIMARY KEY,
-    email       TEXT        NOT NULL UNIQUE,
-    username    TEXT        NOT NULL UNIQUE,
-    created_ts  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    poster_id       BIGSERIAL PRIMARY KEY,
+    email           TEXT        NOT NULL UNIQUE,
+    username        TEXT        NOT NULL UNIQUE,
+    api_token       TEXT        UNIQUE,
+    api_token_expires_ts TIMESTAMPTZ,
+    email_verified  BOOLEAN     NOT NULL DEFAULT FALSE,
+    created_ts      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+
+-- magic links for email-based auth
+CREATE TABLE magic_links (
+    id          BIGSERIAL PRIMARY KEY,
+    poster_id   BIGINT      NOT NULL REFERENCES posters(poster_id) ON DELETE CASCADE,
+    token       TEXT        NOT NULL UNIQUE,
+    created_ts  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    consumed_ts TIMESTAMPTZ,
+    expires_ts  TIMESTAMPTZ NOT NULL
 );
 
 -- reviews (one per bike per poster)
@@ -21,7 +40,7 @@ CREATE TABLE reviews (
     poster_id          BIGINT      NOT NULL,
     bike_numerical_id  BIGINT      NOT NULL,
     bike_img           TEXT,
-    comment            VARCHAR(500), -- short free‑text comment
+    comment            VARCHAR(500),
     created_ts         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     CONSTRAINT fk_reviews_poster

@@ -13,6 +13,7 @@ import (
 	_ "github.com/lib/pq"
 
 	"github.com/scardozos/rottenbikes/cmd/api/httpserver"
+	"github.com/scardozos/rottenbikes/internal/domain"
 )
 
 func main() {
@@ -25,9 +26,10 @@ func main() {
 	}
 	defer db.Close()
 
-	srv, err := httpserver.New(db, ":8080")
+	store := domain.NewStore(db)
+	srv, err := httpserver.New(store, ":8080")
 	if err != nil {
-		log.Fatalf("failed to connect to db")
+		log.Fatalf("failed to create server: %v", err)
 	}
 
 	// Run server in background.
