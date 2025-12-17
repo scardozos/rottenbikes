@@ -29,7 +29,36 @@ An application for managing (bicing) bike reviews and ratings.
     ```bash
     make run
     ```
-    The server will start on `localhost:8080`.
+    This command starts the Backend API on `localhost:8080` AND the Expo development server for the UI.
+
+## Running the UI
+
+The UI is built with React Native and Expo, supporting both mobile (iOS/Android) and web.
+
+### Mobile Development (Expo Go)
+The `make run` command handles starting the Expo server. Follow the terminal instructions to open the app in **Expo Go** on your physical device or an emulator.
+
+### Web UI
+There are two ways to run the UI in a browser:
+
+#### 1. Development Mode (Hot Reloading)
+This is started automatically by `make run`. You can access it at `http://localhost:8081`.
+
+#### 2. Production Mode (Served by Go)
+For a production-like environment, the UI can be built and served by a dedicated Go web server:
+
+1.  **Build the UI:**
+    ```bash
+    cd ui
+    npx expo export --platform web
+    ```
+    *Note: This will generate the static files in `ui/dist` (or `ui/web-build` depending on configuration, ensure it matches `./ui/dist` for the Go server).*
+
+2.  **Start the Go Web Server:**
+    ```bash
+    go run ./cmd/web
+    ```
+    The Web UI will be available at `http://localhost:8081` (default port).
 
 ### Database Reset
 To drop the database and re-apply all migrations (fresh start):
