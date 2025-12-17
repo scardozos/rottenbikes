@@ -12,6 +12,7 @@ MIGRATIONS_DIR := internal/db/migrations
 db-up:
 	@echo "Starting local PostgreSQL..."
 	@.scripts/run-local-postgres.sh
+	@sleep 2
 
 db-migrate-up:
 	@echo "Running migrations up..."
@@ -27,5 +28,6 @@ db-reset:
 	migrate -path $(MIGRATIONS_DIR) -database "$(DB_DSN)" up
 
 run: db-up db-migrate-up
-	@echo "Starting API..."
+	@echo "Starting API and Expo..."
+	@(cd ui && npx expo start &)
 	go run ./cmd/api
