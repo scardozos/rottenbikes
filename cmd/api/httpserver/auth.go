@@ -7,8 +7,6 @@ import (
 	"log"
 	"net/http"
 	"time"
-
-	"github.com/scardozos/rottenbikes/internal/domain"
 )
 
 type magicLinkRequest struct {
@@ -41,7 +39,7 @@ func (s *HTTPServer) handleRequestMagicLink(w http.ResponseWriter, r *http.Reque
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
-	token, err := domain.CreateMagicLink(ctx, s.db, req.Email)
+	token, err := s.service.CreateMagicLink(ctx, req.Email)
 	if err != nil {
 		log.Printf("CreateMagicLink error: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -79,7 +77,7 @@ func (s *HTTPServer) handleConfirmMagicLink(w http.ResponseWriter, r *http.Reque
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
-	res, err := domain.ConfirmMagicLink(ctx, s.db, token)
+	res, err := s.service.ConfirmMagicLink(ctx, token)
 	if err != nil {
 		log.Printf("ConfirmMagicLink error: %v", err)
 		w.WriteHeader(http.StatusBadRequest)

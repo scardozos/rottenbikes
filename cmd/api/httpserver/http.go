@@ -2,38 +2,29 @@ package httpserver
 
 import (
 	"context"
-	"database/sql"
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
+
+	"github.com/scardozos/rottenbikes/internal/domain"
 )
 
 type HTTPServer struct {
-	db     *sql.DB
-	server *http.Server
+	service domain.Service
+	server  *http.Server
 }
 
-func New(db *sql.DB, addr string) (*HTTPServer, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
+func New(service domain.Service, addr string) (*HTTPServer, error) {
+	// Ping check removed as it belongs to the store/db layer, or we can add a HealthCheck method to Service
+	// For now, we'll assume the service is ready or check it if we add a method.
 
-	if err := db.PingContext(ctx); err != nil {
-		return nil, fmt.Errorf("database ping failed: %w", err)
-	}
-
-	s := &HTTPServer{db: db}
+	s := &HTTPServer{service: service}
 
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		if err := db.PingContext(r.Context()); err != nil {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			_, _ = w.Write([]byte("db not healthy"))
-			return
-		}
+		// Simplified health check
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})

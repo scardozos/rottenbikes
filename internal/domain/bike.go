@@ -2,7 +2,6 @@ package domain
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"time"
 )
@@ -15,8 +14,8 @@ type Bike struct {
 	UpdatedAt   time.Time `db:"updated_ts" json:"updated_ts"`
 }
 
-func ListBikes(ctx context.Context, db *sql.DB) ([]Bike, error) {
-	rows, err := db.QueryContext(ctx, `
+func (s *Store) ListBikes(ctx context.Context) ([]Bike, error) {
+	rows, err := s.db.QueryContext(ctx, `
 		SELECT numerical_id, hash_id, is_electric
 		FROM bikes
 		ORDER BY numerical_id
@@ -37,9 +36,9 @@ func ListBikes(ctx context.Context, db *sql.DB) ([]Bike, error) {
 	return bikes, rows.Err()
 }
 
-func CreateBike(ctx context.Context, db *sql.DB, numericalID int64, hashID *string, isElectric bool, creatorID int64) (*Bike, error) {
+func (s *Store) CreateBike(ctx context.Context, numericalID int64, hashID *string, isElectric bool, creatorID int64) (*Bike, error) {
 	var b Bike
-	err := db.QueryRowContext(ctx, `
+	err := s.db.QueryRowContext(ctx, `
 		INSERT INTO bikes (numerical_id, hash_id, is_electric, creator_id)
 		VALUES ($1, $2, $3, $4)
 		RETURNING numerical_id, hash_id, is_electric, created_ts, updated_ts
@@ -56,9 +55,9 @@ func CreateBike(ctx context.Context, db *sql.DB, numericalID int64, hashID *stri
 	return &b, nil
 }
 
-func GetBike(ctx context.Context, db *sql.DB, id int64) (*Bike, error) {
+func (s *Store) GetBike(ctx context.Context, id int64) (*Bike, error) {
 	var b Bike
-	err := db.QueryRowContext(ctx, `
+	err := s.db.QueryRowContext(ctx, `
 		SELECT numerical_id, hash_id, is_electric, created_ts, updated_ts
 		FROM bikes
 		WHERE numerical_id = $1
@@ -69,8 +68,8 @@ func GetBike(ctx context.Context, db *sql.DB, id int64) (*Bike, error) {
 	return &b, nil
 }
 
-func UpdateBike(ctx context.Context, db *sql.DB, id int64, hashID *string, isElectric *bool) error {
-	_, err := db.ExecContext(ctx, `
+func (s *Store) UpdateBike(ctx context.Context, id int64, hashID *string, isElectric *bool) error {
+	_, err := s.db.ExecContext(ctx, `
 		UPDATE bikes
 		SET
 			hash_id     = COALESCE($1, hash_id),
@@ -81,8 +80,8 @@ func UpdateBike(ctx context.Context, db *sql.DB, id int64, hashID *string, isEle
 	return err
 }
 
-func DeleteBike(ctx context.Context, db *sql.DB, id int64) error {
-	_, err := db.ExecContext(ctx, `
+func (s *Store) DeleteBike(ctx context.Context, id int64) error {
+	_, err := s.db.ExecContext(ctx, `
 		DELETE FROM bikes
 		WHERE numerical_id = $1
 	`, id)

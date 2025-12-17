@@ -32,8 +32,8 @@ type reviewRatingRow struct {
 }
 
 // all bikes
-func ListReviewsWithRatings(ctx context.Context, db *sql.DB) ([]ReviewWithRatings, error) {
-	rows, err := db.QueryContext(ctx, `
+func (s *Store) ListReviewsWithRatings(ctx context.Context) ([]ReviewWithRatings, error) {
+	rows, err := s.db.QueryContext(ctx, `
 		SELECT
 			r.review_id,
 			r.poster_id,
@@ -58,8 +58,8 @@ func ListReviewsWithRatings(ctx context.Context, db *sql.DB) ([]ReviewWithRating
 }
 
 // single bike
-func ListReviewsWithRatingsByBike(ctx context.Context, db *sql.DB, bikeID int64) ([]ReviewWithRatings, error) {
-	rows, err := db.QueryContext(ctx, `
+func (s *Store) ListReviewsWithRatingsByBike(ctx context.Context, bikeID int64) ([]ReviewWithRatings, error) {
+	rows, err := s.db.QueryContext(ctx, `
 		SELECT
 			r.review_id,
 			r.poster_id,
@@ -146,11 +146,11 @@ type CreateReviewInput struct {
 	Pedals     *int16
 }
 
-func CreateReviewWithRatings(ctx context.Context, db *sql.DB, in CreateReviewInput) (int64, error) {
+func (s *Store) CreateReviewWithRatings(ctx context.Context, in CreateReviewInput) (int64, error) {
 	const minInterval = 10 * time.Minute
 
 	var lastCreated time.Time
-	err := db.QueryRowContext(ctx, `
+	err := s.db.QueryRowContext(ctx, `
 		SELECT created_ts
 		FROM reviews
 		WHERE poster_id = $1 AND bike_numerical_id = $2
@@ -166,7 +166,7 @@ func CreateReviewWithRatings(ctx context.Context, db *sql.DB, in CreateReviewInp
 		return 0, fmt.Errorf("check last review time: %w", err)
 	}
 
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, fmt.Errorf("begin tx: %w", err)
 	}
@@ -241,8 +241,8 @@ type UpdateReviewInput struct {
 	Pedals     *int16
 }
 
-func UpdateReviewWithRatings(ctx context.Context, db *sql.DB, in UpdateReviewInput) error {
-	tx, err := db.BeginTx(ctx, nil)
+func (s *Store) UpdateReviewWithRatings(ctx context.Context, in UpdateReviewInput) error {
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}
@@ -317,8 +317,8 @@ func UpdateReviewWithRatings(ctx context.Context, db *sql.DB, in UpdateReviewInp
 	return nil
 }
 
-func GetReviewWithRatingsByID(ctx context.Context, db *sql.DB, reviewID int64) (*ReviewWithRatings, error) {
-	rows, err := db.QueryContext(ctx, `
+func (s *Store) GetReviewWithRatingsByID(ctx context.Context, reviewID int64) (*ReviewWithRatings, error) {
+	rows, err := s.db.QueryContext(ctx, `
 		SELECT
 			r.review_id,
 			r.poster_id,
@@ -350,8 +350,8 @@ func GetReviewWithRatingsByID(ctx context.Context, db *sql.DB, reviewID int64) (
 	return &reviews[0], nil
 }
 
-func DeleteReview(ctx context.Context, db *sql.DB, reviewID int64, posterID int64) error {
-	tx, err := db.BeginTx(ctx, nil)
+func (s *Store) DeleteReview(ctx context.Context, reviewID int64, posterID int64) error {
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}

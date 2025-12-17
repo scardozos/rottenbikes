@@ -49,7 +49,7 @@ func (s *HTTPServer) handleCreateBikeReview(w http.ResponseWriter, r *http.Reque
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
-	reviewID, err := domain.CreateReviewWithRatings(ctx, s.db, domain.CreateReviewInput{
+	reviewID, err := s.service.CreateReviewWithRatings(ctx, domain.CreateReviewInput{
 		PosterID:   posterID,
 		BikeID:     bikeID,
 		Comment:    req.Comment,
@@ -89,7 +89,7 @@ func (s *HTTPServer) handleListAllReviewsWithRatings(w http.ResponseWriter, r *h
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
 
-	reviews, err := domain.ListReviewsWithRatings(ctx, s.db)
+	reviews, err := s.service.ListReviewsWithRatings(ctx)
 	if err != nil {
 		log.Printf("list all reviews error: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -112,7 +112,7 @@ func (s *HTTPServer) handleBikeReviews(w http.ResponseWriter, r *http.Request, b
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
 
-	reviews, err := domain.ListReviewsWithRatingsByBike(ctx, s.db, bikeID)
+	reviews, err := s.service.ListReviewsWithRatingsByBike(ctx, bikeID)
 	if err != nil {
 		log.Printf("list bike %d reviews error: %v", bikeID, err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -149,7 +149,7 @@ func (s *HTTPServer) handleUpdateReview(w http.ResponseWriter, r *http.Request, 
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
-	err := domain.UpdateReviewWithRatings(ctx, s.db, domain.UpdateReviewInput{
+	err := s.service.UpdateReviewWithRatings(ctx, domain.UpdateReviewInput{
 		ReviewID:   reviewID,
 		PosterID:   posterID,
 		Comment:    req.Comment,
@@ -184,7 +184,7 @@ func (s *HTTPServer) handleGetReview(w http.ResponseWriter, r *http.Request, rev
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
 
-	review, err := domain.GetReviewWithRatingsByID(ctx, s.db, reviewID)
+	review, err := s.service.GetReviewWithRatingsByID(ctx, reviewID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			w.WriteHeader(http.StatusNotFound)
@@ -225,7 +225,7 @@ func (s *HTTPServer) handleDeleteReview(w http.ResponseWriter, r *http.Request, 
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
-	if err := domain.DeleteReview(ctx, s.db, reviewID, posterID); err != nil {
+	if err := s.service.DeleteReview(ctx, reviewID, posterID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			w.WriteHeader(http.StatusNotFound)
 			return

@@ -5,8 +5,6 @@ import (
 	"net/http"
 	"strings"
 	"time"
-
-	"github.com/scardozos/rottenbikes/internal/domain"
 )
 
 type contextKey string
@@ -48,7 +46,7 @@ func (s *HTTPServer) middlewareAuth(next http.Handler) http.Handler {
 		ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 		defer cancel()
 
-		poster, err := domain.GetPosterByAPIToken(ctx, s.db, token)
+		poster, err := s.service.GetPosterByAPIToken(ctx, token)
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			_, _ = w.Write([]byte("invalid or expired api token"))

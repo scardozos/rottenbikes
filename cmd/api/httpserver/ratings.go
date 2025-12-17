@@ -6,8 +6,6 @@ import (
 	"log"
 	"net/http"
 	"time"
-
-	"github.com/scardozos/rottenbikes/internal/domain"
 )
 
 // GET /bikes/ratings → rating aggregates for all bikes
@@ -20,7 +18,7 @@ func (s *HTTPServer) handleListAllBikeRatings(w http.ResponseWriter, r *http.Req
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
 
-	aggs, err := domain.ListRatingAggregates(ctx, s.db)
+	aggs, err := s.service.ListRatingAggregates(ctx)
 	if err != nil {
 		log.Printf("list all bike ratings error: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -43,7 +41,7 @@ func (s *HTTPServer) handleBikeRatings(w http.ResponseWriter, r *http.Request, b
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
 
-	aggs, err := domain.ListRatingAggregatesByBike(ctx, s.db, bikeID)
+	aggs, err := s.service.ListRatingAggregatesByBike(ctx, bikeID)
 	if err != nil {
 		log.Printf("list bike %d ratings error: %v", bikeID, err)
 		w.WriteHeader(http.StatusInternalServerError)

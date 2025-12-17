@@ -28,8 +28,8 @@ type Poster struct {
 
 // Create or load poster by email, ensure a long-lived api_token exists,
 // and issue a single-use magic link token.
-func CreateMagicLink(ctx context.Context, db *sql.DB, email string) (magicToken string, err error) {
-	tx, err := db.BeginTx(ctx, nil)
+func (s *Store) CreateMagicLink(ctx context.Context, email string) (magicToken string, err error) {
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return "", fmt.Errorf("begin tx: %w", err)
 	}
@@ -122,8 +122,8 @@ type ConfirmResult struct {
 }
 
 // Consume magic link, verify, and return api_token.
-func ConfirmMagicLink(ctx context.Context, db *sql.DB, token string) (*ConfirmResult, error) {
-	tx, err := db.BeginTx(ctx, nil)
+func (s *Store) ConfirmMagicLink(ctx context.Context, token string) (*ConfirmResult, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("begin tx: %w", err)
 	}
@@ -220,12 +220,12 @@ type AuthPoster struct {
 }
 
 // GetPosterByAPIToken returns the poster for a valid, non-expired token.
-func GetPosterByAPIToken(ctx context.Context, db *sql.DB, token string) (*AuthPoster, error) {
+func (s *Store) GetPosterByAPIToken(ctx context.Context, token string) (*AuthPoster, error) {
 	var p AuthPoster
 	var expires sql.NullTime
 	var emailVerified bool
 
-	err := db.QueryRowContext(ctx, `
+	err := s.db.QueryRowContext(ctx, `
 		SELECT poster_id, email, api_token_expires_ts, email_verified
 		FROM posters
 		WHERE api_token = $1

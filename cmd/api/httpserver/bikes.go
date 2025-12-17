@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/lib/pq"
-	"github.com/scardozos/rottenbikes/internal/domain"
 )
 
 func (s *HTTPServer) handleListBikes(w http.ResponseWriter, r *http.Request) {
@@ -22,7 +21,7 @@ func (s *HTTPServer) handleListBikes(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
 
-	bikes, err := domain.ListBikes(ctx, s.db)
+	bikes, err := s.service.ListBikes(ctx)
 	if err != nil {
 		log.Printf("list bikes error: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -71,7 +70,7 @@ func (s *HTTPServer) handleCreateBike(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
 
-	bike, err := domain.CreateBike(ctx, s.db, req.NumericalID, req.HashID, req.IsElectric, creatorID)
+	bike, err := s.service.CreateBike(ctx, req.NumericalID, req.HashID, req.IsElectric, creatorID)
 	if err != nil {
 		var pqErr *pq.Error
 		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
@@ -103,8 +102,9 @@ func (s *HTTPServer) handleCreateBike(w http.ResponseWriter, r *http.Request) {
 }
 
 type updateBikeRequest struct {
-	HashID     *string `json:"hash_id"`
-	IsElectric *bool   `json:"is_electric"`
+	NumericalID *int64  `json:"numerical_id"`
+	HashID      *string `json:"hash_id"`
+	IsElectric  *bool   `json:"is_electric"`
 }
 
 // PUT /bikes/{id} → update hash_id/is_electric
@@ -121,10 +121,16 @@ func (s *HTTPServer) handleUpdateBike(w http.ResponseWriter, r *http.Request, bi
 		return
 	}
 
+	if req.NumericalID != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte("numerical_id cannot be updated"))
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
 
-	if err := domain.UpdateBike(ctx, s.db, bikeID, req.HashID, req.IsElectric); err != nil {
+	if err := s.service.UpdateBike(ctx, bikeID, req.HashID, req.IsElectric); err != nil {
 		log.Printf("update bike %d error: %v", bikeID, err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -143,7 +149,7 @@ func (s *HTTPServer) handleGetBike(w http.ResponseWriter, r *http.Request, bikeI
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
 
-	bike, err := domain.GetBike(ctx, s.db, bikeID)
+	bike, err := s.service.GetBike(ctx, bikeID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			w.WriteHeader(http.StatusNotFound)
@@ -168,7 +174,7 @@ func (s *HTTPServer) handleDeleteBike(w http.ResponseWriter, r *http.Request, bi
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
 
-	if err := domain.DeleteBike(ctx, s.db, bikeID); err != nil {
+	if err := s.service.DeleteBike(ctx, bikeID); err != nil {
 		log.Printf("delete bike %d error: %v", bikeID, err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
