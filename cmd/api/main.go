@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -16,9 +17,25 @@ import (
 	"github.com/scardozos/rottenbikes/internal/domain"
 )
 
+func getEnv(key, fallback string) string {
+	if value, ok := os.LookupEnv(key); ok {
+		return value
+	}
+	return fallback
+}
+
 func main() {
 	// TODO: load from env/config
-	dsn := "postgres://rottenbikes:rottenbikes@localhost:5432/rottenbikes?sslmode=disable"
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		user := getEnv("DB_USER", "rottenbikes")
+		pass := getEnv("DB_PASSWORD", "rottenbikes")
+		host := getEnv("DB_HOST", "localhost")
+		port := getEnv("DB_PORT", "5432")
+		dbname := getEnv("DB_NAME", "rottenbikes")
+		sslmode := getEnv("DB_SSLMODE", "disable")
+		dsn = fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s", user, pass, host, port, dbname, sslmode)
+	}
 
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
@@ -27,7 +44,11 @@ func main() {
 	defer db.Close()
 
 	store := domain.NewStore(db)
-	srv, err := httpserver.New(store, ":8080")
+	port := os.Getenv("API_PORT")
+	if port == "" {
+		port = "8080"
+	}
+	srv, err := httpserver.New(store, ":"+port)
 	if err != nil {
 		log.Fatalf("failed to create server: %v", err)
 	}
