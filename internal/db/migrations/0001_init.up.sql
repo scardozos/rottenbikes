@@ -1,3 +1,14 @@
+-- posters (users who post reviews)
+CREATE TABLE posters (
+    poster_id       BIGSERIAL PRIMARY KEY,
+    email           TEXT        NOT NULL UNIQUE,
+    username        TEXT        NOT NULL UNIQUE,
+    api_token       TEXT        UNIQUE,
+    api_token_expires_ts TIMESTAMPTZ,
+    email_verified  BOOLEAN     NOT NULL DEFAULT FALSE,
+    created_ts      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- bikes
 CREATE TABLE bikes (
     numerical_id    BIGSERIAL PRIMARY KEY,
@@ -10,17 +21,6 @@ CREATE TABLE bikes (
     CONSTRAINT fk_bikes_creator
         FOREIGN KEY (creator_id) REFERENCES posters (poster_id)
         ON DELETE RESTRICT
-);
-
--- posters (users who post reviews)
-CREATE TABLE posters (
-    poster_id       BIGSERIAL PRIMARY KEY,
-    email           TEXT        NOT NULL UNIQUE,
-    username        TEXT        NOT NULL UNIQUE,
-    api_token       TEXT        UNIQUE,
-    api_token_expires_ts TIMESTAMPTZ,
-    email_verified  BOOLEAN     NOT NULL DEFAULT FALSE,
-    created_ts      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 
