@@ -1,41 +1,41 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, ActivityIndicator } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
 
 const LoginScreen = ({ navigation }) => {
-    const [email, setEmail] = useState('');
-    const [token, setToken] = useState('');
-    const [step, setStep] = useState(1); // 1: Email, 2: Token
-    const { requestLogin, completeLogin } = useContext(AuthContext);
+    const [identifier, setIdentifier] = useState('');
+    const [step, setStep] = useState(1); // 1: Email, 2: Done
+    const [pendingMagicToken, setPendingMagicToken] = useState(null);
+    const { requestLogin, checkLoginStatus } = useContext(AuthContext);
     const [loading, setLoading] = useState(false);
 
+    useEffect(() => {
+        let interval;
+        if (step === 2 && pendingMagicToken) {
+            interval = setInterval(async () => {
+                const confirmed = await checkLoginStatus(pendingMagicToken);
+                if (confirmed) {
+                    clearInterval(interval);
+                }
+            }, 2000);
+        }
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    }, [step, pendingMagicToken]);
+
     const handleRequestLink = async () => {
-        if (!email) {
-            alert("Please enter an email");
+        if (!identifier) {
+            alert("Please enter your email or username");
             return;
         }
         setLoading(true);
         try {
-            await requestLogin(email);
+            const mToken = await requestLogin(identifier);
+            setPendingMagicToken(mToken);
             setStep(2);
-            alert("Magic link sent! Check server console.");
         } catch (e) {
             alert('Failed to request magic link');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleCompleteLogin = async () => {
-        if (!token) {
-            alert("Please enter the token");
-            return;
-        }
-        setLoading(true);
-        try {
-            await completeLogin(token);
-        } catch (e) {
-            alert('Login failed');
         } finally {
             setLoading(false);
         }
@@ -49,9 +49,9 @@ const LoginScreen = ({ navigation }) => {
                 <>
                     <TextInput
                         style={styles.input}
-                        placeholder="Email"
-                        value={email}
-                        onChangeText={setEmail}
+                        placeholder="Email or Username"
+                        value={identifier}
+                        onChangeText={setIdentifier}
                         autoCapitalize="none"
                         keyboardType="email-address"
                     />
@@ -63,22 +63,10 @@ const LoginScreen = ({ navigation }) => {
                 </>
             ) : (
                 <>
-                    <Text style={{ marginBottom: 10, textAlign: 'center' }}>
-                        Magic link sent to {email}.{'\n'}
-                        Check server logs, click the link (or curl it), and copy the 'api_token' from the response JSON here.
+                    <Text style={{ marginBottom: 20, textAlign: 'center', fontSize: 16 }}>
+                        Magic link requested for {identifier}!{'\n\n'}
+                        Check the server console for the link and click it to log in.
                     </Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Paste API Token"
-                        value={token}
-                        onChangeText={setToken}
-                        autoCapitalize="none"
-                    />
-                    {loading ? (
-                        <ActivityIndicator size="large" />
-                    ) : (
-                        <Button title="Complete Login" onPress={handleCompleteLogin} />
-                    )}
                     <Button title="Back" onPress={() => setStep(1)} color="gray" />
                 </>
             )}

@@ -6,6 +6,7 @@ import { ActivityIndicator, View } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
+import ConfirmLoginScreen from '../screens/ConfirmLoginScreen';
 import HomeScreen from '../screens/HomeScreen';
 import BikeDetailsScreen from '../screens/BikeDetailsScreen';
 import CreateBikeScreen from '../screens/CreateBikeScreen';
@@ -13,6 +14,16 @@ import CreateReviewScreen from '../screens/CreateReviewScreen';
 import ScannerScreen from '../screens/ScannerScreen';
 
 const Stack = createNativeStackNavigator();
+
+const linking = {
+    prefixes: ['http://localhost:8081', 'rottenbikes://'],
+    config: {
+        screens: {
+            Home: 'home',
+            ConfirmLogin: 'confirm/:token',
+        },
+    },
+};
 
 const AppNavigator = () => {
     const { isLoading, userToken } = useContext(AuthContext);
@@ -26,8 +37,8 @@ const AppNavigator = () => {
     }
 
     return (
-        <NavigationContainer>
-            <Stack.Navigator>
+        <NavigationContainer linking={linking}>
+            <Stack.Navigator initialRouteName={userToken == null ? "Login" : "Home"}>
                 {userToken == null ? (
                     // Auth Stack
                     <>
@@ -44,6 +55,7 @@ const AppNavigator = () => {
                         <Stack.Screen name="Scanner" component={ScannerScreen} options={{ title: 'Scan QR Code' }} />
                     </>
                 )}
+                <Stack.Screen name="ConfirmLogin" component={ConfirmLoginScreen} options={{ title: 'Confirming Login' }} />
             </Stack.Navigator>
         </NavigationContainer>
     );

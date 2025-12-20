@@ -6,6 +6,9 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
+	"net/mail"
+	"regexp"
+	"strings"
 	"time"
 )
 
@@ -26,9 +29,9 @@ type Poster struct {
 	EmailVerified     bool
 }
 
-// Create or load poster by email, ensure a long-lived api_token exists,
+// Create or load poster by email or username, ensure a long-lived api_token exists,
 // and issue a single-use magic link token.
-func (s *Store) CreateMagicLink(ctx context.Context, email string) (magicToken string, err error) {
+func (s *Store) CreateMagicLink(ctx context.Context, identifier string) (magicToken string, err error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return "", fmt.Errorf("begin tx: %w", err)
@@ -39,16 +42,83 @@ func (s *Store) CreateMagicLink(ctx context.Context, email string) (magicToken s
 	var apiToken *string
 	var apiTokenExpires sql.NullTime
 
-	// Upsert or select poster
+	// SELECT poster strictly by email OR username
+	err = tx.QueryRowContext(ctx, `
+		SELECT poster_id, api_token, api_token_expires_ts
+		FROM posters
+		WHERE email = $1 OR username = $1
+	`, identifier).Scan(&posterID, &apiToken, &apiTokenExpires)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", fmt.Errorf("user not found")
+		}
+		return "", fmt.Errorf("query poster: %w", err)
+	}
+
+	magicToken, err = s.issueMagicLink(ctx, tx, posterID, apiToken, apiTokenExpires)
+	if err != nil {
+		return "", err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return "", fmt.Errorf("commit tx: %w", err)
+	}
+
+	return magicToken, nil
+}
+
+func (s *Store) Register(ctx context.Context, username, email string) (string, error) {
+	// Validate email format
+	_, err := mail.ParseAddress(email)
+	if err != nil {
+		return "", fmt.Errorf("invalid email format")
+	}
+
+	// Validate username format (alphanumeric and dots only)
+	validUsername := regexp.MustCompile(`^[a-zA-Z0-9.]+$`)
+	if !validUsername.MatchString(username) {
+		return "", fmt.Errorf("username can only contain letters, numbers and dots")
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return "", fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	var posterID int64
+	var apiToken *string
+	var apiTokenExpires sql.NullTime
+
+	// Create poster
 	err = tx.QueryRowContext(ctx, `
 		INSERT INTO posters (email, username)
-		VALUES ($1, $1)
-		ON CONFLICT (email) DO UPDATE SET email = EXCLUDED.email
+		VALUES ($1, $2)
 		RETURNING poster_id, api_token, api_token_expires_ts
-	`, email).Scan(&posterID, &apiToken, &apiTokenExpires)
+	`, email, username).Scan(&posterID, &apiToken, &apiTokenExpires)
 	if err != nil {
-		return "", fmt.Errorf("upsert poster: %w", err)
+		if strings.Contains(err.Error(), "posters_email_key") {
+			return "", fmt.Errorf("email already exists")
+		}
+		if strings.Contains(err.Error(), "posters_username_key") {
+			return "", fmt.Errorf("username already exists")
+		}
+		return "", fmt.Errorf("insert poster: %w", err)
 	}
+
+	magicToken, err := s.issueMagicLink(ctx, tx, posterID, apiToken, apiTokenExpires)
+	if err != nil {
+		return "", err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return "", fmt.Errorf("commit tx: %w", err)
+	}
+
+	return magicToken, nil
+}
+
+func (s *Store) issueMagicLink(ctx context.Context, tx *sql.Tx, posterID int64, apiToken *string, apiTokenExpires sql.NullTime) (string, error) {
 
 	now := time.Now()
 	needNewToken := true
@@ -83,18 +153,8 @@ func (s *Store) CreateMagicLink(ctx context.Context, email string) (magicToken s
 		}
 	}
 
-	// Invalidate all previous unconsumed magic links for this poster
-	if _, err := tx.ExecContext(ctx, `
-		UPDATE magic_links
-		SET consumed_ts = NOW()
-		WHERE poster_id = $1
-		  AND consumed_ts IS NULL
-	`, posterID); err != nil {
-		return "", fmt.Errorf("invalidate old magic links: %w", err)
-	}
-
 	// issue one-time magic token
-	magicToken, err = randomToken(32)
+	magicToken, err := randomToken(32)
 	if err != nil {
 		return "", fmt.Errorf("generate magic token: %w", err)
 	}
@@ -105,10 +165,6 @@ func (s *Store) CreateMagicLink(ctx context.Context, email string) (magicToken s
 		VALUES ($1, $2, $3)
 	`, posterID, magicToken, expires); err != nil {
 		return "", fmt.Errorf("insert magic link: %w", err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return "", fmt.Errorf("commit tx: %w", err)
 	}
 
 	return magicToken, nil
@@ -150,13 +206,8 @@ func (s *Store) ConfirmMagicLink(ctx context.Context, token string) (*ConfirmRes
 		return nil, fmt.Errorf("token expired or already used")
 	}
 
-	if _, err := tx.ExecContext(ctx, `
-		UPDATE magic_links
-		SET consumed_ts = NOW()
-		WHERE token = $1
-	`, token); err != nil {
-		return nil, fmt.Errorf("consume magic link: %w", err)
-	}
+	// We will update the magic_links table with the api_token AFTER we retrieve/generate it.
+	// This happens after line 210 in the original file.
 
 	// Get current token info
 	var apiToken string
@@ -207,6 +258,15 @@ func (s *Store) ConfirmMagicLink(ctx context.Context, token string) (*ConfirmRes
 		return nil, fmt.Errorf("commit tx: %w", err)
 	}
 
+	// Update magic_links table to store the api_token AND mark as consumed
+	// This makes it available for the polling endpoint.
+	if _, err := s.db.ExecContext(ctx, `
+		UPDATE magic_links
+		SET consumed_ts = NOW(), api_token = $1
+		WHERE token = $2
+	`, apiToken, token); err != nil {
+	}
+
 	return &ConfirmResult{
 		APIToken:          apiToken,
 		Email:             email,
@@ -246,4 +306,21 @@ func (s *Store) GetPosterByAPIToken(ctx context.Context, token string) (*AuthPos
 	}
 
 	return &p, nil
+}
+
+// CheckMagicLinkStatus returns the api_token if the link was confirmed, otherwise empty.
+func (s *Store) CheckMagicLinkStatus(ctx context.Context, token string) (string, error) {
+	var apiToken sql.NullString
+	err := s.db.QueryRowContext(ctx, `
+		SELECT api_token
+		FROM magic_links
+		WHERE token = $1 AND consumed_ts IS NOT NULL
+	`, token).Scan(&apiToken)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", nil
+		}
+		return "", err
+	}
+	return apiToken.String, nil
 }
