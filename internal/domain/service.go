@@ -7,9 +7,11 @@ import (
 
 type Service interface {
 	// Auth
-	CreateMagicLink(ctx context.Context, email string) (string, error)
+	Register(ctx context.Context, username, email string) (string, error)
+	CreateMagicLink(ctx context.Context, identifier string) (string, error)
 	ConfirmMagicLink(ctx context.Context, token string) (*ConfirmResult, error)
 	GetPosterByAPIToken(ctx context.Context, token string) (*AuthPoster, error)
+	CheckMagicLinkStatus(ctx context.Context, token string) (string, error)
 
 	// Bike
 	ListBikes(ctx context.Context) ([]Bike, error)

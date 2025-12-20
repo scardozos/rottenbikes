@@ -7,9 +7,11 @@ import (
 )
 
 type MockService struct {
+	RegisterFunc                     func(ctx context.Context, username, email string) (string, error)
 	CreateMagicLinkFunc              func(ctx context.Context, email string) (string, error)
 	ConfirmMagicLinkFunc             func(ctx context.Context, token string) (*domain.ConfirmResult, error)
 	GetPosterByAPITokenFunc          func(ctx context.Context, token string) (*domain.AuthPoster, error)
+	CheckMagicLinkStatusFunc         func(ctx context.Context, token string) (string, error)
 	ListBikesFunc                    func(ctx context.Context) ([]domain.Bike, error)
 	CreateBikeFunc                   func(ctx context.Context, numericalID int64, hashID *string, isElectric bool, creatorID int64) (*domain.Bike, error)
 	GetBikeFunc                      func(ctx context.Context, id int64) (*domain.Bike, error)
@@ -25,6 +27,10 @@ type MockService struct {
 	DeleteReviewFunc                 func(ctx context.Context, reviewID int64, posterID int64) error
 }
 
+func (m *MockService) Register(ctx context.Context, username, email string) (string, error) {
+	return m.RegisterFunc(ctx, username, email)
+}
+
 func (m *MockService) CreateMagicLink(ctx context.Context, email string) (string, error) {
 	return m.CreateMagicLinkFunc(ctx, email)
 }
@@ -35,6 +41,10 @@ func (m *MockService) ConfirmMagicLink(ctx context.Context, token string) (*doma
 
 func (m *MockService) GetPosterByAPIToken(ctx context.Context, token string) (*domain.AuthPoster, error) {
 	return m.GetPosterByAPITokenFunc(ctx, token)
+}
+
+func (m *MockService) CheckMagicLinkStatus(ctx context.Context, token string) (string, error) {
+	return m.CheckMagicLinkStatusFunc(ctx, token)
 }
 
 func (m *MockService) ListBikes(ctx context.Context) ([]domain.Bike, error) {

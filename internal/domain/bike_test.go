@@ -19,11 +19,11 @@ func TestListBikes(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("success", func(t *testing.T) {
-		rows := sqlmock.NewRows([]string{"numerical_id", "hash_id", "is_electric"}).
-			AddRow(1, "hash1", true).
-			AddRow(2, "hash2", false)
+		rows := sqlmock.NewRows([]string{"numerical_id", "hash_id", "is_electric", "created_ts", "updated_ts"}).
+			AddRow(1, "hash1", true, time.Now(), time.Now()).
+			AddRow(2, "hash2", false, time.Now(), time.Now())
 
-		mock.ExpectQuery("SELECT numerical_id, hash_id, is_electric FROM bikes").
+		mock.ExpectQuery("SELECT numerical_id, hash_id, is_electric, created_ts, updated_ts FROM bikes ORDER BY numerical_id").
 			WillReturnRows(rows)
 
 		store := NewStore(db)

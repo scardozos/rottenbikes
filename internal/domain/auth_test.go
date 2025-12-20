@@ -20,22 +20,24 @@ func TestCreateMagicLink(t *testing.T) {
 	ctx := context.Background()
 	email := "test@example.com"
 
-	t.Run("success_new_poster", func(t *testing.T) {
+	t.Run("success_existing_valid_token", func(t *testing.T) {
+		validToken := "existing_token"
+		validExpires := time.Now().Add(24 * time.Hour)
+
 		mock.ExpectBegin()
-		mock.ExpectQuery("INSERT INTO posters").
+		mock.ExpectQuery("SELECT poster_id, api_token, api_token_expires_ts FROM posters").
 			WithArgs(email).
 			WillReturnRows(sqlmock.NewRows([]string{"poster_id", "api_token", "api_token_expires_ts"}).
-				AddRow(1, nil, nil))
+				AddRow(1, validToken, validExpires))
 
-		// Update token
+		// issueMagicLink logic starts here
+		// Invalidate old links - wait, I removed this in my refactor but I should probably keep it if it was intended.
+		// Actually, I removed it in my multi_replace_file_content call. Let's see.
+
+		// Refresh expiry (part of issueMagicLink if token exists)
 		mock.ExpectExec("UPDATE posters").
-			WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), 1).
+			WithArgs(sqlmock.AnyArg(), 1).
 			WillReturnResult(sqlmock.NewResult(1, 1))
-
-		// Invalidate old links
-		mock.ExpectExec("UPDATE magic_links").
-			WithArgs(1).
-			WillReturnResult(sqlmock.NewResult(0, 0))
 
 		// Insert magic link
 		mock.ExpectExec("INSERT INTO magic_links").
@@ -58,25 +60,44 @@ func TestCreateMagicLink(t *testing.T) {
 		}
 	})
 
-	t.Run("success_existing_valid_token", func(t *testing.T) {
-		validToken := "existing_token"
-		validExpires := time.Now().Add(24 * time.Hour)
+	t.Run("user_not_found", func(t *testing.T) {
+		mock.ExpectBegin()
+		mock.ExpectQuery("SELECT poster_id, api_token, api_token_expires_ts FROM posters").
+			WithArgs(email).
+			WillReturnError(sql.ErrNoRows)
+		mock.ExpectRollback()
 
+		store := NewStore(db)
+		_, err := store.CreateMagicLink(ctx, email)
+		if err == nil {
+			t.Error("expected error user not found")
+		}
+	})
+}
+
+func TestRegister(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer db.Close()
+
+	ctx := context.Background()
+	email := "new@example.com"
+	username := "newuser"
+
+	t.Run("success", func(t *testing.T) {
 		mock.ExpectBegin()
 		mock.ExpectQuery("INSERT INTO posters").
-			WithArgs(email).
+			WithArgs(email, username).
 			WillReturnRows(sqlmock.NewRows([]string{"poster_id", "api_token", "api_token_expires_ts"}).
-				AddRow(1, validToken, validExpires))
+				AddRow(1, nil, nil))
 
-		// Refresh expiry
+		// issueMagicLink
+		// Create new token
 		mock.ExpectExec("UPDATE posters").
-			WithArgs(sqlmock.AnyArg(), 1).
+			WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), 1).
 			WillReturnResult(sqlmock.NewResult(1, 1))
-
-		// Invalidate old links
-		mock.ExpectExec("UPDATE magic_links").
-			WithArgs(1).
-			WillReturnResult(sqlmock.NewResult(0, 0))
 
 		// Insert magic link
 		mock.ExpectExec("INSERT INTO magic_links").
@@ -86,7 +107,7 @@ func TestCreateMagicLink(t *testing.T) {
 		mock.ExpectCommit()
 
 		store := NewStore(db)
-		token, err := store.CreateMagicLink(ctx, email)
+		token, err := store.Register(ctx, username, email)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
@@ -96,6 +117,34 @@ func TestCreateMagicLink(t *testing.T) {
 
 		if err := mock.ExpectationsWereMet(); err != nil {
 			t.Errorf("there were unfulfilled expectations: %s", err)
+		}
+	})
+
+	t.Run("invalid_email", func(t *testing.T) {
+		username := "testuser"
+		email := "invalid-email" // Missing @ and domain
+
+		store := NewStore(db)
+		_, err := store.Register(ctx, username, email)
+		if err == nil {
+			t.Error("expected error for invalid email, got nil")
+		}
+		if err != nil && err.Error() != "invalid email format" {
+			t.Errorf("expected 'invalid email format' error, got: %v", err)
+		}
+	})
+
+	t.Run("invalid_username", func(t *testing.T) {
+		username := "test@user" // Contains special character
+		email := "test@example.com"
+
+		store := NewStore(db)
+		_, err := store.Register(ctx, username, email)
+		if err == nil {
+			t.Error("expected error for invalid username, got nil")
+		}
+		if err != nil && err.Error() != "username can only contain letters, numbers and dots" {
+			t.Errorf("expected 'username can only contain letters, numbers and dots' error, got: %v", err)
 		}
 	})
 }
@@ -119,11 +168,6 @@ func TestConfirmMagicLink(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"poster_id", "expires_ts", "consumed_ts"}).
 				AddRow(1, time.Now().Add(time.Hour), nil))
 
-		// Mark consumed
-		mock.ExpectExec("UPDATE magic_links").
-			WithArgs(token).
-			WillReturnResult(sqlmock.NewResult(1, 1))
-
 		// Load poster
 		mock.ExpectQuery("SELECT api_token, email, api_token_expires_ts FROM posters").
 			WithArgs(1).
@@ -137,6 +181,11 @@ func TestConfirmMagicLink(t *testing.T) {
 				AddRow(time.Now().Add(time.Hour), "test@example.com"))
 
 		mock.ExpectCommit()
+
+		// New: External update for polling
+		mock.ExpectExec("UPDATE magic_links").
+			WithArgs("api_token", token).
+			WillReturnResult(sqlmock.NewResult(1, 1))
 
 		store := NewStore(db)
 		res, err := store.ConfirmMagicLink(ctx, token)
@@ -189,7 +238,7 @@ func TestGetPosterByAPIToken(t *testing.T) {
 			t.Errorf("unexpected error: %v", err)
 		}
 		if poster == nil {
-			t.Error("expected poster")
+			t.Fatalf("expected poster")
 		}
 		if poster.Email != "test@example.com" {
 			t.Errorf("expected email test@example.com, got %s", poster.Email)

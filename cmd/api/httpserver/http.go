@@ -31,7 +31,10 @@ func New(service domain.Service, addr string) (*HTTPServer, error) {
 
 	// Auth endpoints (public)
 	mux.HandleFunc("/auth/request-magic-link", s.handleRequestMagicLink)
-	mux.HandleFunc("/auth/confirm", s.handleConfirmMagicLink)
+	mux.HandleFunc("/auth/confirm/", s.handleConfirmMagicLink)
+	mux.HandleFunc("/auth/poll", s.handlePollMagicLink)
+	mux.HandleFunc("/auth/register", s.handleRegister)
+	mux.HandleFunc("/auth/verify", s.middlewareAuth(http.HandlerFunc(s.handleVerifyToken)).ServeHTTP)
 
 	// /bikes → list (GET, public) and create (POST, auth)
 	mux.HandleFunc("/bikes", func(w http.ResponseWriter, r *http.Request) {

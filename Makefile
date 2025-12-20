@@ -5,6 +5,11 @@ DB_NAME      := rottenbikes
 DB_PORT      := 5432
 DB_DSN       := postgres://$(DB_USER):$(DB_PASSWORD)@localhost:$(DB_PORT)/$(DB_NAME)?sslmode=disable
 
+ifneq (,$(wildcard ./.env.local))
+    include .env.local
+    export
+endif
+
 MIGRATIONS_DIR := internal/db/migrations
 
 .PHONY: db-up db-migrate-up db-migrate-down db-reset run
