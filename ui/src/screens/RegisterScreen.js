@@ -20,7 +20,8 @@ const RegisterScreen = ({ navigation }) => {
 
   useEffect(() => {
     let interval;
-    if (step === 2 && pendingMagicToken) {
+    // Polling MUST only take place if it happens from within the mobile application, not the web.
+    if (step === 2 && pendingMagicToken && Platform.OS !== 'web') {
       interval = setInterval(async () => {
         const confirmed = await checkLoginStatus(pendingMagicToken);
         if (confirmed) {
