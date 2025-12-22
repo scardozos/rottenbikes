@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, Button, StyleSheet, ActivityIndicator, Platform } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
 
 const LoginScreen = ({ navigation }) => {
@@ -11,7 +11,8 @@ const LoginScreen = ({ navigation }) => {
 
     useEffect(() => {
         let interval;
-        if (step === 2 && pendingMagicToken) {
+        // Polling MUST only take place if it happens from within the mobile application, not the web.
+        if (step === 2 && pendingMagicToken && Platform.OS !== 'web') {
             interval = setInterval(async () => {
                 const confirmed = await checkLoginStatus(pendingMagicToken);
                 if (confirmed) {
