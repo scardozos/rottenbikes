@@ -13,6 +13,7 @@ import (
 
 	_ "github.com/lib/pq"
 
+	"github.com/scardozos/rottenbikes/cmd/api/email"
 	"github.com/scardozos/rottenbikes/cmd/api/httpserver"
 	"github.com/scardozos/rottenbikes/internal/domain"
 )
@@ -48,7 +49,21 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
-	srv, err := httpserver.New(store, ":"+port)
+	// Initialize Email Sender
+	var sender email.EmailSender = &email.NoopSender{}
+	mailtrapToken := email.GetToken("MAILTRAP")
+	if mailtrapToken != "" {
+		sender = &email.MailtrapSender{
+			Token:     mailtrapToken,
+			FromEmail: getEnv("EMAIL_FROM_ADDRESS", "hello@rottenbik.es"),
+			FromName:  getEnv("EMAIL_FROM_NAME", "RottenBikes"),
+		}
+		log.Printf("Using Mailtrap email sender (token found)")
+	} else {
+		log.Printf("Using Noop email sender (EMAIL_SENDER_TOKEN_MAILTRAP not set)")
+	}
+
+	srv, err := httpserver.New(store, sender, ":"+port)
 	if err != nil {
 		log.Fatalf("failed to create server: %v", err)
 	}

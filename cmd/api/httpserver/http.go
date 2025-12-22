@@ -7,19 +7,21 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/scardozos/rottenbikes/cmd/api/email"
 	"github.com/scardozos/rottenbikes/internal/domain"
 )
 
 type HTTPServer struct {
-	service domain.Service
-	server  *http.Server
+	service     domain.Service
+	emailSender email.EmailSender
+	server      *http.Server
 }
 
-func New(service domain.Service, addr string) (*HTTPServer, error) {
+func New(service domain.Service, sender email.EmailSender, addr string) (*HTTPServer, error) {
 	// Ping check removed as it belongs to the store/db layer, or we can add a HealthCheck method to Service
 	// For now, we'll assume the service is ready or check it if we add a method.
 
-	s := &HTTPServer{service: service}
+	s := &HTTPServer{service: service, emailSender: sender}
 
 	mux := http.NewServeMux()
 

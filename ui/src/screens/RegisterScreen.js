@@ -27,7 +27,7 @@ const RegisterScreen = ({ navigation }) => {
         if (confirmed) {
           clearInterval(interval);
         }
-      }, 2000);
+      }, 5000);
     }
     return () => {
       if (interval) clearInterval(interval);

@@ -3,6 +3,7 @@ package domain
 import (
 	"context"
 	"database/sql"
+	"errors"
 
 	"testing"
 	"time"
@@ -25,10 +26,15 @@ func TestCreateMagicLink(t *testing.T) {
 		validExpires := time.Now().Add(24 * time.Hour)
 
 		mock.ExpectBegin()
-		mock.ExpectQuery("SELECT poster_id, api_token, api_token_expires_ts FROM posters").
+		mock.ExpectQuery("SELECT poster_id, api_token, api_token_expires_ts, email FROM posters").
 			WithArgs(email).
-			WillReturnRows(sqlmock.NewRows([]string{"poster_id", "api_token", "api_token_expires_ts"}).
-				AddRow(1, validToken, validExpires))
+			WillReturnRows(sqlmock.NewRows([]string{"poster_id", "api_token", "api_token_expires_ts", "email"}).
+				AddRow(1, validToken, validExpires, email))
+
+		// Rate limit check
+		mock.ExpectQuery("SELECT COUNT\\(\\*\\) FROM magic_links").
+			WithArgs(1).
+			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
 
 		// issueMagicLink logic starts here
 		// Invalidate old links - wait, I removed this in my refactor but I should probably keep it if it was intended.
@@ -47,7 +53,7 @@ func TestCreateMagicLink(t *testing.T) {
 		mock.ExpectCommit()
 
 		store := NewStore(db)
-		token, err := store.CreateMagicLink(ctx, email)
+		token, _, err := store.CreateMagicLink(ctx, email)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
@@ -62,15 +68,35 @@ func TestCreateMagicLink(t *testing.T) {
 
 	t.Run("user_not_found", func(t *testing.T) {
 		mock.ExpectBegin()
-		mock.ExpectQuery("SELECT poster_id, api_token, api_token_expires_ts FROM posters").
+		mock.ExpectQuery("SELECT poster_id, api_token, api_token_expires_ts, email FROM posters").
 			WithArgs(email).
 			WillReturnError(sql.ErrNoRows)
 		mock.ExpectRollback()
 
 		store := NewStore(db)
-		_, err := store.CreateMagicLink(ctx, email)
+		_, _, err := store.CreateMagicLink(ctx, email)
 		if err == nil {
 			t.Error("expected error user not found")
+		}
+	})
+
+	t.Run("rate_limit_exceeded", func(t *testing.T) {
+		mock.ExpectBegin()
+		mock.ExpectQuery("SELECT poster_id, api_token, api_token_expires_ts, email FROM posters").
+			WithArgs(email).
+			WillReturnRows(sqlmock.NewRows([]string{"poster_id", "api_token", "api_token_expires_ts", "email"}).
+				AddRow(1, "some_token", time.Now().Add(time.Hour), email))
+
+		mock.ExpectQuery("SELECT COUNT\\(\\*\\) FROM magic_links").
+			WithArgs(1).
+			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(2))
+
+		mock.ExpectRollback()
+
+		store := NewStore(db)
+		_, _, err := store.CreateMagicLink(ctx, email)
+		if err == nil || !errors.Is(err, ErrRateLimitExceeded) {
+			t.Errorf("expected ErrRateLimitExceeded, got %v", err)
 		}
 	})
 }
