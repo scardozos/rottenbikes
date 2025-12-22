@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rottenbikes-config
+data:
+  DB_HOST: "db.rottenbikes.svc.cluster.local" # Placeholder for external DB endpoint if bridged, or actual host
+  DB_PORT: "5432"
+  DB_NAME: "rottenbikes"
+  DB_SSLMODE: "disable"
+  UI_HOST: "ui.rottenbikes.svc.cluster.local"
+  UI_PORT: "8080"
+  API_PORT: "8080"
+  PORT: "8080"
+  EXPO_PUBLIC_API_URL: "http://api.rottenbikes.svc.cluster.local:8080"
+  EXPO_PUBLIC_HCAPTCHA_SITEKEY: "10000000-ffff-ffff-ffff-000000000001"

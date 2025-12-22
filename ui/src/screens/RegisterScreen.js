@@ -16,7 +16,7 @@ const RegisterScreen = ({ navigation }) => {
   const { register, checkLoginStatus } = useContext(AuthContext);
 
   // Replace with your real sitekey
-  const HCAPTCHA_SITEKEY = process.env.EXPO_PUBLIC_HCAPTCHA_SITEKEY || "10000000-ffff-ffff-ffff-000000000001";
+  const HCAPTCHA_SITEKEY = window.EXPO_PUBLIC_HCAPTCHA_SITEKEY || process.env.EXPO_PUBLIC_HCAPTCHA_SITEKEY || "10000000-ffff-ffff-ffff-000000000001";
 
   useEffect(() => {
     let interval;
