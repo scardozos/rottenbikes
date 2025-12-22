@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/scardozos/rottenbikes/cmd/api/email"
 	"github.com/scardozos/rottenbikes/internal/domain"
 )
 
@@ -18,15 +19,15 @@ func TestHandleRequestMagicLink(t *testing.T) {
 		RegisterFunc: func(ctx context.Context, username, email string) (string, error) {
 			return "magic-token-for-" + email, nil
 		},
-		CreateMagicLinkFunc: func(ctx context.Context, email string) (string, error) {
-			if email == "test@example.com" {
-				return "magic-token-for-" + email, nil
+		CreateMagicLinkFunc: func(ctx context.Context, email string) (string, string, error) {
+			if email == "test@example.com" || email == "testuser" {
+				return "magic-token-for-" + email, "test@example.com", nil
 			}
-			return "", fmt.Errorf("user not found")
+			return "", "", domain.ErrUserNotFound
 		},
 	}
 
-	srv, err := New(mockService, ":8080")
+	srv, err := New(mockService, &email.NoopSender{}, ":8080")
 	if err != nil {
 		t.Fatalf("failed to create server: %v", err)
 	}
@@ -34,7 +35,8 @@ func TestHandleRequestMagicLink(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		email := "test@example.com"
 		reqBody, _ := json.Marshal(map[string]string{
-			"email": email,
+			"email":         email,
+			"captcha_token": "valid-captcha",
 		})
 
 		req := httptest.NewRequest(http.MethodPost, "/auth/request-magic-link", bytes.NewReader(reqBody))
@@ -48,9 +50,9 @@ func TestHandleRequestMagicLink(t *testing.T) {
 	})
 
 	t.Run("user_not_found", func(t *testing.T) {
-		email := "unknown@example.com"
 		reqBody, _ := json.Marshal(map[string]string{
-			"email": email,
+			"email":         "nonexistent@example.com",
+			"captcha_token": "valid-captcha",
 		})
 
 		req := httptest.NewRequest(http.MethodPost, "/auth/request-magic-link", bytes.NewReader(reqBody))
@@ -74,6 +76,55 @@ func TestHandleRequestMagicLink(t *testing.T) {
 		if w.Code != http.StatusBadRequest {
 			t.Errorf("expected status 400, got %d", w.Code)
 		}
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected status 400, got %d", w.Code)
+		}
+	})
+
+	t.Run("success_by_username", func(t *testing.T) {
+		username := "testuser"
+		reqBody, _ := json.Marshal(map[string]string{
+			"username":      username,
+			"captcha_token": "valid-captcha",
+		})
+
+		req := httptest.NewRequest(http.MethodPost, "/auth/request-magic-link", bytes.NewReader(reqBody))
+		w := httptest.NewRecorder()
+
+		srv.server.Handler.ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("expected status 200, got %d", w.Code)
+		}
+
+		var resp map[string]string
+		if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+			t.Fatalf("failed to decode response: %v", err)
+		}
+
+		if resp["magic_token"] != "magic-token-for-"+username {
+			t.Errorf("expected magic_token %s, got %s", "magic-token-for-"+username, resp["magic_token"])
+		}
+	})
+
+	t.Run("rate_limit_exceeded", func(t *testing.T) {
+		mockService.CreateMagicLinkFunc = func(ctx context.Context, email string) (string, string, error) {
+			return "", "", domain.ErrRateLimitExceeded
+		}
+
+		reqBody, _ := json.Marshal(map[string]string{
+			"email":         "test@example.com",
+			"captcha_token": "valid-captcha",
+		})
+
+		req := httptest.NewRequest(http.MethodPost, "/auth/request-magic-link", bytes.NewReader(reqBody))
+		w := httptest.NewRecorder()
+
+		srv.server.Handler.ServeHTTP(w, req)
+
+		if w.Code != http.StatusTooManyRequests {
+			t.Errorf("expected status 429, got %d", w.Code)
+		}
 	})
 }
 
@@ -88,7 +139,7 @@ func TestHandleConfirmMagicLink(t *testing.T) {
 		},
 	}
 
-	srv, err := New(mockService, ":8080")
+	srv, err := New(mockService, &email.NoopSender{}, ":8080")
 	if err != nil {
 		t.Fatalf("failed to create server: %v", err)
 	}
@@ -128,7 +179,7 @@ func TestHandleVerifyToken(t *testing.T) {
 		},
 	}
 
-	srv, err := New(mockService, ":8080")
+	srv, err := New(mockService, &email.NoopSender{}, ":8080")
 	if err != nil {
 		t.Fatalf("failed to create server: %v", err)
 	}

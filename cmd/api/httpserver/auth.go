@@ -3,6 +3,7 @@ package httpserver
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,12 +11,15 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/scardozos/rottenbikes/internal/domain"
 )
 
 type magicLinkRequest struct {
 	Email    string `json:"email"`
 	Username string `json:"username"`
 	Origin   string `json:"origin"`
+	Captcha  string `json:"captcha_token"`
 }
 
 type registerRequest struct {
@@ -61,8 +65,6 @@ func (s *HTTPServer) handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// In a real app, send the token via email.
-	// For now, return it in the response (BAD for security, but okay for this prototype).
 	uiHost := os.Getenv("UI_HOST")
 	if uiHost == "" {
 		uiHost = "localhost"
@@ -77,8 +79,23 @@ func (s *HTTPServer) handleRegister(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("UI confirmation link for %s: %s", req.Email, uiURL)
 
+	subject := "Welcome to RottenBikes!"
+	body := fmt.Sprintf("Hello %s,\n\nPlease confirm your registration by clicking the following link:\n\n%s\n\nIf you did not request this, please ignore this email.", req.Username, uiURL)
+
+	if err := s.emailSender.SendEmail(req.Email, subject, body); err != nil {
+		log.Printf("ERROR: failed to send registration email to %s: %v", req.Email, err)
+		// We still return 200/201 because the user is registered, but they might need to request a new link if email fails.
+		// Or should we return an error? The requirement says "send an email instead of returning the magic link".
+		// If email fails, the user has no way to log in.
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte("failed to send confirmation email"))
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(map[string]string{
+		"message":     "confirmation email sent",
 		"magic_token": magicToken,
 	})
 }
@@ -101,24 +118,34 @@ func (s *HTTPServer) handleRequestMagicLink(w http.ResponseWriter, r *http.Reque
 		identifier = req.Username
 	}
 
-	if identifier == "" {
+	if identifier == "" || req.Captcha == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte("email or username is required"))
+		_, _ = w.Write([]byte("email or username, and captcha, are required"))
 		return
 	}
 
-	magicToken, err := s.service.CreateMagicLink(r.Context(), identifier)
+	// Verify hCaptcha
+	if err := s.verifyCaptcha(req.Captcha, identifier); err != nil {
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = w.Write([]byte("invalid captcha"))
+		return
+	}
+
+	magicToken, targetEmail, err := s.service.CreateMagicLink(r.Context(), identifier)
 	if err != nil {
-		if err.Error() == "user not found" {
+		if errors.Is(err, domain.ErrUserNotFound) {
 			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		if errors.Is(err, domain.ErrRateLimitExceeded) {
+			w.WriteHeader(http.StatusTooManyRequests)
+			_, _ = w.Write([]byte("daily magic link limit reached"))
 			return
 		}
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	// In a real app, send the token via email.
-	// For now, return it in the response (BAD for security, but okay for this prototype).
 	uiHost := os.Getenv("UI_HOST")
 	if uiHost == "" {
 		uiHost = "localhost"
@@ -131,10 +158,22 @@ func (s *HTTPServer) handleRequestMagicLink(w http.ResponseWriter, r *http.Reque
 	if req.Origin != "" {
 		uiURL = fmt.Sprintf("%s?origin=%s", uiURL, req.Origin)
 	}
-	log.Printf("UI confirmation link for %s: %s", identifier, uiURL)
+	log.Printf("UI confirmation link for %s: %s", targetEmail, uiURL)
+
+	subject := "Your RottenBikes Magic Link"
+	body := fmt.Sprintf("Hello,\n\nYou requested a magic link to log in to RottenBikes. Click the following link to continue:\n\n%s\n\nIf you did not request this, please ignore this email.", uiURL)
+
+	if err := s.emailSender.SendEmail(targetEmail, subject, body); err != nil {
+		log.Printf("ERROR: failed to send magic link email to %s: %v", targetEmail, err)
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte("failed to send magic link email"))
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(map[string]string{
+		"message":     "magic link email sent",
 		"magic_token": magicToken,
 	})
 }

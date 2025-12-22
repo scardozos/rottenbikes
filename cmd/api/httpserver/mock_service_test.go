@@ -8,7 +8,7 @@ import (
 
 type MockService struct {
 	RegisterFunc                     func(ctx context.Context, username, email string) (string, error)
-	CreateMagicLinkFunc              func(ctx context.Context, email string) (string, error)
+	CreateMagicLinkFunc              func(ctx context.Context, email string) (string, string, error)
 	ConfirmMagicLinkFunc             func(ctx context.Context, token string) (*domain.ConfirmResult, error)
 	GetPosterByAPITokenFunc          func(ctx context.Context, token string) (*domain.AuthPoster, error)
 	CheckMagicLinkStatusFunc         func(ctx context.Context, token string) (string, error)
@@ -31,7 +31,7 @@ func (m *MockService) Register(ctx context.Context, username, email string) (str
 	return m.RegisterFunc(ctx, username, email)
 }
 
-func (m *MockService) CreateMagicLink(ctx context.Context, email string) (string, error) {
+func (m *MockService) CreateMagicLink(ctx context.Context, email string) (string, string, error) {
 	return m.CreateMagicLinkFunc(ctx, email)
 }
 

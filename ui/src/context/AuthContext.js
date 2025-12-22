@@ -30,7 +30,7 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    const requestLogin = async (identifier) => {
+    const requestLogin = async (identifier, captcha) => {
         try {
             console.log(`Requesting magic link for identifier: ${identifier}`);
             const isEmail = identifier.includes('@');
@@ -42,6 +42,9 @@ export const AuthProvider = ({ children }) => {
             }
             if (Platform.OS !== 'web') {
                 data.origin = 'mobile';
+            }
+            if (captcha) {
+                data.captcha_token = captcha;
             }
 
             const response = await api.post('/auth/request-magic-link', data);

@@ -5,11 +5,17 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/mail"
 	"regexp"
 	"strings"
 	"time"
+)
+
+var (
+	ErrRateLimitExceeded = errors.New("daily magic link limit reached")
+	ErrUserNotFound      = errors.New("user not found")
 )
 
 func randomToken(nBytes int) (string, error) {
@@ -31,40 +37,54 @@ type Poster struct {
 
 // Create or load poster by email or username, ensure a long-lived api_token exists,
 // and issue a single-use magic link token.
-func (s *Store) CreateMagicLink(ctx context.Context, identifier string) (magicToken string, err error) {
+func (s *Store) CreateMagicLink(ctx context.Context, identifier string) (magicToken string, email string, err error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return "", fmt.Errorf("begin tx: %w", err)
+		return "", "", fmt.Errorf("begin tx: %w", err)
 	}
 	defer tx.Rollback()
 
 	var posterID int64
 	var apiToken *string
 	var apiTokenExpires sql.NullTime
+	var userEmail string
 
 	// SELECT poster strictly by email OR username
 	err = tx.QueryRowContext(ctx, `
-		SELECT poster_id, api_token, api_token_expires_ts
+		SELECT poster_id, api_token, api_token_expires_ts, email
 		FROM posters
 		WHERE email = $1 OR username = $1
-	`, identifier).Scan(&posterID, &apiToken, &apiTokenExpires)
+	`, identifier).Scan(&posterID, &apiToken, &apiTokenExpires, &userEmail)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return "", fmt.Errorf("user not found")
+			return "", "", ErrUserNotFound
 		}
-		return "", fmt.Errorf("query poster: %w", err)
+		return "", "", fmt.Errorf("query poster: %w", err)
+	}
+
+	// Rate limit: max 2 links per user per 24 hours
+	var count int
+	err = tx.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM magic_links
+		WHERE poster_id = $1 AND created_ts > NOW() - INTERVAL '24 hours'
+	`, posterID).Scan(&count)
+	if err != nil {
+		return "", "", fmt.Errorf("check rate limit: %w", err)
+	}
+	if count >= 2 {
+		return "", "", ErrRateLimitExceeded
 	}
 
 	magicToken, err = s.issueMagicLink(ctx, tx, posterID, apiToken, apiTokenExpires)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	if err := tx.Commit(); err != nil {
-		return "", fmt.Errorf("commit tx: %w", err)
+		return "", "", fmt.Errorf("commit tx: %w", err)
 	}
 
-	return magicToken, nil
+	return magicToken, userEmail, nil
 }
 
 func (s *Store) Register(ctx context.Context, username, email string) (string, error) {

@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/scardozos/rottenbikes/cmd/api/email"
 	"github.com/scardozos/rottenbikes/internal/domain"
 )
 
@@ -19,7 +20,7 @@ func TestHandleListAllBikeRatings(t *testing.T) {
 		},
 	}
 
-	srv, err := New(mockService, ":8080")
+	srv, err := New(mockService, &email.NoopSender{}, ":8080")
 	if err != nil {
 		t.Fatalf("failed to create server: %v", err)
 	}
@@ -45,7 +46,7 @@ func TestHandleBikeRatings(t *testing.T) {
 		},
 	}
 
-	srv, err := New(mockService, ":8080")
+	srv, err := New(mockService, &email.NoopSender{}, ":8080")
 	if err != nil {
 		t.Fatalf("failed to create server: %v", err)
 	}
