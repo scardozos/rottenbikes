@@ -1,0 +1,27 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: ui-cert
+  namespace: rottenbikes
+spec:
+  secretName: ui-cert
+  issuerRef:
+    name: issuer
+    kind: Issuer
+  commonName: dev.rottenbik.es
+  dnsNames:
+  - dev.rottenbik.es
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: api-cert
+  namespace: rottenbikes
+spec:
+  secretName: api-cert
+  issuerRef:
+    name: issuer
+    kind: Issuer
+  commonName: api-dev.rottenbik.es
+  dnsNames:
+  - api-dev.rottenbik.es

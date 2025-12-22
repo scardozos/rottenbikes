@@ -1,7 +1,7 @@
 import axios from 'axios';
 import storage from '../utils/storage';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8080';
+const API_URL = window.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8080';
 
 const api = axios.create({
     baseURL: API_URL,
