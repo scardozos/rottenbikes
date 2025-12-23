@@ -26,6 +26,9 @@ export const AuthProvider = ({ children }) => {
             return response.data.magic_token;
         } catch (e) {
             console.log('register error', e);
+            if (e.response && e.response.data && e.response.data.error) {
+                throw new Error(e.response.data.error);
+            }
             throw e;
         }
     };
@@ -52,6 +55,9 @@ export const AuthProvider = ({ children }) => {
             return response.data.magic_token;
         } catch (e) {
             console.log('requestLogin error', e);
+            if (e.response && e.response.data && e.response.data.error) {
+                throw new Error(e.response.data.error);
+            }
             throw e;
         }
     };
@@ -63,6 +69,9 @@ export const AuthProvider = ({ children }) => {
             showToast('Confirmation Successful!', 'success');
         } catch (e) {
             console.log('confirmAttempt error', e);
+            if (e.response && e.response.data && e.response.data.error) {
+                throw new Error(e.response.data.error);
+            }
             throw e;
         }
     };
@@ -79,6 +88,9 @@ export const AuthProvider = ({ children }) => {
             await storage.setItem('userToken', api_token);
         } catch (e) {
             console.log('completeLogin error', e);
+            if (e.response && e.response.data && e.response.data.error) {
+                throw new Error(e.response.data.error);
+            }
             throw e;
         }
     };

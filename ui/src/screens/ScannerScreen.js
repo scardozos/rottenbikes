@@ -37,15 +37,9 @@ const ScannerScreen = ({ navigation }) => {
             const bike = bikes.find(b => b.hash_id === data);
 
             if (bike) {
-                Alert.alert("Success", `Found Bike #${bike.numerical_id}`, [
-                    {
-                        text: "OK",
-                        onPress: () => {
-                            isScanning.current = false;
-                            navigation.navigate('BikeDetails', { bike });
-                        }
-                    }
-                ]);
+                showToast(`Found Bike #${bike.numerical_id}`, "success");
+                isScanning.current = false;
+                navigation.navigate('BikeDetails', { bike });
             } else {
                 Alert.alert(
                     "Not Found",
@@ -71,7 +65,8 @@ const ScannerScreen = ({ navigation }) => {
             }
         } catch (e) {
             console.error("error during scan lookup", e);
-            showToast("Failed to lookup bike after scan.", "error");
+            const errMsg = e.response?.data?.error || "Failed to lookup bike after scan.";
+            showToast(errMsg, "error");
             isScanning.current = false;
             setScanned(false);
         }

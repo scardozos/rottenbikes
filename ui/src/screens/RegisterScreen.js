@@ -3,6 +3,7 @@ import { View, Text, TextInput, Button, StyleSheet, Alert, Modal, Platform } fro
 import { WebView } from 'react-native-webview';
 import { AuthContext } from '../context/AuthContext';
 import HCaptchaView from '../components/HCaptchaView';
+import { useToast } from '../context/ToastContext';
 
 const RegisterScreen = ({ navigation }) => {
   const [username, setUsername] = useState('');
@@ -13,6 +14,7 @@ const RegisterScreen = ({ navigation }) => {
   const [step, setStep] = useState(1); // 1: Form, 2: Waiting
   const [pendingMagicToken, setPendingMagicToken] = useState(null);
   const { register, checkLoginStatus } = useContext(AuthContext);
+  const { showToast } = useToast();
 
   // Replace with your real sitekey
   const HCAPTCHA_SITEKEY = window.EXPO_PUBLIC_HCAPTCHA_SITEKEY || process.env.EXPO_PUBLIC_HCAPTCHA_SITEKEY || "10000000-ffff-ffff-ffff-000000000001";
@@ -37,7 +39,7 @@ const RegisterScreen = ({ navigation }) => {
     setEmailError('');
     setUsernameError('');
     if (!email || !username) {
-      Alert.alert("Error", "Please fill in all fields");
+      showToast("Please fill in all fields", "error");
       return;
     }
 
@@ -68,9 +70,8 @@ const RegisterScreen = ({ navigation }) => {
       console.log("Registration failed error:", e);
       setShowCaptcha(false);
 
-      const errMsg = e.response?.data || "Registration failed. Please try again.";
-      if (Platform.OS === 'web') window.alert(errMsg);
-      else Alert.alert("Error", errMsg);
+      const errMsg = e.message || "Registration failed. Please try again.";
+      showToast(errMsg, 'error');
     }
   };
 
@@ -117,11 +118,11 @@ const RegisterScreen = ({ navigation }) => {
                 onVerify={completeRegistration}
                 onExpired={() => {
                   setShowCaptcha(false);
-                  Alert.alert("Error", "Captcha expired");
+                  showToast("Captcha expired", "error");
                 }}
                 onError={() => {
                   setShowCaptcha(false);
-                  Alert.alert("Error", "Captcha failed");
+                  showToast("Captcha failed", "error");
                 }}
               />
               <View style={{ marginTop: 40, paddingHorizontal: 20 }}>

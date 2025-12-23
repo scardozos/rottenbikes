@@ -2,6 +2,7 @@ package httpserver
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"net/http"
 	"strconv"
@@ -46,7 +47,7 @@ func New(service domain.Service, sender email.EmailSender, addr string) (*HTTPSe
 		case http.MethodPost:
 			s.middlewareAuth(http.HandlerFunc(s.handleCreateBike)).ServeHTTP(w, r)
 		default:
-			w.WriteHeader(http.StatusMethodNotAllowed)
+			s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
 		}
 	})
 
@@ -95,8 +96,7 @@ func (s *HTTPServer) handleBikeSubroutes(w http.ResponseWriter, r *http.Request)
 		idStr := parts[0]
 		bikeID, err := strconv.ParseInt(idStr, 10, 64)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte("invalid bike id"))
+			s.sendError(w, "invalid bike id", http.StatusBadRequest)
 			return
 		}
 		switch r.Method {
@@ -107,7 +107,7 @@ func (s *HTTPServer) handleBikeSubroutes(w http.ResponseWriter, r *http.Request)
 		case http.MethodDelete:
 			s.handleDeleteBike(w, r, bikeID)
 		default:
-			w.WriteHeader(http.StatusMethodNotAllowed)
+			s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
 		}
 		return
 	}
@@ -116,8 +116,7 @@ func (s *HTTPServer) handleBikeSubroutes(w http.ResponseWriter, r *http.Request)
 		idStr, sub := parts[0], parts[1]
 		bikeID, err := strconv.ParseInt(idStr, 10, 64)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte("invalid bike id"))
+			s.sendError(w, "invalid bike id", http.StatusBadRequest)
 			return
 		}
 
@@ -131,19 +130,19 @@ func (s *HTTPServer) handleBikeSubroutes(w http.ResponseWriter, r *http.Request)
 				s.handleCreateBikeReview(w, r, bikeID)
 				return
 			}
-			w.WriteHeader(http.StatusMethodNotAllowed)
+			s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		case "ratings":
 			if r.Method == http.MethodGet {
 				s.handleBikeRatings(w, r, bikeID)
 				return
 			}
-			w.WriteHeader(http.StatusMethodNotAllowed)
+			s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
 	}
 
-	w.WriteHeader(http.StatusNotFound)
+	s.sendError(w, "not found", http.StatusNotFound)
 }
 
 // /reviews/{id}...
@@ -151,14 +150,13 @@ func (s *HTTPServer) handleReviewSubroutes(w http.ResponseWriter, r *http.Reques
 	path := strings.TrimPrefix(r.URL.Path, "/reviews/")
 	idStr := strings.Trim(path, "/")
 	if idStr == "" {
-		w.WriteHeader(http.StatusNotFound)
+		s.sendError(w, "not found", http.StatusNotFound)
 		return
 	}
 
 	reviewID, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte("invalid review id"))
+		s.sendError(w, "invalid review id", http.StatusBadRequest)
 		return
 	}
 
@@ -170,8 +168,14 @@ func (s *HTTPServer) handleReviewSubroutes(w http.ResponseWriter, r *http.Reques
 	case http.MethodDelete:
 		s.handleDeleteReview(w, r, reviewID)
 	default:
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
+}
+
+func (s *HTTPServer) sendError(w http.ResponseWriter, message string, status int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(map[string]string{"error": message})
 }
 
 func (s *HTTPServer) Start() error {

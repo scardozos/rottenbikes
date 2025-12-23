@@ -32,36 +32,34 @@ type registerRequest struct {
 // POST /auth/register
 func (s *HTTPServer) handleRegister(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	var req registerRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		s.sendError(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
 
 	if req.Email == "" || req.Username == "" || req.Captcha == "" {
-		w.WriteHeader(http.StatusBadRequest)
+		s.sendError(w, "email, username, and captcha are required", http.StatusBadRequest)
 		return
 	}
 
 	// Verify hCaptcha
 	if err := s.verifyCaptcha(req.Captcha, req.Email); err != nil {
-		w.WriteHeader(http.StatusForbidden)
-		_, _ = w.Write([]byte("invalid captcha"))
+		s.sendError(w, "invalid captcha", http.StatusForbidden)
 		return
 	}
 
 	magicToken, err := s.service.Register(r.Context(), req.Username, req.Email)
 	if err != nil {
 		if strings.Contains(err.Error(), "email already exists") || strings.Contains(err.Error(), "username already exists") {
-			w.WriteHeader(http.StatusConflict)
-			_, _ = w.Write([]byte(err.Error()))
+			s.sendError(w, err.Error(), http.StatusConflict)
 			return
 		}
-		w.WriteHeader(http.StatusInternalServerError)
+		s.sendError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -84,11 +82,7 @@ func (s *HTTPServer) handleRegister(w http.ResponseWriter, r *http.Request) {
 
 	if err := s.emailSender.SendEmail(req.Email, subject, body); err != nil {
 		log.Printf("ERROR: failed to send registration email to %s: %v", req.Email, err)
-		// We still return 200/201 because the user is registered, but they might need to request a new link if email fails.
-		// Or should we return an error? The requirement says "send an email instead of returning the magic link".
-		// If email fails, the user has no way to log in.
-		w.WriteHeader(http.StatusInternalServerError)
-		_, _ = w.Write([]byte("failed to send confirmation email"))
+		s.sendError(w, "failed to send confirmation email", http.StatusInternalServerError)
 		return
 	}
 
@@ -103,13 +97,13 @@ func (s *HTTPServer) handleRegister(w http.ResponseWriter, r *http.Request) {
 // POST /auth/request-magic-link
 func (s *HTTPServer) handleRequestMagicLink(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	var req magicLinkRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		s.sendError(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
 
@@ -119,30 +113,27 @@ func (s *HTTPServer) handleRequestMagicLink(w http.ResponseWriter, r *http.Reque
 	}
 
 	if identifier == "" || req.Captcha == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte("email or username, and captcha, are required"))
+		s.sendError(w, "email or username, and captcha, are required", http.StatusBadRequest)
 		return
 	}
 
 	// Verify hCaptcha
 	if err := s.verifyCaptcha(req.Captcha, identifier); err != nil {
-		w.WriteHeader(http.StatusForbidden)
-		_, _ = w.Write([]byte("invalid captcha"))
+		s.sendError(w, "invalid captcha", http.StatusForbidden)
 		return
 	}
 
 	magicToken, targetEmail, err := s.service.CreateMagicLink(r.Context(), identifier)
 	if err != nil {
 		if errors.Is(err, domain.ErrUserNotFound) {
-			w.WriteHeader(http.StatusNotFound)
+			s.sendError(w, "user not found", http.StatusNotFound)
 			return
 		}
 		if errors.Is(err, domain.ErrRateLimitExceeded) {
-			w.WriteHeader(http.StatusTooManyRequests)
-			_, _ = w.Write([]byte("daily magic link limit reached"))
+			s.sendError(w, "daily magic link limit reached", http.StatusTooManyRequests)
 			return
 		}
-		w.WriteHeader(http.StatusInternalServerError)
+		s.sendError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -165,8 +156,7 @@ func (s *HTTPServer) handleRequestMagicLink(w http.ResponseWriter, r *http.Reque
 
 	if err := s.emailSender.SendEmail(targetEmail, subject, body); err != nil {
 		log.Printf("ERROR: failed to send magic link email to %s: %v", targetEmail, err)
-		w.WriteHeader(http.StatusInternalServerError)
-		_, _ = w.Write([]byte("failed to send magic link email"))
+		s.sendError(w, "failed to send magic link email", http.StatusInternalServerError)
 		return
 	}
 
@@ -223,7 +213,7 @@ type confirmResponse struct {
 // GET /auth/confirm?token=...
 func (s *HTTPServer) handleConfirmMagicLink(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 	token := r.URL.Query().Get("token")
@@ -233,8 +223,7 @@ func (s *HTTPServer) handleConfirmMagicLink(w http.ResponseWriter, r *http.Reque
 		token = strings.Trim(token, "/")
 	}
 	if token == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte("token is required"))
+		s.sendError(w, "token is required", http.StatusBadRequest)
 		return
 	}
 
@@ -243,8 +232,7 @@ func (s *HTTPServer) handleConfirmMagicLink(w http.ResponseWriter, r *http.Reque
 
 	res, err := s.service.ConfirmMagicLink(ctx, token)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte("invalid or expired token"))
+		s.sendError(w, "invalid or expired token", http.StatusBadRequest)
 		return
 	}
 
@@ -261,13 +249,13 @@ func (s *HTTPServer) handleConfirmMagicLink(w http.ResponseWriter, r *http.Reque
 // GET /auth/verify
 func (s *HTTPServer) handleVerifyToken(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	posterID, ok := posterIDFromContext(r.Context())
 	if !ok {
-		w.WriteHeader(http.StatusUnauthorized)
+		s.sendError(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 
@@ -282,18 +270,18 @@ func (s *HTTPServer) handleVerifyToken(w http.ResponseWriter, r *http.Request) {
 func (s *HTTPServer) handlePollMagicLink(w http.ResponseWriter, r *http.Request) {
 	token := r.URL.Query().Get("token")
 	if token == "" {
-		w.WriteHeader(http.StatusBadRequest)
+		s.sendError(w, "token is required", http.StatusBadRequest)
 		return
 	}
 
 	apiToken, err := s.service.CheckMagicLinkStatus(r.Context(), token)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		s.sendError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	if apiToken == "" {
-		w.WriteHeader(http.StatusNotFound) // Not confirmed yet
+		s.sendError(w, "not confirmed", http.StatusNotFound)
 		return
 	}
 

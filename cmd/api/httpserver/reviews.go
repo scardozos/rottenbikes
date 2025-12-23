@@ -28,21 +28,19 @@ type createReviewRequest struct {
 // POST /bikes/{id}/reviews → create a review with optional subcategory ratings
 func (s *HTTPServer) handleCreateBikeReview(w http.ResponseWriter, r *http.Request, bikeID int64) {
 	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	var req createReviewRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte("invalid JSON"))
+		s.sendError(w, "invalid JSON", http.StatusBadRequest)
 		return
 	}
 
 	posterID, ok := posterIDFromContext(r.Context())
 	if !ok {
-		w.WriteHeader(http.StatusUnauthorized)
-		_, _ = w.Write([]byte("unauthorized"))
+		s.sendError(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 
@@ -63,13 +61,12 @@ func (s *HTTPServer) handleCreateBikeReview(w http.ResponseWriter, r *http.Reque
 	})
 	if err != nil {
 		if errors.Is(err, domain.ErrTooFrequentReview) {
-			w.WriteHeader(http.StatusTooManyRequests)
-			_, _ = w.Write([]byte("you can only review this bike every 10 minutes"))
+			s.sendError(w, "you can only review this bike every 10 minutes", http.StatusTooManyRequests)
 			return
 		}
 
 		log.Printf("create review error: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		s.sendError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -92,7 +89,7 @@ func (s *HTTPServer) handleListAllReviewsWithRatings(w http.ResponseWriter, r *h
 	reviews, err := s.service.ListReviewsWithRatings(ctx)
 	if err != nil {
 		log.Printf("list all reviews error: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		s.sendError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -115,7 +112,7 @@ func (s *HTTPServer) handleBikeReviews(w http.ResponseWriter, r *http.Request, b
 	reviews, err := s.service.ListReviewsWithRatingsByBike(ctx, bikeID)
 	if err != nil {
 		log.Printf("list bike %d reviews error: %v", bikeID, err)
-		w.WriteHeader(http.StatusInternalServerError)
+		s.sendError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -128,21 +125,19 @@ func (s *HTTPServer) handleBikeReviews(w http.ResponseWriter, r *http.Request, b
 // PUT /reviews/{id}
 func (s *HTTPServer) handleUpdateReview(w http.ResponseWriter, r *http.Request, reviewID int64) {
 	if r.Method != http.MethodPut {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	var req createReviewRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte("invalid JSON"))
+		s.sendError(w, "invalid JSON", http.StatusBadRequest)
 		return
 	}
 
 	posterID, ok := posterIDFromContext(r.Context())
 	if !ok {
-		w.WriteHeader(http.StatusUnauthorized)
-		_, _ = w.Write([]byte("unauthorized"))
+		s.sendError(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 
@@ -163,11 +158,11 @@ func (s *HTTPServer) handleUpdateReview(w http.ResponseWriter, r *http.Request, 
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			w.WriteHeader(http.StatusNotFound)
+			s.sendError(w, "review not found", http.StatusNotFound)
 			return
 		}
 		log.Printf("update review %d error: %v", reviewID, err)
-		w.WriteHeader(http.StatusInternalServerError)
+		s.sendError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -177,7 +172,7 @@ func (s *HTTPServer) handleUpdateReview(w http.ResponseWriter, r *http.Request, 
 // GET /reviews/{id} → single review with ratings
 func (s *HTTPServer) handleGetReview(w http.ResponseWriter, r *http.Request, reviewID int64) {
 	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -187,11 +182,11 @@ func (s *HTTPServer) handleGetReview(w http.ResponseWriter, r *http.Request, rev
 	review, err := s.service.GetReviewWithRatingsByID(ctx, reviewID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			w.WriteHeader(http.StatusNotFound)
+			s.sendError(w, "review not found", http.StatusNotFound)
 			return
 		}
 		log.Printf("get review %d error: %v", reviewID, err)
-		w.WriteHeader(http.StatusInternalServerError)
+		s.sendError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -208,7 +203,7 @@ type deleteReviewRequest struct {
 // DELETE /reviews/{id}
 func (s *HTTPServer) handleDeleteReview(w http.ResponseWriter, r *http.Request, reviewID int64) {
 	if r.Method != http.MethodDelete {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -227,11 +222,11 @@ func (s *HTTPServer) handleDeleteReview(w http.ResponseWriter, r *http.Request, 
 
 	if err := s.service.DeleteReview(ctx, reviewID, posterID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			w.WriteHeader(http.StatusNotFound)
+			s.sendError(w, "review not found", http.StatusNotFound)
 			return
 		}
 		log.Printf("delete review %d error: %v", reviewID, err)
-		w.WriteHeader(http.StatusInternalServerError)
+		s.sendError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
