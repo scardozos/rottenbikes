@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 )
 
 type MailtrapSender struct {
@@ -55,7 +56,8 @@ func (s *MailtrapSender) SendEmail(to string, subject string, body string) error
 		return fmt.Errorf("failed to create mailtrap request: %w", err)
 	}
 
-	req.Header.Set("Api-Token", s.Token)
+	token := strings.TrimSpace(s.Token)
+	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := http.DefaultClient.Do(req)

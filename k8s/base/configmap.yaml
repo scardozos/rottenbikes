@@ -13,3 +13,5 @@ data:
   PORT: "8080"
   EXPO_PUBLIC_API_URL: "http://api.rottenbikes.svc.cluster.local:8080"
   EXPO_PUBLIC_HCAPTCHA_SITEKEY: "10000000-ffff-ffff-ffff-000000000001"
+  EMAIL_FROM_ADDRESS: "hello@rottenbik.es"
+  EMAIL_FROM_NAME: "RottenBikes"

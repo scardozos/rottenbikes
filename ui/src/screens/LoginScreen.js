@@ -104,7 +104,7 @@ const LoginScreen = ({ navigation }) => {
                 <>
                     <Text style={{ marginBottom: 20, textAlign: 'center', fontSize: 16 }}>
                         Magic link requested for {identifier}!{'\n\n'}
-                        Check the server console for the link and click it to log in.
+                        Check your email for the link and click it to log in.
                     </Text>
                     <Button title="Back" onPress={() => setStep(1)} color="gray" />
                 </>

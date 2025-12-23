@@ -179,15 +179,15 @@ func (s *HTTPServer) handleRequestMagicLink(w http.ResponseWriter, r *http.Reque
 }
 
 func (s *HTTPServer) verifyCaptcha(token, email string) error {
-	secret := os.Getenv("HCAPTCHA_SECRET")
+	secret := strings.TrimSpace(os.Getenv("HCAPTCHA_SECRET"))
+
 	if secret != "" {
-		log.Printf("Verifying hCaptcha with secret (first 9 chars): %s...", secret[:9])
-		vreq, err := http.PostForm("https://hcaptcha.com/siteverify", url.Values{
+		vreq, err := http.PostForm("https://api.hcaptcha.com/siteverify", url.Values{
 			"secret":   {secret},
 			"response": {token},
 		})
 		if err != nil {
-			log.Printf("hCaptcha request error: %v", err)
+			log.Printf("hCaptcha request error for %s: %v", email, err)
 			return err
 		}
 		defer vreq.Body.Close()

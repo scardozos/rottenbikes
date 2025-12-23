@@ -136,7 +136,7 @@ const RegisterScreen = ({ navigation }) => {
           <Text style={{ marginBottom: 20, textAlign: 'center', fontSize: 16 }}>
             Registration successful!{'\n\n'}
             We've sent a magic link to {email}.{'\n\n'}
-            Check the server console for the link and click it to confirm your account and log in automatically.
+            Check your email and click the link to confirm your account and log in automatically.
           </Text>
           <Button title="Back" onPress={() => setStep(1)} color="gray" />
         </>

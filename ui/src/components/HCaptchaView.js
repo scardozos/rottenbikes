@@ -45,7 +45,7 @@ const HCaptchaView = ({ siteKey, onVerify, onExpired, onError, onCancel }) => {
         <WebView
             ref={webviewRef}
             originWhitelist={['*']}
-            source={{ html: html, baseUrl: 'https://hcaptcha.com' }}
+            source={{ html: html, baseUrl: 'https://dev.rottenbik.es' }}
             onMessage={(event) => {
                 const data = JSON.parse(event.nativeEvent.data);
                 if (data.type === 'success') onVerify(data.token);
