@@ -12,6 +12,7 @@ import (
 	"github.com/lib/pq"
 )
 
+// GET /bikes → list (now includes average_rating)
 func (s *HTTPServer) handleListBikes(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -173,4 +174,29 @@ func (s *HTTPServer) handleDeleteBike(w http.ResponseWriter, r *http.Request, bi
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// GET /bikes/{id}/details → single bike + ratings + reviews
+func (s *HTTPServer) handleGetBikeDetails(w http.ResponseWriter, r *http.Request, bikeID int64) {
+	if r.Method != http.MethodGet {
+		s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel()
+
+	details, err := s.service.GetBikeDetails(ctx, bikeID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			s.sendError(w, "bike not found", http.StatusNotFound)
+			return
+		}
+		log.Printf("get bike details %d error: %v", bikeID, err)
+		s.sendError(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(details)
 }

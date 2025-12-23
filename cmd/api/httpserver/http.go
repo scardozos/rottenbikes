@@ -62,12 +62,6 @@ func New(service domain.Service, sender email.EmailSender, addr string) (*HTTPSe
 		}
 	})
 
-	// /bikes/reviews → all reviews with ratings (GET, public)
-	mux.HandleFunc("/bikes/reviews", s.handleListAllReviewsWithRatings)
-
-	// /bikes/ratings → aggregates for all bikes (GET, public)
-	mux.HandleFunc("/bikes/ratings", s.handleListAllBikeRatings)
-
 	// /reviews/{id} → get (public), update/delete (auth)
 	mux.HandleFunc("/reviews/", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -122,19 +116,15 @@ func (s *HTTPServer) handleBikeSubroutes(w http.ResponseWriter, r *http.Request)
 
 		switch sub {
 		case "reviews":
-			if r.Method == http.MethodGet {
-				s.handleBikeReviews(w, r, bikeID)
-				return
-			}
 			if r.Method == http.MethodPost {
 				s.handleCreateBikeReview(w, r, bikeID)
 				return
 			}
 			s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
-		case "ratings":
+		case "details":
 			if r.Method == http.MethodGet {
-				s.handleBikeRatings(w, r, bikeID)
+				s.handleGetBikeDetails(w, r, bikeID)
 				return
 			}
 			s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)

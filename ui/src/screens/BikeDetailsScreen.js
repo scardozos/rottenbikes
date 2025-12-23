@@ -33,14 +33,12 @@ const BikeDetailsScreen = ({ route, navigation }) => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [reviewsRes, aggregatesRes] = await Promise.all([
-                api.get(`/bikes/${bike.numerical_id}/reviews`),
-                api.get(`/bikes/${bike.numerical_id}/ratings`)
-            ]);
-            setReviews(reviewsRes.data || []);
-            setAggregates(aggregatesRes.data || []);
+            const res = await api.get(`/bikes/${bike.numerical_id}/details`);
+            const details = res.data;
+            setReviews(details.reviews || []);
+            setAggregates(details.ratings || []);
         } catch (e) {
-            console.log("Failed to fetch bike details/reviews", e);
+            console.log("Failed to fetch bike details", e);
         } finally {
             setLoading(false);
         }

@@ -19,11 +19,11 @@ func TestListBikes(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("success", func(t *testing.T) {
-		rows := sqlmock.NewRows([]string{"numerical_id", "hash_id", "is_electric", "created_ts", "updated_ts"}).
-			AddRow(1, "hash1", true, time.Now(), time.Now()).
-			AddRow(2, "hash2", false, time.Now(), time.Now())
+		rows := sqlmock.NewRows([]string{"numerical_id", "hash_id", "is_electric", "created_ts", "updated_ts", "average_rating"}).
+			AddRow(1, "hash1", true, time.Now(), time.Now(), 4.5).
+			AddRow(2, "hash2", false, time.Now(), time.Now(), nil)
 
-		mock.ExpectQuery("SELECT numerical_id, hash_id, is_electric, created_ts, updated_ts FROM bikes ORDER BY numerical_id").
+		mock.ExpectQuery("SELECT b.numerical_id, b.hash_id, b.is_electric, b.created_ts, b.updated_ts, ra.average_rating FROM bikes b LEFT JOIN rating_aggregates ra ON b.numerical_id = ra.bike_numerical_id AND ra.subcategory = 'overall' ORDER BY b.numerical_id").
 			WillReturnRows(rows)
 
 		store := NewStore(db)
@@ -80,10 +80,10 @@ func TestGetBike(t *testing.T) {
 	id := int64(1)
 
 	t.Run("success", func(t *testing.T) {
-		rows := sqlmock.NewRows([]string{"numerical_id", "hash_id", "is_electric", "created_ts", "updated_ts"}).
-			AddRow(id, "hash1", true, time.Now(), time.Now())
+		rows := sqlmock.NewRows([]string{"numerical_id", "hash_id", "is_electric", "created_ts", "updated_ts", "average_rating"}).
+			AddRow(id, "hash1", true, time.Now(), time.Now(), 4.5)
 
-		mock.ExpectQuery("SELECT numerical_id, hash_id, is_electric, created_ts, updated_ts FROM bikes").
+		mock.ExpectQuery("SELECT b.numerical_id, b.hash_id, b.is_electric, b.created_ts, b.updated_ts, ra.average_rating FROM bikes b LEFT JOIN rating_aggregates ra ON b.numerical_id = ra.bike_numerical_id AND ra.subcategory = 'overall' WHERE b.numerical_id = \\$1").
 			WithArgs(id).
 			WillReturnRows(rows)
 
@@ -98,7 +98,7 @@ func TestGetBike(t *testing.T) {
 	})
 
 	t.Run("not_found", func(t *testing.T) {
-		mock.ExpectQuery("SELECT numerical_id, hash_id, is_electric, created_ts, updated_ts FROM bikes").
+		mock.ExpectQuery("SELECT b.numerical_id, b.hash_id, b.is_electric, b.created_ts, b.updated_ts, ra.average_rating FROM bikes b LEFT JOIN rating_aggregates ra ON b.numerical_id = ra.bike_numerical_id AND ra.subcategory = 'overall' WHERE b.numerical_id = \\$1").
 			WithArgs(id).
 			WillReturnError(sql.ErrNoRows)
 

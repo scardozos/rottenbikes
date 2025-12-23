@@ -15,11 +15,10 @@ type MockService struct {
 	ListBikesFunc                    func(ctx context.Context) ([]domain.Bike, error)
 	CreateBikeFunc                   func(ctx context.Context, numericalID int64, hashID *string, isElectric bool, creatorID int64) (*domain.Bike, error)
 	GetBikeFunc                      func(ctx context.Context, id int64) (*domain.Bike, error)
+	GetBikeDetailsFunc               func(ctx context.Context, id int64) (*domain.BikeDetails, error)
 	UpdateBikeFunc                   func(ctx context.Context, id int64, hashID *string, isElectric *bool) error
 	DeleteBikeFunc                   func(ctx context.Context, id int64) error
-	ListRatingAggregatesFunc         func(ctx context.Context) ([]domain.RatingAggregate, error)
 	ListRatingAggregatesByBikeFunc   func(ctx context.Context, bikeID int64) ([]domain.RatingAggregate, error)
-	ListReviewsWithRatingsFunc       func(ctx context.Context) ([]domain.ReviewWithRatings, error)
 	ListReviewsWithRatingsByBikeFunc func(ctx context.Context, bikeID int64) ([]domain.ReviewWithRatings, error)
 	CreateReviewWithRatingsFunc      func(ctx context.Context, in domain.CreateReviewInput) (int64, error)
 	UpdateReviewWithRatingsFunc      func(ctx context.Context, in domain.UpdateReviewInput) error
@@ -59,6 +58,10 @@ func (m *MockService) GetBike(ctx context.Context, id int64) (*domain.Bike, erro
 	return m.GetBikeFunc(ctx, id)
 }
 
+func (m *MockService) GetBikeDetails(ctx context.Context, id int64) (*domain.BikeDetails, error) {
+	return m.GetBikeDetailsFunc(ctx, id)
+}
+
 func (m *MockService) UpdateBike(ctx context.Context, id int64, hashID *string, isElectric *bool) error {
 	return m.UpdateBikeFunc(ctx, id, hashID, isElectric)
 }
@@ -67,16 +70,8 @@ func (m *MockService) DeleteBike(ctx context.Context, id int64) error {
 	return m.DeleteBikeFunc(ctx, id)
 }
 
-func (m *MockService) ListRatingAggregates(ctx context.Context) ([]domain.RatingAggregate, error) {
-	return m.ListRatingAggregatesFunc(ctx)
-}
-
 func (m *MockService) ListRatingAggregatesByBike(ctx context.Context, bikeID int64) ([]domain.RatingAggregate, error) {
 	return m.ListRatingAggregatesByBikeFunc(ctx, bikeID)
-}
-
-func (m *MockService) ListReviewsWithRatings(ctx context.Context) ([]domain.ReviewWithRatings, error) {
-	return m.ListReviewsWithRatingsFunc(ctx)
 }
 
 func (m *MockService) ListReviewsWithRatingsByBike(ctx context.Context, bikeID int64) ([]domain.ReviewWithRatings, error) {

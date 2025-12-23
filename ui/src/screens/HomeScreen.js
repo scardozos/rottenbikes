@@ -13,31 +13,11 @@ const HomeScreen = ({ navigation }) => {
 
     const fetchBikes = async () => {
         try {
-            const [bikesRes, ratingsRes] = await Promise.all([
-                api.get('/bikes'),
-                api.get('/bikes/ratings')
-            ]);
-
-            const bikesData = bikesRes.data;
-            const ratingsData = ratingsRes.data || [];
-
-            // Map ratings for efficient lookup (filter for 'overall' subcategory)
-            const overallRatings = ratingsData
-                .filter(r => r.subcategory === 'overall')
-                .reduce((acc, curr) => {
-                    acc[curr.bike_numerical_id] = curr.average_rating;
-                    return acc;
-                }, {});
-
-            const merged = bikesData.map(bike => ({
-                ...bike,
-                overallRating: overallRatings[bike.numerical_id] || null
-            }));
-
-            setBikes(merged);
-            setFilteredBikes(merged);
+            const bikesRes = await api.get('/bikes');
+            setBikes(bikesRes.data);
+            setFilteredBikes(bikesRes.data);
         } catch (e) {
-            console.error('Fetch bikes/ratings error:', e);
+            console.error('Fetch bikes error:', e);
         } finally {
             setLoading(false);
         }
@@ -71,8 +51,8 @@ const HomeScreen = ({ navigation }) => {
                 <Text style={styles.itemText}>
                     #{item.numerical_id} {item.is_electric ? '⚡' : '🚲'}
                 </Text>
-                {item.overallRating !== null && (
-                    <Text style={styles.ratingBadge}>{item.overallRating.toFixed(1)} ⭐</Text>
+                {item.average_rating != null && (
+                    <Text style={styles.ratingBadge}>{item.average_rating.toFixed(1)} ⭐</Text>
                 )}
             </View>
             <Text style={styles.subText}>{item.hash_id}</Text>
