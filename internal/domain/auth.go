@@ -297,6 +297,7 @@ func (s *Store) ConfirmMagicLink(ctx context.Context, token string) (*ConfirmRes
 type AuthPoster struct {
 	PosterID int64
 	Email    string
+	Username string
 }
 
 // GetPosterByAPIToken returns the poster for a valid, non-expired token.
@@ -306,10 +307,10 @@ func (s *Store) GetPosterByAPIToken(ctx context.Context, token string) (*AuthPos
 	var emailVerified bool
 
 	err := s.db.QueryRowContext(ctx, `
-		SELECT poster_id, email, api_token_expires_ts, email_verified
+		SELECT poster_id, email, username, api_token_expires_ts, email_verified
 		FROM posters
 		WHERE api_token = $1
-	`, token).Scan(&p.PosterID, &p.Email, &expires, &emailVerified)
+	`, token).Scan(&p.PosterID, &p.Email, &p.Username, &expires, &emailVerified)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("invalid token")

@@ -50,6 +50,11 @@ func (s *HTTPServer) middlewareAuth(next http.Handler) http.Handler {
 		}
 
 		ctx = context.WithValue(ctx, contextKeyPosterID, poster.PosterID)
+
+		if rw, ok := w.(*ResponseWriter); ok {
+			rw.Username = poster.Username
+		}
+
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
