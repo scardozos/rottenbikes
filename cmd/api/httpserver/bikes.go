@@ -14,7 +14,7 @@ import (
 
 func (s *HTTPServer) handleListBikes(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -24,7 +24,7 @@ func (s *HTTPServer) handleListBikes(w http.ResponseWriter, r *http.Request) {
 	bikes, err := s.service.ListBikes(ctx)
 	if err != nil {
 		log.Printf("list bikes error: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		s.sendError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -43,27 +43,24 @@ type createBikeRequest struct {
 // POST /bikes → create a bike
 func (s *HTTPServer) handleCreateBike(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	creatorID, ok := posterIDFromContext(r.Context())
 	if !ok {
-		w.WriteHeader(http.StatusUnauthorized)
-		_, _ = w.Write([]byte("unauthorized"))
+		s.sendError(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	var req createBikeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte("invalid JSON"))
+		s.sendError(w, "invalid JSON", http.StatusBadRequest)
 		return
 	}
 
 	if req.NumericalID == 0 {
-		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte("numerical_id is required"))
+		s.sendError(w, "numerical_id is required", http.StatusBadRequest)
 		return
 	}
 
@@ -77,22 +74,19 @@ func (s *HTTPServer) handleCreateBike(w http.ResponseWriter, r *http.Request) {
 			// Distinguish by constraint/index name
 			switch pqErr.Constraint {
 			case "bikes_pkey":
-				w.WriteHeader(http.StatusConflict)
-				_, _ = w.Write([]byte("bike with this numerical_id already exists"))
+				s.sendError(w, "bike with this numerical_id already exists", http.StatusConflict)
 				return
 			case "bikes_hash_id_key":
-				w.WriteHeader(http.StatusConflict)
-				_, _ = w.Write([]byte("bike with this hash_id already exists"))
+				s.sendError(w, "bike with this hash_id already exists", http.StatusConflict)
 				return
 			default:
-				w.WriteHeader(http.StatusConflict)
-				_, _ = w.Write([]byte("bike already exists (duplicate key)"))
+				s.sendError(w, "bike already exists (duplicate key)", http.StatusConflict)
 				return
 			}
 		}
 
 		log.Printf("create bike error: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		s.sendError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -110,20 +104,18 @@ type updateBikeRequest struct {
 // PUT /bikes/{id} → update hash_id/is_electric
 func (s *HTTPServer) handleUpdateBike(w http.ResponseWriter, r *http.Request, bikeID int64) {
 	if r.Method != http.MethodPut {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	var req updateBikeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte("invalid JSON"))
+		s.sendError(w, "invalid JSON", http.StatusBadRequest)
 		return
 	}
 
 	if req.NumericalID != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte("numerical_id cannot be updated"))
+		s.sendError(w, "numerical_id cannot be updated", http.StatusBadRequest)
 		return
 	}
 
@@ -132,7 +124,7 @@ func (s *HTTPServer) handleUpdateBike(w http.ResponseWriter, r *http.Request, bi
 
 	if err := s.service.UpdateBike(ctx, bikeID, req.HashID, req.IsElectric); err != nil {
 		log.Printf("update bike %d error: %v", bikeID, err)
-		w.WriteHeader(http.StatusInternalServerError)
+		s.sendError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -142,7 +134,7 @@ func (s *HTTPServer) handleUpdateBike(w http.ResponseWriter, r *http.Request, bi
 // GET /bikes/{id} → single bike
 func (s *HTTPServer) handleGetBike(w http.ResponseWriter, r *http.Request, bikeID int64) {
 	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -152,11 +144,11 @@ func (s *HTTPServer) handleGetBike(w http.ResponseWriter, r *http.Request, bikeI
 	bike, err := s.service.GetBike(ctx, bikeID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			w.WriteHeader(http.StatusNotFound)
+			s.sendError(w, "bike not found", http.StatusNotFound)
 			return
 		}
 		log.Printf("get bike %d error: %v", bikeID, err)
-		w.WriteHeader(http.StatusInternalServerError)
+		s.sendError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -167,7 +159,7 @@ func (s *HTTPServer) handleGetBike(w http.ResponseWriter, r *http.Request, bikeI
 // DELETE /bikes/{id}
 func (s *HTTPServer) handleDeleteBike(w http.ResponseWriter, r *http.Request, bikeID int64) {
 	if r.Method != http.MethodDelete {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -176,7 +168,7 @@ func (s *HTTPServer) handleDeleteBike(w http.ResponseWriter, r *http.Request, bi
 
 	if err := s.service.DeleteBike(ctx, bikeID); err != nil {
 		log.Printf("delete bike %d error: %v", bikeID, err)
-		w.WriteHeader(http.StatusInternalServerError)
+		s.sendError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 

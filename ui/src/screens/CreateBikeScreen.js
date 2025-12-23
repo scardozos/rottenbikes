@@ -31,7 +31,8 @@ const CreateBikeScreen = ({ route, navigation }) => {
             navigation.replace('CreateReview', { bike: response.data });
         } catch (e) {
             console.error(e);
-            showToast("Failed to create bike. " + (e.response?.status === 401 ? "Unauthorized" : ""), "error");
+            const errMsg = e.response?.data?.error || "Failed to create bike.";
+            showToast(errMsg, "error");
         } finally {
             setLoading(false);
         }

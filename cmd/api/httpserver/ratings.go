@@ -11,7 +11,7 @@ import (
 // GET /bikes/ratings → rating aggregates for all bikes
 func (s *HTTPServer) handleListAllBikeRatings(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -21,7 +21,7 @@ func (s *HTTPServer) handleListAllBikeRatings(w http.ResponseWriter, r *http.Req
 	aggs, err := s.service.ListRatingAggregates(ctx)
 	if err != nil {
 		log.Printf("list all bike ratings error: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		s.sendError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -34,7 +34,7 @@ func (s *HTTPServer) handleListAllBikeRatings(w http.ResponseWriter, r *http.Req
 // GET /bikes/{id}/ratings → rating aggregates for a single bike
 func (s *HTTPServer) handleBikeRatings(w http.ResponseWriter, r *http.Request, bikeID int64) {
 	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -44,7 +44,7 @@ func (s *HTTPServer) handleBikeRatings(w http.ResponseWriter, r *http.Request, b
 	aggs, err := s.service.ListRatingAggregatesByBike(ctx, bikeID)
 	if err != nil {
 		log.Printf("list bike %d ratings error: %v", bikeID, err)
-		w.WriteHeader(http.StatusInternalServerError)
+		s.sendError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 

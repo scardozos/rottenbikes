@@ -60,7 +60,8 @@ const CreateReviewScreen = ({ route, navigation }) => {
             navigation.navigate('Home');
         } catch (e) {
             console.error(e);
-            showToast("Failed to submit review. " + (e.response?.status === 401 ? "Unauthorized (login required)" : ""), "error");
+            const errMsg = e.response?.data?.error || "Failed to submit review.";
+            showToast(errMsg, "error");
         } finally {
             setLoading(false);
         }

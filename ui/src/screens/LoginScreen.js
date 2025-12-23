@@ -2,12 +2,14 @@ import React, { useContext, useState, useEffect } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, ActivityIndicator, Platform, Modal, Alert } from 'react-native';
 import HCaptchaView from '../components/HCaptchaView';
 import { AuthContext } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 
 const LoginScreen = ({ navigation }) => {
     const [identifier, setIdentifier] = useState('');
     const [step, setStep] = useState(1); // 1: Email, 2: Done
     const [pendingMagicToken, setPendingMagicToken] = useState(null);
     const { requestLogin, checkLoginStatus } = useContext(AuthContext);
+    const { showToast } = useToast();
     const [loading, setLoading] = useState(false);
     const [showCaptcha, setShowCaptcha] = useState(false);
 
@@ -32,7 +34,7 @@ const LoginScreen = ({ navigation }) => {
 
     const handleRequestLink = async () => {
         if (!identifier) {
-            alert("Please enter your email or username");
+            showToast("Please enter your email or username", "error");
             return;
         }
         setShowCaptcha(true);
@@ -49,9 +51,8 @@ const LoginScreen = ({ navigation }) => {
             setPendingMagicToken(mToken);
             setStep(2);
         } catch (e) {
-            const errMsg = e.response?.data || 'Failed to request magic link';
-            if (Platform.OS === 'web') window.alert(errMsg);
-            else Alert.alert("Error", errMsg);
+            const errMsg = e.message || 'Failed to request magic link';
+            showToast(errMsg, 'error');
         } finally {
             setLoading(false);
         }
@@ -87,11 +88,11 @@ const LoginScreen = ({ navigation }) => {
                                 onVerify={completeRequestLink}
                                 onExpired={() => {
                                     setShowCaptcha(false);
-                                    Alert.alert("Error", "Captcha expired");
+                                    showToast("Captcha expired", "error");
                                 }}
                                 onError={() => {
                                     setShowCaptcha(false);
-                                    Alert.alert("Error", "Captcha failed");
+                                    showToast("Captcha failed", "error");
                                 }}
                             />
                             <View style={{ marginTop: 40, paddingHorizontal: 20 }}>

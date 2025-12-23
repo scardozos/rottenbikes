@@ -25,21 +25,18 @@ func (s *HTTPServer) middlewareAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h := r.Header.Get("Authorization")
 		if h == "" {
-			w.WriteHeader(http.StatusUnauthorized)
-			_, _ = w.Write([]byte("missing Authorization header"))
+			s.sendError(w, "missing Authorization header", http.StatusUnauthorized)
 			return
 		}
 
 		parts := strings.SplitN(h, " ", 2)
 		if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
-			w.WriteHeader(http.StatusUnauthorized)
-			_, _ = w.Write([]byte("invalid Authorization header"))
+			s.sendError(w, "invalid Authorization header", http.StatusUnauthorized)
 			return
 		}
 		token := strings.TrimSpace(parts[1])
 		if token == "" {
-			w.WriteHeader(http.StatusUnauthorized)
-			_, _ = w.Write([]byte("empty bearer token"))
+			s.sendError(w, "empty bearer token", http.StatusUnauthorized)
 			return
 		}
 
@@ -48,8 +45,7 @@ func (s *HTTPServer) middlewareAuth(next http.Handler) http.Handler {
 
 		poster, err := s.service.GetPosterByAPIToken(ctx, token)
 		if err != nil {
-			w.WriteHeader(http.StatusUnauthorized)
-			_, _ = w.Write([]byte("invalid or expired api token"))
+			s.sendError(w, "invalid or expired api token", http.StatusUnauthorized)
 			return
 		}
 
