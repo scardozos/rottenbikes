@@ -31,7 +31,6 @@ const CreateReviewScreen = ({ route, navigation }) => {
 
     const [overall, setOverall] = useState(3.0);
     const [comment, setComment] = useState('');
-    const [captchaVerified, setCaptchaVerified] = useState(false);
     const [loading, setLoading] = useState(false);
 
     // Auto-calculate overall
@@ -42,10 +41,6 @@ const CreateReviewScreen = ({ route, navigation }) => {
     }, [breaks, seat, sturdiness, power, pedals]);
 
     const handleSubmit = async () => {
-        if (!captchaVerified) {
-            showToast("Please verify you are not a robot.", "error");
-            return;
-        }
 
         setLoading(true);
         try {
@@ -116,11 +111,6 @@ const CreateReviewScreen = ({ route, navigation }) => {
                     <Button title="Select Image (Mock)" onPress={() => { }} disabled />
                 </View>
 
-                {/* Captcha Placeholder */}
-                <View style={styles.captchaContainer}>
-                    <Switch value={captchaVerified} onValueChange={setCaptchaVerified} />
-                    <Text style={styles.captchaText}>I am not a robot (Captcha Placeholder)</Text>
-                </View>
 
                 <Button title="Submit Review" onPress={handleSubmit} disabled={loading} />
             </ScrollView>
@@ -162,14 +152,6 @@ const styles = StyleSheet.create({
         marginBottom: 20,
         borderRadius: 8
     },
-    captchaContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 20
-    },
-    captchaText: {
-        marginLeft: 10
-    }
 });
 
 export default CreateReviewScreen;

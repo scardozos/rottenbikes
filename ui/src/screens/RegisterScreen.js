@@ -5,7 +5,6 @@ import { AuthContext } from '../context/AuthContext';
 import HCaptchaView from '../components/HCaptchaView';
 
 const RegisterScreen = ({ navigation }) => {
-  // ... lines 7-34 omitted but preserved logic ...
   const [username, setUsername] = useState('');
   const [usernameError, setUsernameError] = useState('');
   const [email, setEmail] = useState('');
