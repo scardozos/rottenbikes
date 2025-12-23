@@ -7,6 +7,11 @@ spec:
     app: api
   ports:
   - protocol: TCP
+    name: http
     port: 8080
     targetPort: 8080
+  - protocol: TCP
+    name: metrics
+    port: 9091
+    targetPort: 9091
   type: ClusterIP

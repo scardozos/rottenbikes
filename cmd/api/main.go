@@ -13,6 +13,7 @@ import (
 
 	_ "github.com/lib/pq"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/scardozos/rottenbikes/cmd/api/email"
 	"github.com/scardozos/rottenbikes/cmd/api/httpserver"
 	"github.com/scardozos/rottenbikes/internal/domain"
@@ -67,11 +68,26 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to create server: %v", err)
 	}
+	// Metrics Server
+	metricsPort := getEnv("METRICS_PORT", "9091")
+	metricsMux := http.NewServeMux()
+	metricsMux.Handle("/metrics", promhttp.Handler())
+	metricsSrv := &http.Server{
+		Addr:    ":" + metricsPort,
+		Handler: metricsMux,
+	}
 
 	// Run server in background.
 	go func() {
 		if err := srv.Start(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("server error: %v", err)
+		}
+	}()
+
+	go func() {
+		log.Printf("Metrics server listening on %s", metricsSrv.Addr)
+		if err := metricsSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Printf("metrics server error: %v", err)
 		}
 	}()
 
@@ -85,5 +101,8 @@ func main() {
 
 	if err := srv.Shutdown(ctx); err != nil {
 		log.Printf("graceful shutdown failed: %v", err)
+	}
+	if err := metricsSrv.Shutdown(ctx); err != nil {
+		log.Printf("metrics server shutdown failed: %v", err)
 	}
 }

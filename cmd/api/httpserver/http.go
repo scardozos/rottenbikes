@@ -80,7 +80,7 @@ func New(service domain.Service, sender email.EmailSender, addr string) (*HTTPSe
 
 	s.server = &http.Server{
 		Addr:    addr,
-		Handler: corsMiddleware(mux),
+		Handler: observabilityMiddleware(corsMiddleware(mux)),
 	}
 
 	return s, nil

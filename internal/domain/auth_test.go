@@ -253,10 +253,10 @@ func TestGetPosterByAPIToken(t *testing.T) {
 	token := "api_token"
 
 	t.Run("success", func(t *testing.T) {
-		mock.ExpectQuery("SELECT poster_id, email, api_token_expires_ts, email_verified FROM posters").
+		mock.ExpectQuery("SELECT poster_id, email, username, api_token_expires_ts, email_verified FROM posters").
 			WithArgs(token).
-			WillReturnRows(sqlmock.NewRows([]string{"poster_id", "email", "api_token_expires_ts", "email_verified"}).
-				AddRow(1, "test@example.com", time.Now().Add(time.Hour), true))
+			WillReturnRows(sqlmock.NewRows([]string{"poster_id", "email", "username", "api_token_expires_ts", "email_verified"}).
+				AddRow(1, "test@example.com", "testuser", time.Now().Add(time.Hour), true))
 
 		store := NewStore(db)
 		poster, err := store.GetPosterByAPIToken(ctx, token)
@@ -272,10 +272,10 @@ func TestGetPosterByAPIToken(t *testing.T) {
 	})
 
 	t.Run("expired_token", func(t *testing.T) {
-		mock.ExpectQuery("SELECT poster_id, email, api_token_expires_ts, email_verified FROM posters").
+		mock.ExpectQuery("SELECT poster_id, email, username, api_token_expires_ts, email_verified FROM posters").
 			WithArgs(token).
-			WillReturnRows(sqlmock.NewRows([]string{"poster_id", "email", "api_token_expires_ts", "email_verified"}).
-				AddRow(1, "test@example.com", time.Now().Add(-time.Hour), true))
+			WillReturnRows(sqlmock.NewRows([]string{"poster_id", "email", "username", "api_token_expires_ts", "email_verified"}).
+				AddRow(1, "test@example.com", "testuser", time.Now().Add(-time.Hour), true))
 
 		store := NewStore(db)
 		_, err := store.GetPosterByAPIToken(ctx, token)
@@ -285,10 +285,10 @@ func TestGetPosterByAPIToken(t *testing.T) {
 	})
 
 	t.Run("unverified_email", func(t *testing.T) {
-		mock.ExpectQuery("SELECT poster_id, email, api_token_expires_ts, email_verified FROM posters").
+		mock.ExpectQuery("SELECT poster_id, email, username, api_token_expires_ts, email_verified FROM posters").
 			WithArgs(token).
-			WillReturnRows(sqlmock.NewRows([]string{"poster_id", "email", "api_token_expires_ts", "email_verified"}).
-				AddRow(1, "test@example.com", time.Now().Add(time.Hour), false))
+			WillReturnRows(sqlmock.NewRows([]string{"poster_id", "email", "username", "api_token_expires_ts", "email_verified"}).
+				AddRow(1, "test@example.com", "testuser", time.Now().Add(time.Hour), false))
 
 		store := NewStore(db)
 		_, err := store.GetPosterByAPIToken(ctx, token)
