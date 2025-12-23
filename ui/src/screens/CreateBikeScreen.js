@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, Switch, Alert } from 'react-native';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
+import { ThemeContext } from '../context/ThemeContext';
 
 const CreateBikeScreen = ({ route, navigation }) => {
     const { initialNumericalId, initialHashId } = route.params || {};
     const { showToast } = useToast();
+    const { theme } = useContext(ThemeContext);
 
     const [numericalId, setNumericalId] = useState(initialNumericalId || '');
     const [hashId, setHashId] = useState(initialHashId || '');
@@ -38,12 +40,15 @@ const CreateBikeScreen = ({ route, navigation }) => {
         }
     };
 
+    const styles = createStyles(theme);
+
     return (
         <View style={styles.container}>
             <Text style={styles.title}>Add a New Bike</Text>
 
             <TextInput
                 placeholder="Numerical ID (e.g. 101)"
+                placeholderTextColor={theme.colors.placeholder}
                 style={styles.input}
                 value={numericalId}
                 onChangeText={setNumericalId}
@@ -52,37 +57,48 @@ const CreateBikeScreen = ({ route, navigation }) => {
 
             <TextInput
                 placeholder="Hash ID (e.g. frame-xyz)"
+                placeholderTextColor={theme.colors.placeholder}
                 style={styles.input}
                 value={hashId}
                 onChangeText={setHashId}
             />
 
             <View style={styles.switchContainer}>
-                <Text>Electric Bike?</Text>
-                <Switch value={isElectric} onValueChange={setIsElectric} />
+                <Text style={styles.text}>Electric Bike?</Text>
+                <Switch
+                    value={isElectric}
+                    onValueChange={setIsElectric}
+                    trackColor={{ false: "#767577", true: theme.colors.primary }}
+                    thumbColor={isElectric ? "#f4f3f4" : "#f4f3f4"}
+                />
             </View>
 
-            <Button title="Create Bike" onPress={handleSubmit} disabled={loading} />
+            <Button title="Create Bike" onPress={handleSubmit} disabled={loading} color={theme.colors.primary} />
         </View>
     );
 };
 
-const styles = StyleSheet.create({
-    container: { flex: 1, padding: 20 },
-    title: { fontSize: 24, marginBottom: 20 },
+const createStyles = (theme) => StyleSheet.create({
+    container: { flex: 1, padding: 20, backgroundColor: theme.colors.background },
+    title: { fontSize: 24, marginBottom: 20, color: theme.colors.text },
     input: {
         height: 40,
-        borderColor: 'gray',
+        borderColor: theme.colors.border,
         borderWidth: 1,
         marginBottom: 12,
         paddingHorizontal: 8,
-        borderRadius: 4
+        borderRadius: 4,
+        color: theme.colors.text,
+        backgroundColor: theme.colors.inputBackground
     },
     switchContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         marginBottom: 20,
         justifyContent: 'space-between'
+    },
+    text: {
+        color: theme.colors.text
     }
 });
 

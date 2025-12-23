@@ -1,9 +1,10 @@
 import React, { useContext } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, View, Button, TouchableOpacity, Text } from 'react-native';
 
 import { AuthContext } from '../context/AuthContext';
+import { ThemeContext } from '../context/ThemeContext';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import ConfirmLoginScreen from '../screens/ConfirmLoginScreen';
@@ -27,18 +28,52 @@ const linking = {
 
 const AppNavigator = () => {
     const { isLoading, userToken } = useContext(AuthContext);
+    const { theme, isDark, toggleTheme } = useContext(ThemeContext);
+
+    const baseTheme = isDark ? DarkTheme : DefaultTheme;
+    const navTheme = {
+        ...baseTheme,
+        colors: {
+            ...baseTheme.colors,
+            ...theme.colors,
+            // Ensure compatibility with React Navigation Theme object
+            // Required keys: primary, background, card, text, border, notification
+            primary: theme.colors.primary,
+            background: theme.colors.background,
+            card: theme.colors.card,
+            text: theme.colors.text,
+            border: theme.colors.border,
+            notification: theme.colors.notification,
+        },
+    };
 
     if (isLoading) {
         return (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                <ActivityIndicator size="large" />
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background }}>
+                <ActivityIndicator size="large" color={theme.colors.primary} />
             </View>
         );
     }
 
+    const ThemeToggleButton = () => (
+        <TouchableOpacity onPress={toggleTheme} style={{ marginRight: 15 }}>
+            <Text style={{ fontSize: 24 }}>{isDark ? '☀️' : '🌙'}</Text>
+        </TouchableOpacity>
+    );
+
     return (
-        <NavigationContainer linking={linking}>
-            <Stack.Navigator initialRouteName={userToken == null ? "Login" : "Home"}>
+        <NavigationContainer linking={linking} theme={navTheme}>
+            <Stack.Navigator
+                initialRouteName={userToken == null ? "Login" : "Home"}
+                screenOptions={{
+                    headerRight: () => <ThemeToggleButton />,
+                    headerTitleStyle: { color: theme.colors.text },
+                    headerTintColor: theme.colors.primary,
+                    headerStyle: {
+                        backgroundColor: theme.colors.card,
+                    }
+                }}
+            >
                 {userToken == null ? (
                     // Auth Stack
                     <>

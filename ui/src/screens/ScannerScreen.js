@@ -1,18 +1,20 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useContext } from 'react';
 import { Text, View, StyleSheet, Button, Alert } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
+import { ThemeContext } from '../context/ThemeContext';
 
 const ScannerScreen = ({ navigation }) => {
     const [permission, requestPermission] = useCameraPermissions();
     const [scanned, setScanned] = useState(false);
     const { showToast } = useToast();
+    const { theme } = useContext(ThemeContext);
     const isScanning = useRef(false);
 
     if (!permission) {
         // Camera permissions are still loading.
-        return <View />;
+        return <View style={{ flex: 1, backgroundColor: theme.colors.background }} />;
     }
 
     if (!permission.granted) {
@@ -20,7 +22,7 @@ const ScannerScreen = ({ navigation }) => {
         return (
             <View style={styles.container}>
                 <Text style={styles.message}>We need your permission to show the camera</Text>
-                <Button onPress={requestPermission} title="Grant Permission" />
+                <Button onPress={requestPermission} title="Grant Permission" color={theme.colors.primary} />
             </View>
         );
     }
@@ -72,6 +74,8 @@ const ScannerScreen = ({ navigation }) => {
         }
     };
 
+    const styles = createStyles(theme);
+
     return (
         <View style={styles.container}>
             <CameraView
@@ -83,32 +87,33 @@ const ScannerScreen = ({ navigation }) => {
             />
             {scanned && (
                 <View style={styles.scanAgainContainer}>
-                    <Button title={'Tap to Scan Again'} onPress={() => setScanned(false)} />
+                    <Button title={'Tap to Scan Again'} onPress={() => setScanned(false)} color={theme.colors.primary} />
                 </View>
             )}
         </View>
     );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
     container: {
         flex: 1,
         justifyContent: 'center',
-        backgroundColor: '#000',
+        backgroundColor: theme.colors.background,
     },
     message: {
         textAlign: 'center',
         paddingBottom: 10,
-        color: '#fff'
+        color: theme.colors.text
     },
     scanAgainContainer: {
         position: 'absolute',
         bottom: 50,
         left: 20,
         right: 20,
-        backgroundColor: 'rgba(255,255,255,0.8)',
+        backgroundColor: theme.colors.card,
         borderRadius: 10,
-        padding: 10
+        padding: 10,
+        opacity: 0.9
     }
 });
 
