@@ -1,6 +1,7 @@
 import React, { useEffect, useContext, useState } from 'react';
 import { View, Text, ActivityIndicator, StyleSheet, Button, Platform } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
+import { ThemeContext } from '../context/ThemeContext';
 
 const ConfirmLoginScreen = ({ route, navigation }) => {
     const { token } = route.params || {};
@@ -9,6 +10,7 @@ const ConfirmLoginScreen = ({ route, navigation }) => {
     const { origin } = route.params || {};
 
     const { completeLogin, confirmAttempt, userToken } = useContext(AuthContext);
+    const { theme } = useContext(ThemeContext);
     const [status, setStatus] = useState('loading'); // loading, ready, success, error
     const [errorMsg, setErrorMsg] = useState('');
     const [isCrossDevice, setIsCrossDevice] = useState(false);
@@ -55,16 +57,18 @@ const ConfirmLoginScreen = ({ route, navigation }) => {
         }
     };
 
+    const styles = createStyles(theme);
+
     if (status === 'ready') {
         return (
             <View style={styles.container}>
                 <Text style={styles.title}>Finish Logging In</Text>
                 <Text style={styles.text}>Click below to complete your login request.</Text>
                 <View style={{ marginTop: 20, width: '100%' }}>
-                    <Button title="Confirm Login" onPress={handleConfirm} disabled={submitting} />
+                    <Button title="Confirm Login" onPress={handleConfirm} disabled={submitting} color={theme.colors.primary} />
                 </View>
                 <View style={{ marginTop: 10 }}>
-                    <Button title="Cancel" onPress={() => navigation.navigate('Login')} color="gray" disabled={submitting} />
+                    <Button title="Cancel" onPress={() => navigation.navigate('Login')} color={theme.colors.subtext} disabled={submitting} />
                 </View>
             </View>
         );
@@ -73,7 +77,7 @@ const ConfirmLoginScreen = ({ route, navigation }) => {
     if (status === 'loading') {
         return (
             <View style={styles.container}>
-                <ActivityIndicator size="large" />
+                <ActivityIndicator size="large" color={theme.colors.primary} />
                 <Text style={styles.text}>Confirming your login...</Text>
             </View>
         );
@@ -82,8 +86,8 @@ const ConfirmLoginScreen = ({ route, navigation }) => {
     if (status === 'error') {
         return (
             <View style={styles.container}>
-                <Text style={[styles.text, { color: 'red' }]}>{errorMsg}</Text>
-                <Button title="Back to Login" onPress={() => navigation.navigate('Login')} />
+                <Text style={[styles.text, { color: theme.colors.error }]}>{errorMsg}</Text>
+                <Button title="Back to Login" onPress={() => navigation.navigate('Login')} color={theme.colors.primary} />
             </View>
         );
     }
@@ -109,6 +113,7 @@ const ConfirmLoginScreen = ({ route, navigation }) => {
                                     routes: [{ name: 'Home' }],
                                 });
                             }}
+                            color={theme.colors.primary}
                         />
                     </View>
                 )}
@@ -119,12 +124,12 @@ const ConfirmLoginScreen = ({ route, navigation }) => {
     return null;
 };
 
-const styles = StyleSheet.create({
-    container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-    title: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
-    text: { fontSize: 18, marginTop: 10, textAlign: 'center' },
-    successText: { color: 'green', fontWeight: 'bold', fontSize: 24 },
-    subText: { fontSize: 14, color: 'gray', marginTop: 10 }
+const createStyles = (theme) => StyleSheet.create({
+    container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: theme.colors.background },
+    title: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, textAlign: 'center', color: theme.colors.text },
+    text: { fontSize: 18, marginTop: 10, textAlign: 'center', color: theme.colors.text },
+    successText: { color: theme.colors.success, fontWeight: 'bold', fontSize: 24 },
+    subText: { fontSize: 14, color: theme.colors.subtext, marginTop: 10 }
 });
 
 export default ConfirmLoginScreen;

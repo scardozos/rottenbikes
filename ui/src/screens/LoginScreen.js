@@ -2,6 +2,7 @@ import React, { useContext, useState, useEffect } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, ActivityIndicator, Platform, Modal, Alert } from 'react-native';
 import HCaptchaView from '../components/HCaptchaView';
 import { AuthContext } from '../context/AuthContext';
+import { ThemeContext } from '../context/ThemeContext';
 import { useToast } from '../context/ToastContext';
 
 const LoginScreen = ({ navigation }) => {
@@ -10,6 +11,7 @@ const LoginScreen = ({ navigation }) => {
     const [pendingMagicToken, setPendingMagicToken] = useState(null);
     const { requestLogin, checkLoginStatus } = useContext(AuthContext);
     const { showToast } = useToast();
+    const { theme } = useContext(ThemeContext);
     const [loading, setLoading] = useState(false);
     const [showCaptcha, setShowCaptcha] = useState(false);
 
@@ -58,6 +60,8 @@ const LoginScreen = ({ navigation }) => {
         }
     };
 
+    const styles = createStyles(theme);
+
     return (
         <View style={styles.container}>
             <Text style={styles.title}>RottenBikes Login</Text>
@@ -67,20 +71,21 @@ const LoginScreen = ({ navigation }) => {
                     <TextInput
                         style={styles.input}
                         placeholder="Email or Username"
+                        placeholderTextColor={theme.colors.placeholder}
                         value={identifier}
                         onChangeText={setIdentifier}
                         autoCapitalize="none"
                         keyboardType="email-address"
                     />
                     {loading ? (
-                        <ActivityIndicator size="large" />
+                        <ActivityIndicator size="large" color={theme.colors.primary} />
                     ) : (
-                        <Button title="Get Magic Link" onPress={handleRequestLink} />
+                        <Button title="Get Magic Link" onPress={handleRequestLink} color={theme.colors.primary} />
                     )}
 
                     <Modal visible={showCaptcha} animationType="slide">
-                        <View style={{ flex: 1, backgroundColor: 'white', paddingVertical: 50 }}>
-                            <Text style={{ textAlign: 'center', fontSize: 18, marginBottom: 20 }}>
+                        <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingVertical: 50 }}>
+                            <Text style={{ textAlign: 'center', fontSize: 18, marginBottom: 20, color: theme.colors.text }}>
                                 Complete the challenge to login
                             </Text>
                             <HCaptchaView
@@ -96,18 +101,18 @@ const LoginScreen = ({ navigation }) => {
                                 }}
                             />
                             <View style={{ marginTop: 40, paddingHorizontal: 20 }}>
-                                <Button title="Cancel" onPress={() => setShowCaptcha(false)} color="red" />
+                                <Button title="Cancel" onPress={() => setShowCaptcha(false)} color={theme.colors.error} />
                             </View>
                         </View>
                     </Modal>
                 </>
             ) : (
                 <>
-                    <Text style={{ marginBottom: 20, textAlign: 'center', fontSize: 16 }}>
+                    <Text style={{ marginBottom: 20, textAlign: 'center', fontSize: 16, color: theme.colors.text }}>
                         Magic link requested for {identifier}!{'\n\n'}
                         Check your email for the link and click it to log in.
                     </Text>
-                    <Button title="Back" onPress={() => setStep(1)} color="gray" />
+                    <Button title="Back" onPress={() => setStep(1)} color={theme.colors.subtext} />
                 </>
             )}
 
@@ -115,23 +120,25 @@ const LoginScreen = ({ navigation }) => {
                 <Button
                     title="Register"
                     onPress={() => navigation.navigate('Register')}
-                    color="gray"
+                    color={theme.colors.secondary}
                 />
             </View>
         </View>
     );
 };
 
-const styles = StyleSheet.create({
-    container: { flex: 1, justifyContent: 'center', padding: 20 },
-    title: { fontSize: 24, marginBottom: 20, textAlign: 'center' },
+const createStyles = (theme) => StyleSheet.create({
+    container: { flex: 1, justifyContent: 'center', padding: 20, backgroundColor: theme.colors.background },
+    title: { fontSize: 24, marginBottom: 20, textAlign: 'center', color: theme.colors.text },
     input: {
         height: 40,
-        borderColor: 'gray',
+        borderColor: theme.colors.border,
         borderWidth: 1,
         marginBottom: 12,
         paddingHorizontal: 8,
-        borderRadius: 4
+        borderRadius: 4,
+        color: theme.colors.text,
+        backgroundColor: theme.colors.inputBackground,
     },
 });
 

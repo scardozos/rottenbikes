@@ -3,6 +3,7 @@ import React, { useEffect, useState, useContext, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Button, ActivityIndicator, TextInput, Platform } from 'react-native';
 import api from '../services/api';
 import { AuthContext } from '../context/AuthContext';
+import { ThemeContext } from '../context/ThemeContext';
 
 const HomeScreen = ({ navigation }) => {
     const [bikes, setBikes] = useState([]);
@@ -10,6 +11,7 @@ const HomeScreen = ({ navigation }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
     const { logout } = useContext(AuthContext);
+    const { theme } = useContext(ThemeContext);
 
     const fetchBikes = async () => {
         try {
@@ -41,6 +43,8 @@ const HomeScreen = ({ navigation }) => {
             setFilteredBikes(filtered);
         }
     }, [searchQuery, bikes]);
+
+    const styles = createStyles(theme);
 
     const renderItem = ({ item }) => (
         <TouchableOpacity
@@ -74,13 +78,14 @@ const HomeScreen = ({ navigation }) => {
         <View style={styles.container}>
             <View style={styles.header}>
                 <Text style={styles.title}>Bikes</Text>
-                <Button title="Logout" onPress={logout} />
+                <Button title="Logout" onPress={logout} color={theme.colors.error} />
             </View>
 
             <View style={styles.searchContainer}>
                 <TextInput
                     style={styles.searchInput}
                     placeholder="Search by ID or Hash..."
+                    placeholderTextColor={theme.colors.placeholder}
                     value={searchQuery}
                     onChangeText={setSearchQuery}
                     clearButtonMode="while-editing"
@@ -95,7 +100,7 @@ const HomeScreen = ({ navigation }) => {
                 )}
             </View>
 
-            {loading ? <ActivityIndicator size="large" /> : (
+            {loading ? <ActivityIndicator size="large" color={theme.colors.primary} /> : (
                 <FlatList
                     data={filteredBikes}
                     keyExtractor={item => item.numerical_id.toString()}
@@ -109,6 +114,7 @@ const HomeScreen = ({ navigation }) => {
                                 <Button
                                     title={`Create Bike "${searchQuery}"`}
                                     onPress={handleCreateSearchBike}
+                                    color={theme.colors.primary}
                                 />
                             )}
                         </View>
@@ -120,19 +126,20 @@ const HomeScreen = ({ navigation }) => {
     );
 };
 
-const styles = StyleSheet.create({
-    container: { flex: 1, padding: 20 },
+const createStyles = (theme) => StyleSheet.create({
+    container: { flex: 1, padding: 20, backgroundColor: theme.colors.background },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-    title: { fontSize: 24, fontWeight: 'bold' },
+    title: { fontSize: 24, fontWeight: 'bold', color: theme.colors.text },
     searchInput: {
         flex: 1,
         height: 50,
-        borderColor: '#ccc',
+        borderColor: theme.colors.border,
         borderWidth: 1,
         borderRadius: 8,
         paddingHorizontal: 15,
-        backgroundColor: '#fff',
-        fontSize: 16
+        backgroundColor: theme.colors.inputBackground,
+        fontSize: 16,
+        color: theme.colors.text
     },
     searchContainer: {
         flexDirection: 'row',
@@ -141,25 +148,25 @@ const styles = StyleSheet.create({
     },
     qrButton: {
         marginLeft: 10,
-        backgroundColor: '#eee',
+        backgroundColor: theme.colors.inputBackground,
         height: 50,
         width: 50,
         borderRadius: 8,
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: '#ccc'
+        borderColor: theme.colors.border
     },
     qrButtonText: {
         fontSize: 24
     },
-    item: { padding: 20, borderBottomWidth: 1, borderBottomColor: '#ccc' },
+    item: { padding: 20, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
     itemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    itemText: { fontSize: 24, fontWeight: 'bold' },
-    ratingBadge: { fontSize: 20, fontWeight: 'bold', color: '#f39c12', backgroundColor: '#fff3e0', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-    subText: { fontSize: 18, color: '#666', marginTop: 5 },
+    itemText: { fontSize: 24, fontWeight: 'bold', color: theme.colors.text },
+    ratingBadge: { fontSize: 20, fontWeight: 'bold', color: '#f39c12', backgroundColor: theme.colors.card, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, overflow: 'hidden' }, // Helper color for badge
+    subText: { fontSize: 18, color: theme.colors.subtext, marginTop: 5 },
     emptyContainer: { alignItems: 'center', marginTop: 30 },
-    emptyText: { fontSize: 18, color: '#666', marginBottom: 20 }
+    emptyText: { fontSize: 18, color: theme.colors.subtext, marginBottom: 20 }
 });
 
 export default HomeScreen;

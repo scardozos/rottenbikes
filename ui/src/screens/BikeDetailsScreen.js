@@ -1,7 +1,8 @@
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useContext } from 'react';
 import { View, Text, StyleSheet, FlatList, Button } from 'react-native';
 import api from '../services/api';
+import { ThemeContext } from '../context/ThemeContext';
 
 const getRelativeTime = (dateString) => {
     if (!dateString) return '';
@@ -29,6 +30,7 @@ const BikeDetailsScreen = ({ route, navigation }) => {
     const [reviews, setReviews] = useState([]);
     const [aggregates, setAggregates] = useState([]);
     const [loading, setLoading] = useState(true);
+    const { theme } = useContext(ThemeContext);
 
     const fetchData = async () => {
         setLoading(true);
@@ -49,6 +51,8 @@ const BikeDetailsScreen = ({ route, navigation }) => {
             fetchData();
         }, [])
     );
+
+    const styles = createStyles(theme);
 
     return (
         <View style={styles.container}>
@@ -83,37 +87,40 @@ const BikeDetailsScreen = ({ route, navigation }) => {
                                 <Text style={styles.rating}>{'⭐'.repeat(item.ratings?.overall || 0)}</Text>
                                 <Text style={styles.timeText}>{getRelativeTime(item.created_at)}</Text>
                             </View>
-                            <Text>{item.comment}</Text>
+                            <Text style={styles.commentText}>{item.comment}</Text>
                             <Text style={styles.user}>- {item.poster_username || 'Anonymous'}</Text>
                         </View>
                     )}
-                    ListEmptyComponent={<Text>No reviews yet.</Text>}
+                    ListEmptyComponent={<Text style={styles.emptyText}>No reviews yet.</Text>}
                 />
             </View>
             <Button
                 title="Write a Review"
                 onPress={() => navigation.navigate('CreateReview', { bike })}
+                color={theme.colors.primary}
             />
         </View>
     );
 };
 
-const styles = StyleSheet.create({
-    container: { flex: 1, padding: 20 },
-    title: { fontSize: 24, fontWeight: 'bold', marginBottom: 10 },
-    detail: { fontSize: 16, marginBottom: 5 },
+const createStyles = (theme) => StyleSheet.create({
+    container: { flex: 1, padding: 20, backgroundColor: theme.colors.background },
+    title: { fontSize: 24, fontWeight: 'bold', marginBottom: 10, color: theme.colors.text },
+    detail: { fontSize: 16, marginBottom: 5, color: theme.colors.text },
     reviewsSection: { flex: 1, marginTop: 20 },
-    aggregatesSection: { marginTop: 20, backgroundColor: '#f9f9f9', padding: 15, borderRadius: 10 },
+    aggregatesSection: { marginTop: 20, backgroundColor: theme.colors.card, padding: 15, borderRadius: 10 },
     aggregatesGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-    aggItem: { width: '48%', backgroundColor: '#fff', padding: 10, borderRadius: 8, marginBottom: 10, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 },
-    aggLabel: { fontSize: 14, color: '#666', marginBottom: 2 },
+    aggItem: { width: '48%', backgroundColor: theme.colors.inputBackground, padding: 10, borderRadius: 8, marginBottom: 10, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 },
+    aggLabel: { fontSize: 14, color: theme.colors.subtext, marginBottom: 2 },
     aggValue: { fontSize: 16, fontWeight: 'bold', color: '#f39c12' },
-    subtitle: { fontSize: 20, marginBottom: 10, fontWeight: '600' },
-    reviewItem: { padding: 10, borderBottomWidth: 1, borderBottomColor: '#eee', marginBottom: 10 },
+    subtitle: { fontSize: 20, marginBottom: 10, fontWeight: '600', color: theme.colors.text },
+    reviewItem: { padding: 10, borderBottomWidth: 1, borderBottomColor: theme.colors.border, marginBottom: 10 },
     reviewHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 },
-    timeText: { fontSize: 14, color: '#999' },
-    rating: { fontSize: 18 },
-    user: { fontStyle: 'italic', marginTop: 5, color: '#666' }
+    timeText: { fontSize: 14, color: theme.colors.subtext },
+    rating: { fontSize: 18, color: theme.colors.text },
+    commentText: { color: theme.colors.text },
+    user: { fontStyle: 'italic', marginTop: 5, color: theme.colors.subtext },
+    emptyText: { color: theme.colors.subtext }
 });
 
 export default BikeDetailsScreen;
