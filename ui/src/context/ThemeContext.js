@@ -8,38 +8,40 @@ export const themes = {
     dark: {
         dark: true,
         colors: {
-            primary: '#BB86FC',
-            secondary: '#03DAC6',
-            background: '#121212',
-            card: '#1E1E1E',
-            text: '#FFFFFF',
-            subtext: '#A0A0A0',
-            border: '#2C2C2C',
-            notification: '#CF6679',
-            inputBackground: '#2C2C2C',
-            placeholder: '#A0A0A0',
-            error: '#CF6679',
-            success: '#03DAC6',
-            buttonText: '#000000',
-        }
+            primary: '#60A5FA', // Blue 400
+            secondary: '#34D399', // Emerald 400
+            background: '#0F172A', // Slate 900
+            card: '#1E293B', // Slate 800
+            text: '#F1F5F9', // Slate 100
+            subtext: '#94A3B8', // Slate 400
+            border: '#334155', // Slate 700
+            notification: '#F87171', // Red 400
+            inputBackground: '#1E293B', // Slate 800 (Card color) or slightly lighter
+            placeholder: '#64748B', // Slate 500
+            error: '#EF4444', // Red 500
+            success: '#10B981', // Emerald 500
+            buttonText: '#FFFFFF',
+        },
+        fonts: { regular: { fontFamily: 'System', fontWeight: '400' } } // Fix for potential missing fonts prop
     },
     light: {
         dark: false,
         colors: {
-            primary: '#6200EE',
-            secondary: '#03DAC6',
+            primary: '#2563EB', // Blue 600
+            secondary: '#059669', // Emerald 600
             background: '#FFFFFF',
-            card: '#F5F5F5',
-            text: '#000000',
-            subtext: '#666666',
-            border: '#E0E0E0',
-            notification: '#B00020',
-            inputBackground: '#F0F0F0',
-            placeholder: '#999999',
-            error: '#B00020',
-            success: '#00C853',
+            card: '#F8FAFC', // Slate 50
+            text: '#0F172A', // Slate 900
+            subtext: '#64748B', // Slate 500
+            border: '#E2E8F0', // Slate 200
+            notification: '#DC2626', // Red 600
+            inputBackground: '#F1F5F9', // Slate 100
+            placeholder: '#94A3B8', // Slate 400
+            error: '#DC2626', // Red 600
+            success: '#059669', // Emerald 600
             buttonText: '#FFFFFF',
-        }
+        },
+        fonts: { regular: { fontFamily: 'System', fontWeight: '400' } } // Fix for potential missing fonts prop
     }
 };
 
