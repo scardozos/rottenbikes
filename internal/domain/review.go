@@ -32,30 +32,6 @@ type reviewRatingRow struct {
 }
 
 // all bikes
-func (s *Store) ListReviewsWithRatings(ctx context.Context) ([]ReviewWithRatings, error) {
-	rows, err := s.db.QueryContext(ctx, `
-		SELECT
-			r.review_id,
-			r.poster_id,
-			p.username,
-			r.bike_numerical_id,
-			r.comment,
-			r.created_ts,
-			rr.subcategory,
-			rr.score,
-			r.bike_img
-		FROM reviews r
-		JOIN posters p       ON p.poster_id = r.poster_id
-		JOIN review_ratings rr ON rr.review_id = r.review_id
-		ORDER BY r.bike_numerical_id, r.review_id, rr.subcategory
-	`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	return buildReviewWithRatingsFromRows(rows)
-}
 
 // single bike
 func (s *Store) ListReviewsWithRatingsByBike(ctx context.Context, bikeID int64) ([]ReviewWithRatings, error) {

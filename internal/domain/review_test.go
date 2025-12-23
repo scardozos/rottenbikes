@@ -9,54 +9,6 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 )
 
-func TestListReviewsWithRatings(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
-	}
-	defer db.Close()
-
-	ctx := context.Background()
-
-	t.Run("success", func(t *testing.T) {
-		rows := sqlmock.NewRows([]string{
-			"review_id", "poster_id", "username", "bike_numerical_id", "comment", "created_ts", "subcategory", "score", "bike_img",
-		}).
-			AddRow(1, 1, "user1", 1, "comment", time.Now(), "overall", 5, "img.jpg")
-
-		mock.ExpectQuery("SELECT .* FROM reviews r JOIN posters p .* JOIN review_ratings rr .*").
-			WillReturnRows(rows)
-
-		store := NewStore(db)
-		reviews, err := store.ListReviewsWithRatings(ctx)
-		if err != nil {
-			t.Errorf("unexpected error: %v", err)
-		}
-		if len(reviews) != 1 {
-			t.Errorf("expected 1 review, got %d", len(reviews))
-		}
-	})
-
-	t.Run("empty", func(t *testing.T) {
-		rows := sqlmock.NewRows([]string{
-			"review_id", "poster_id", "username", "bike_numerical_id", "comment", "created_ts", "subcategory", "score", "bike_img",
-		})
-
-		mock.ExpectQuery("SELECT .* FROM reviews r JOIN posters p .* JOIN review_ratings rr .*").
-			WillReturnRows(rows)
-
-		store := NewStore(db)
-		reviews, err := store.ListReviewsWithRatings(ctx)
-		if err != nil {
-			t.Errorf("unexpected error: %v", err)
-		}
-		if len(reviews) != 0 {
-			t.Errorf("expected 0 reviews, got %d", len(reviews))
-		}
-	})
-
-}
-
 func TestCreateReviewWithRatings(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {

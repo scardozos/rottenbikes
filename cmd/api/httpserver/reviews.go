@@ -76,52 +76,6 @@ func (s *HTTPServer) handleCreateBikeReview(w http.ResponseWriter, r *http.Reque
 	})
 }
 
-// GET /bikes/reviews → all bikes' reviews with ratings
-func (s *HTTPServer) handleListAllReviewsWithRatings(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
-	defer cancel()
-
-	reviews, err := s.service.ListReviewsWithRatings(ctx)
-	if err != nil {
-		log.Printf("list all reviews error: %v", err)
-		s.sendError(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(reviews); err != nil {
-		log.Printf("encode all reviews error: %v", err)
-	}
-}
-
-// GET /bikes/{id}/reviews → reviews with ratings for a single bike
-func (s *HTTPServer) handleBikeReviews(w http.ResponseWriter, r *http.Request, bikeID int64) {
-	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
-	defer cancel()
-
-	reviews, err := s.service.ListReviewsWithRatingsByBike(ctx, bikeID)
-	if err != nil {
-		log.Printf("list bike %d reviews error: %v", bikeID, err)
-		s.sendError(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(reviews); err != nil {
-		log.Printf("encode bike %d reviews error: %v", bikeID, err)
-	}
-}
-
 // PUT /reviews/{id}
 func (s *HTTPServer) handleUpdateReview(w http.ResponseWriter, r *http.Request, reviewID int64) {
 	if r.Method != http.MethodPut {

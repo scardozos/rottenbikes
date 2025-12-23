@@ -11,28 +11,6 @@ type RatingAggregate struct {
 	AverageRating   float32           `db:"average_rating"     json:"average_rating"`
 }
 
-func (s *Store) ListRatingAggregates(ctx context.Context) ([]RatingAggregate, error) {
-	rows, err := s.db.QueryContext(ctx, `
-		SELECT bike_numerical_id, subcategory, average_rating
-		FROM rating_aggregates
-		ORDER BY bike_numerical_id, subcategory
-	`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var aggs []RatingAggregate
-	for rows.Next() {
-		var a RatingAggregate
-		if err := rows.Scan(&a.BikeNumericalID, &a.Subcategory, &a.AverageRating); err != nil {
-			return nil, err
-		}
-		aggs = append(aggs, a)
-	}
-	return aggs, rows.Err()
-}
-
 func (s *Store) ListRatingAggregatesByBike(ctx context.Context, bikeID int64) ([]RatingAggregate, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT bike_numerical_id, subcategory, average_rating

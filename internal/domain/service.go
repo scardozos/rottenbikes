@@ -17,15 +17,16 @@ type Service interface {
 	ListBikes(ctx context.Context) ([]Bike, error)
 	CreateBike(ctx context.Context, numericalID int64, hashID *string, isElectric bool, creatorID int64) (*Bike, error)
 	GetBike(ctx context.Context, id int64) (*Bike, error)
+	GetBikeDetails(ctx context.Context, id int64) (*BikeDetails, error)
 	UpdateBike(ctx context.Context, id int64, hashID *string, isElectric *bool) error
 	DeleteBike(ctx context.Context, id int64) error
 
 	// Rating Aggregate
-	ListRatingAggregates(ctx context.Context) ([]RatingAggregate, error)
+
 	ListRatingAggregatesByBike(ctx context.Context, bikeID int64) ([]RatingAggregate, error)
 
 	// Review
-	ListReviewsWithRatings(ctx context.Context) ([]ReviewWithRatings, error)
+
 	ListReviewsWithRatingsByBike(ctx context.Context, bikeID int64) ([]ReviewWithRatings, error)
 	CreateReviewWithRatings(ctx context.Context, in CreateReviewInput) (int64, error)
 	UpdateReviewWithRatings(ctx context.Context, in UpdateReviewInput) error
