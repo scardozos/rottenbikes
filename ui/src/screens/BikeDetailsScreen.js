@@ -26,7 +26,10 @@ const getRelativeTime = (dateString) => {
 };
 
 const BikeDetailsScreen = ({ route, navigation }) => {
-    const { bike } = route.params;
+    const params = route.params || {};
+    // Handle both object navigation and deep linking ID
+    const initialBike = params.bike || { numerical_id: params.bikeId };
+    const [bike, setBike] = useState(initialBike);
     const [reviews, setReviews] = useState([]);
     const [aggregates, setAggregates] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -37,6 +40,7 @@ const BikeDetailsScreen = ({ route, navigation }) => {
         try {
             const res = await api.get(`/bikes/${bike.numerical_id}/details`);
             const details = res.data;
+            setBike(prev => ({ ...prev, ...details }));
             setReviews(details.reviews || []);
             setAggregates(details.ratings || []);
         } catch (e) {

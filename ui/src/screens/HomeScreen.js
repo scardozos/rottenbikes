@@ -49,7 +49,7 @@ const HomeScreen = ({ navigation }) => {
     const renderItem = ({ item }) => (
         <TouchableOpacity
             style={styles.item}
-            onPress={() => navigation.navigate('BikeDetails', { bike: item })}
+            onPress={() => navigation.navigate('BikeDetails', { bikeId: item.numerical_id })}
         >
             <View style={styles.itemHeader}>
                 <Text style={styles.itemText}>
@@ -90,14 +90,12 @@ const HomeScreen = ({ navigation }) => {
                     onChangeText={setSearchQuery}
                     clearButtonMode="while-editing"
                 />
-                {Platform.OS !== 'web' && (
-                    <TouchableOpacity
-                        style={styles.qrButton}
-                        onPress={() => navigation.navigate('Scanner')}
-                    >
-                        <Text style={styles.qrButtonText}>📷</Text>
-                    </TouchableOpacity>
-                )}
+                <TouchableOpacity
+                    style={styles.qrButton}
+                    onPress={() => navigation.navigate('Scanner')}
+                >
+                    <Text style={styles.qrButtonText}>📷</Text>
+                </TouchableOpacity>
             </View>
 
             {loading ? <ActivityIndicator size="large" color={theme.colors.primary} /> : (
