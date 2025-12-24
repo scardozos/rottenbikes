@@ -72,7 +72,10 @@ make db-reset
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
 | `POST` | `/auth/request-magic-link` | Request a magic link for login. | No |
-| `POST` | `/auth/confirm` | Confirm magic link and receive Bearer token. | No |
+| `POST` | `/auth/register` | Register a new user. | No |
+| `GET` | `/auth/confirm` | Confirm magic link (via `?token=...` or `/token`) and receive Bearer token. | No |
+| `GET` | `/auth/poll` | Check status of a magic link request (for mobile polling). | No |
+| `GET` | `/auth/verify` | Verify if current token is valid. | **Yes** |
 
 ### Bikes
 | Method | Endpoint | Description | Auth Required |
@@ -82,15 +85,8 @@ make db-reset
 | `GET` | `/bikes/{id}` | Get details of a specific bike. | No |
 | `PUT` | `/bikes/{id}` | Update a specific bike. | **Yes** |
 | `DELETE` | `/bikes/{id}` | Delete a specific bike. | **Yes** |
-
-### Bike Sub-resources
-| Method | Endpoint | Description | Auth Required |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/bikes/{id}/reviews` | Get all reviews for a specific bike. | No |
+| `GET` | `/bikes/{id}/details` | Get bike details including aggregate ratings and reviews. | No |
 | `POST` | `/bikes/{id}/reviews` | Create a review for a specific bike. | **Yes** |
-| `GET` | `/bikes/{id}/ratings` | Get rating aggregates for a specific bike. | No |
-| `GET` | `/bikes/reviews` | List all reviews across all bikes. | No |
-| `GET` | `/bikes/ratings` | List all rating aggregates across all bikes. | No |
 
 ### Reviews
 | Method | Endpoint | Description | Auth Required |
@@ -104,12 +100,47 @@ make db-reset
 | :--- | :--- | :--- | :--- |
 | `GET` | `/healthz` | Health check endpoint. | No |
 
+## Key Features
+
+### 🔐 Passwordless Authentication
+Rotten Bikes uses a **magic link** system for authentication, removing the need for user passwords.
+- Users request a login link via email.
+- The system supports seamless cross-device login: request on mobile, confirm on desktop, and the mobile app usually automatically logs in via polling.
+- Protected by [hCaptcha](https://www.hcaptcha.com/) to prevent spam.
+
+### 🚲 Bike Scanning
+The mobile app features a built-in **QR/Barcode scanner**.
+- Scan a bike's QR code to instantly view its details and reviews.
+- If the bike doesn't exist in the system, you'll be prompted to create it immediately.
+
+### 📊 Review System
+Rate bikes across multiple categories:
+- **Overall Rating**
+- **Breaks**
+- **Seat Comfort**
+- **Sturdiness**
+- **Power** (for electric bikes)
+- **Pedals**
+
+Includes a "frequency limit" preventing users from reviewing the same bike more than once every 10 minutes.
+
+### 🔭 Observability
+The API comes with built-in instrumentation:
+- **Prometheus Metrics**: Available on port `9091` at `/metrics`.
+- **Request Logging**: Structured logs for all HTTP requests.
+- **Health Checks**: `/healthz` endpoint for liveness probes.
+
 ## Configuration
 
-The application currently defaults to the following configuration (can be seen in `cmd/api/main.go` and `Makefile`):
+The application is configured via environment variables. Create a `.env` file (or set them in your environment/Docker):
 
-*   **Port**: `8080`
-*   **Database User**: `rottenbikes`
-*   **Database Password**: `rottenbikes`
-*   **Database Name**: `rottenbikes`
-*   **Database Host**: `localhost:5432`
+| Variable | Description | Default |
+| :--- | :--- | :--- |
+| `DATABASE_URL` | Full Postgres connection string. | `postgres://...` (built from other vars) |
+| `API_PORT` | Port for the Main API. | `8080` |
+| `METRICS_PORT` | Port for Prometheus metrics. | `9091` |
+| `EMAIL_SENDER_TOKEN_MAILTRAP` | API Token for Mailtrap (for sending emails). | Empty (uses No-op sender) |
+| `EMAIL_FROM_ADDRESS` | Sender email address. | `hello@rottenbik.es` |
+| `HCAPTCHA_SECRET` | Secret key for hCaptcha verification. | Empty (skips verification in dev) |
+| `UI_HOST` | Hostname for generating magic links. | `localhost` |
+| `UI_PORT` | Port for generating magic links. | `8081` |

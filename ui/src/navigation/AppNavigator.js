@@ -21,6 +21,11 @@ const linking = {
     config: {
         screens: {
             Home: 'home',
+            Login: 'login',
+            Register: 'register',
+            Scanner: 'scanner',
+            CreateBike: 'create-bike',
+            BikeDetails: 'bike/:bikeId',
             ConfirmLogin: 'confirm/:token',
         },
     },

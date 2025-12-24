@@ -43,40 +43,65 @@ const CreateBikeScreen = ({ route, navigation }) => {
     const styles = createStyles(theme);
 
     return (
-        <View style={styles.container}>
-            <Text style={styles.title}>Add a New Bike</Text>
-
-            <TextInput
-                placeholder="Numerical ID (e.g. 101)"
-                placeholderTextColor={theme.colors.placeholder}
-                style={styles.input}
-                value={numericalId}
-                onChangeText={setNumericalId}
-                keyboardType="numeric"
-            />
-
-            <TextInput
-                placeholder="Hash ID (e.g. frame-xyz)"
-                placeholderTextColor={theme.colors.placeholder}
-                style={styles.input}
-                value={hashId}
-                onChangeText={setHashId}
-            />
-
-            <View style={styles.switchContainer}>
-                <Text style={styles.text}>Electric Bike?</Text>
-                <Switch
-                    value={isElectric}
-                    onValueChange={setIsElectric}
-                    trackColor={{ false: "#767577", true: theme.colors.primary }}
-                    thumbColor={isElectric ? "#f4f3f4" : "#f4f3f4"}
-                />
-            </View>
-
-            <Button title="Create Bike" onPress={handleSubmit} disabled={loading} color={theme.colors.primary} />
-        </View>
+        <ErrorBoundary>
+            <CreateBikeContent {...{ theme, styles, numericalId, setNumericalId, hashId, setHashId, isElectric, setIsElectric, loading, handleSubmit }} />
+        </ErrorBoundary>
     );
 };
+
+const CreateBikeContent = ({ theme, styles, numericalId, setNumericalId, hashId, setHashId, isElectric, setIsElectric, loading, handleSubmit }) => (
+    <View style={styles.container}>
+        <Text style={styles.title}>Add a New Bike</Text>
+
+        <TextInput
+            placeholder="Numerical ID (e.g. 101)"
+            placeholderTextColor={theme.colors.placeholder}
+            style={styles.input}
+            value={numericalId ? String(numericalId) : ''}
+            onChangeText={setNumericalId}
+            keyboardType="numeric"
+        />
+
+        <TextInput
+            placeholder="Hash ID (e.g. frame-xyz)"
+            placeholderTextColor={theme.colors.placeholder}
+            style={styles.input}
+            value={hashId}
+            onChangeText={setHashId}
+        />
+
+        <View style={styles.switchContainer}>
+            <Text style={styles.text}>Electric Bike?</Text>
+            <Switch
+                value={isElectric}
+                onValueChange={setIsElectric}
+                trackColor={{ false: "#767577", true: theme.colors.primary }}
+                thumbColor={isElectric ? "#f4f3f4" : "#f4f3f4"}
+            />
+        </View>
+
+        <Button title="Create Bike" onPress={handleSubmit} disabled={loading} color={theme.colors.primary} />
+    </View>
+);
+
+class ErrorBoundary extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = { hasError: false, error: null };
+    }
+    static getDerivedStateFromError(error) {
+        return { hasError: true, error };
+    }
+    componentDidCatch(error, errorInfo) {
+        console.error("CreateBike ErrorBoundary:", error, errorInfo);
+    }
+    render() {
+        if (this.state.hasError) {
+            return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><Text style={{ color: 'red' }}>Error: {this.state.error?.toString()}</Text></View>;
+        }
+        return this.props.children;
+    }
+}
 
 const createStyles = (theme) => StyleSheet.create({
     container: { flex: 1, padding: 20, backgroundColor: theme.colors.background },
@@ -89,7 +114,8 @@ const createStyles = (theme) => StyleSheet.create({
         paddingHorizontal: 8,
         borderRadius: 4,
         color: theme.colors.text,
-        backgroundColor: theme.colors.inputBackground
+        backgroundColor: theme.colors.inputBackground,
+        fontSize: 16
     },
     switchContainer: {
         flexDirection: 'row',
