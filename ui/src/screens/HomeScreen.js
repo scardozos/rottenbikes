@@ -49,7 +49,7 @@ const HomeScreen = ({ navigation }) => {
     const renderItem = ({ item }) => (
         <TouchableOpacity
             style={styles.item}
-            onPress={() => navigation.navigate('BikeDetails', { bike: item, bikeId: item.numerical_id })}
+            onPress={() => navigation.navigate('BikeDetails', { bikeId: item.numerical_id })}
         >
             <View style={styles.itemHeader}>
                 <Text style={styles.itemText}>

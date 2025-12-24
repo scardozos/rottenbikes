@@ -158,7 +158,7 @@ const WebScannerLocal = ({ navigation }) => {
                 if (bike) {
                     showToast(`Found Bike #${bike.numerical_id}`, "success");
                     isScanning.current = false;
-                    navigation.navigate('BikeDetails', { bike, bikeId: bike.numerical_id });
+                    navigation.navigate('BikeDetails', { bikeId: bike.numerical_id });
                 } else {
                     const create = window.confirm(`No bike found with Hash ID: ${data}. Create it?`);
                     if (create) {
@@ -264,7 +264,7 @@ const NativeScannerLocal = ({ navigation }) => {
             if (bike) {
                 showToast(`Found Bike #${bike.numerical_id}`, "success");
                 isScanning.current = false;
-                navigation.navigate('BikeDetails', { bike, bikeId: bike.numerical_id });
+                navigation.navigate('BikeDetails', { bikeId: bike.numerical_id });
             } else {
                 Alert.alert(
                     "Not Found",
