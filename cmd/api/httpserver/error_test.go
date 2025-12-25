@@ -47,6 +47,9 @@ func TestErrorSchemas(t *testing.T) {
 		GetReviewWithRatingsByIDFunc: func(ctx context.Context, reviewID int64) (*domain.ReviewWithRatings, error) {
 			return nil, sql.ErrNoRows
 		},
+		GetPosterByAPITokenFunc: func(ctx context.Context, token string) (*domain.AuthPoster, error) {
+			return &domain.AuthPoster{PosterID: 1}, nil
+		},
 	}
 	srv, err := New(mockService, &email.NoopSender{}, ":8080")
 	if err != nil {
@@ -93,6 +96,9 @@ func TestErrorSchemas(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequest(tt.method, tt.url, nil)
+			if tt.url != "/auth/register" {
+				req.Header.Set("Authorization", "Bearer valid_token")
+			}
 			w := httptest.NewRecorder()
 
 			srv.server.Handler.ServeHTTP(w, req)

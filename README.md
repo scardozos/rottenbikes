@@ -80,18 +80,18 @@ make db-reset
 ### Bikes
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/bikes` | List all bikes. | No |
+| `GET` | `/bikes` | List all bikes. | **Yes** |
 | `POST` | `/bikes` | Create a new bike. | **Yes** |
-| `GET` | `/bikes/{id}` | Get details of a specific bike. | No |
+| `GET` | `/bikes/{id}` | Get details of a specific bike. | **Yes** |
 | `PUT` | `/bikes/{id}` | Update a specific bike. | **Yes** |
 | `DELETE` | `/bikes/{id}` | Delete a specific bike. | **Yes** |
-| `GET` | `/bikes/{id}/details` | Get bike details including aggregate ratings and reviews. | No |
+| `GET` | `/bikes/{id}/details` | Get bike details including aggregate ratings and reviews. | **Yes** |
 | `POST` | `/bikes/{id}/reviews` | Create a review for a specific bike. | **Yes** |
 
 ### Reviews
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/reviews/{id}` | Get a specific review. | No |
+| `GET` | `/reviews/{id}` | Get a specific review. | **Yes** |
 | `PUT` | `/reviews/{id}` | Update a specific review. | **Yes** |
 | `DELETE` | `/reviews/{id}` | Delete a specific review. | **Yes** |
 

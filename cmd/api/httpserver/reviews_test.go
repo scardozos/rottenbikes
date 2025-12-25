@@ -105,6 +105,9 @@ func TestHandleGetReview(t *testing.T) {
 			}
 			return nil, sql.ErrNoRows
 		},
+		GetPosterByAPITokenFunc: func(ctx context.Context, token string) (*domain.AuthPoster, error) {
+			return &domain.AuthPoster{PosterID: 1}, nil
+		},
 	}
 
 	srv, err := New(mockService, &email.NoopSender{}, ":8080")
@@ -114,6 +117,7 @@ func TestHandleGetReview(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/reviews/1", nil)
+		req.Header.Set("Authorization", "Bearer valid_token")
 		w := httptest.NewRecorder()
 
 		srv.server.Handler.ServeHTTP(w, req)
