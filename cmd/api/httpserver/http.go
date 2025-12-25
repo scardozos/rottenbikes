@@ -39,37 +39,30 @@ func New(service domain.Service, sender email.EmailSender, addr string) (*HTTPSe
 	mux.HandleFunc("/auth/register", s.handleRegister)
 	mux.HandleFunc("/auth/verify", s.middlewareAuth(http.HandlerFunc(s.handleVerifyToken)).ServeHTTP)
 
-	// /bikes → list (GET, public) and create (POST, auth)
+	// /bikes → list and create (Auth required for everything)
 	mux.HandleFunc("/bikes", func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodGet:
-			s.handleListBikes(w, r)
-		case http.MethodPost:
-			s.middlewareAuth(http.HandlerFunc(s.handleCreateBike)).ServeHTTP(w, r)
-		default:
-			s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
-		}
+		s.middlewareAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.Method {
+			case http.MethodGet:
+				s.handleListBikes(w, r)
+			case http.MethodPost:
+				s.handleCreateBike(w, r)
+			default:
+				s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
+			}
+		})).ServeHTTP(w, r)
 	})
 
 	// /bikes/{id}, /bikes/{id}/reviews, /bikes/{id}/ratings
-	// GETs are public; CUD goes through auth middleware
+	// Auth required for everything
 	mux.HandleFunc("/bikes/", func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodPost, http.MethodPut, http.MethodDelete:
-			s.middlewareAuth(http.HandlerFunc(s.handleBikeSubroutes)).ServeHTTP(w, r)
-		default:
-			s.handleBikeSubroutes(w, r)
-		}
+		s.middlewareAuth(http.HandlerFunc(s.handleBikeSubroutes)).ServeHTTP(w, r)
 	})
 
-	// /reviews/{id} → get (public), update/delete (auth)
+	// /reviews/{id}
+	// Auth required for everything
 	mux.HandleFunc("/reviews/", func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodPut, http.MethodDelete:
-			s.middlewareAuth(http.HandlerFunc(s.handleReviewSubroutes)).ServeHTTP(w, r)
-		default:
-			s.handleReviewSubroutes(w, r)
-		}
+		s.middlewareAuth(http.HandlerFunc(s.handleReviewSubroutes)).ServeHTTP(w, r)
 	})
 
 	s.server = &http.Server{
