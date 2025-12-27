@@ -112,7 +112,7 @@ const BikeDetailsScreen = ({ route, navigation }) => {
             {isReviewAllowed && (
                 <Button
                     title={t('write_review')}
-                    onPress={() => navigation.navigate('CreateReview', { bike })}
+                    onPress={() => navigation.navigate('CreateReview', { bikeId: bike.numerical_id })}
                     color={theme.colors.primary}
                 />
             )}

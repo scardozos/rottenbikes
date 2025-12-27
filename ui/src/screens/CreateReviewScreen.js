@@ -20,11 +20,22 @@ const StarRating = ({ label, value, onValueChange, theme, styles }) => (
     </View>
 );
 
+import { SessionContext } from '../context/SessionContext';
+
 const CreateReviewScreen = ({ route, navigation }) => {
-    const { bike } = route.params;
+    const { bikeId } = route.params;
     const { showToast } = useToast();
     const { theme } = useContext(ThemeContext);
     const { t } = useContext(LanguageContext);
+    const { validatedBikeId } = useContext(SessionContext);
+
+    // Security Check: Ensure the user has actually scanned this bike
+    useEffect(() => {
+        if (!validatedBikeId || String(validatedBikeId) !== String(bikeId)) {
+            showToast(t('unauthorized'), 'error');
+            navigation.replace('Main', { screen: 'Home' });
+        }
+    }, [bikeId, validatedBikeId, navigation, showToast, t]);
 
     // Subcategories
     const [breaks, setBreaks] = useState(null);
@@ -73,7 +84,7 @@ const CreateReviewScreen = ({ route, navigation }) => {
             if (power > 0) payload.power = power;
             if (pedals > 0) payload.pedals = pedals;
 
-            await api.post(`/bikes/${bike.numerical_id}/reviews`, payload);
+            await api.post(`/bikes/${bikeId}/reviews`, payload);
 
             showToast(t('review_submitted'), "success");
 
@@ -109,7 +120,7 @@ const CreateReviewScreen = ({ route, navigation }) => {
                 keyboardShouldPersistTaps="handled"
                 automaticallyAdjustKeyboardInsets={true}
             >
-                <Text style={styles.title}>{t('review_bike_title', { numerical_id: bike.numerical_id })}</Text>
+                <Text style={styles.title}>{t('review_bike_title', { numerical_id: bikeId })}</Text>
 
                 <View style={styles.ratingsContainer}>
                     <Text style={styles.subtitle}>{t('ratings')}</Text>

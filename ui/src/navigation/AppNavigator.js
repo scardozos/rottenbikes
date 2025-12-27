@@ -37,6 +37,7 @@ const linking = {
             CreateBike: 'create-bike',
             BikeDetails: 'bike/:bikeId',
             ConfirmLogin: 'confirm/:token',
+            CreateReview: 'bikes/:bikeId/createReview',
         },
     },
 };

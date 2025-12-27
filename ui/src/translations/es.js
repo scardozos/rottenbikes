@@ -31,6 +31,7 @@ export default {
     // General
     loading: 'Cargando...',
     error: 'Error',
+    unauthorized: 'Acceso no autorizado',
     success: 'Éxito',
 
     // HomeScreen
