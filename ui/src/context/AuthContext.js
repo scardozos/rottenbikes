@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 import storage from '../utils/storage';
 import api from '../services/api';
 import { useToast } from './ToastContext';
+import { LanguageContext } from './LanguageContext';
 
 export const AuthContext = createContext();
 
@@ -10,6 +11,7 @@ export const AuthProvider = ({ children }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [userToken, setUserToken] = useState(null);
     const { showToast } = useToast();
+    const { t } = useContext(LanguageContext);
 
     const register = async (username, email, captcha) => {
         try {
@@ -66,7 +68,7 @@ export const AuthProvider = ({ children }) => {
         try {
             console.log(`Confirming magic link attempt (only) for token: ${magicToken}`);
             await api.get(`/auth/confirm/${magicToken}`);
-            showToast('Confirmation Successful!', 'success');
+            showToast(t('confirmation_successful'), 'success');
         } catch (e) {
             console.log('confirmAttempt error', e);
             if (e.response && e.response.data && e.response.data.error) {
@@ -83,7 +85,7 @@ export const AuthProvider = ({ children }) => {
             const { api_token } = response.data;
 
             console.log(`Login confirmed, storing API token.`);
-            showToast('Login Confirmed! Success!', 'success');
+            showToast(t('login_confirmed_success'), 'success');
             setUserToken(api_token);
             await storage.setItem('userToken', api_token);
         } catch (e) {
@@ -100,7 +102,7 @@ export const AuthProvider = ({ children }) => {
             const response = await api.get(`/auth/poll?token=${magicToken}`);
             const { api_token } = response.data;
             if (api_token) {
-                showToast('Login Confirmed! Success!', 'success');
+                showToast(t('login_confirmed_success'), 'success');
                 setUserToken(api_token);
                 await storage.setItem('userToken', api_token);
                 return true;

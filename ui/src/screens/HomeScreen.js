@@ -57,7 +57,7 @@ const HomeScreen = ({ navigation }) => {
 
         // Basic numerical validation
         if (!/^\d+$/.test(manualId)) {
-            showToast("Please enter a valid numerical ID", "error"); // TODO: Translate toast?
+            showToast(t('invalid_numerical_id'), "error");
             return;
         }
 
@@ -163,7 +163,7 @@ const WebScannerLocal = ({ navigation, theme, validateBike, t }) => {
                 const bike = bikes.find(b => b.hash_id === data);
 
                 if (bike) {
-                    showToast(`Found Bike #${bike.numerical_id}`, "success");
+                    showToast(t('found_bike', { id: bike.numerical_id }), "success");
                     isScanning.current = false;
                     validateBike(bike.numerical_id);
                     navigation.navigate('BikeDetails', { bikeId: bike.numerical_id });
@@ -176,7 +176,7 @@ const WebScannerLocal = ({ navigation, theme, validateBike, t }) => {
                     }
                 }
             } catch (e) {
-                const errMsg = e.response?.data?.error || "Failed to lookup bike after scan.";
+                const errMsg = e.response?.data?.error || t('scan_lookup_failed');
                 showToast(errMsg, "error");
                 isScanning.current = false;
             }
@@ -266,7 +266,7 @@ const NativeScannerLocal = ({ navigation, theme, validateBike, t }) => {
             const bike = bikes.find(b => b.hash_id === data);
 
             if (bike) {
-                showToast(`Found Bike #${bike.numerical_id}`, "success");
+                showToast(t('found_bike', { id: bike.numerical_id }), "success");
                 isScanning.current = false;
                 validateBike(bike.numerical_id);
                 navigation.navigate('BikeDetails', { bikeId: bike.numerical_id });
@@ -294,7 +294,7 @@ const NativeScannerLocal = ({ navigation, theme, validateBike, t }) => {
             }
         } catch (e) {
             console.error("error during scan lookup", e);
-            const errMsg = e.response?.data?.error || "Failed to lookup bike after scan.";
+            const errMsg = e.response?.data?.error || t('scan_lookup_failed');
             showToast(errMsg, "error");
             isScanning.current = false;
             setScanned(false);

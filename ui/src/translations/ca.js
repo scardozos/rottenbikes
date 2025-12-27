@@ -109,5 +109,12 @@ export default {
     seat: 'Seient',
     sturdiness: 'Robustesa',
     power: 'Potència',
-    pedals: 'Pedals',
+    // Toasts
+    confirmation_successful: 'Confirmació Exitosa!',
+    invalid_numerical_id: 'Siusplau, introdueix una ID numèrica vàlida',
+    found_bike: 'Bicicleta trobada #{id}',
+    scan_lookup_failed: 'Error en cercar la bicicleta després d\'escanejar.',
+    captcha_expired: 'El Captcha ha caducat',
+    captcha_failed: 'El Captcha ha fallat',
+    registration_failed: 'El registre ha fallat. Siusplau, torna-ho a intentar.',
 };

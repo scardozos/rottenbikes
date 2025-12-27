@@ -95,11 +95,11 @@ const LoginScreen = ({ navigation }) => {
                                 onVerify={completeRequestLink}
                                 onExpired={() => {
                                     setShowCaptcha(false);
-                                    showToast("Captcha expired", "error");
+                                    showToast(t('captcha_expired'), "error");
                                 }}
                                 onError={() => {
                                     setShowCaptcha(false);
-                                    showToast("Captcha failed", "error");
+                                    showToast(t('captcha_failed'), "error");
                                 }}
                             />
                             <View style={{ marginTop: 40, paddingHorizontal: 20 }}>

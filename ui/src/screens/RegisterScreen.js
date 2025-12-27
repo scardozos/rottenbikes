@@ -74,7 +74,7 @@ const RegisterScreen = ({ navigation }) => {
       console.log("Registration failed error:", e);
       setShowCaptcha(false);
 
-      const errMsg = e.message || "Registration failed. Please try again.";
+      const errMsg = e.message || t('registration_failed');
       showToast(errMsg, 'error');
     }
   };
@@ -126,11 +126,11 @@ const RegisterScreen = ({ navigation }) => {
                 onVerify={completeRegistration}
                 onExpired={() => {
                   setShowCaptcha(false);
-                  showToast("Captcha expired", "error");
+                  showToast(t('captcha_expired'), "error");
                 }}
                 onError={() => {
                   setShowCaptcha(false);
-                  showToast("Captcha failed", "error");
+                  showToast(t('captcha_failed'), "error");
                 }}
               />
               <View style={{ marginTop: 40, paddingHorizontal: 20 }}>

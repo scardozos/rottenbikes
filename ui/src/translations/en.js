@@ -109,5 +109,12 @@ export default {
     seat: 'Seat',
     sturdiness: 'Sturdiness',
     power: 'Power',
-    pedals: 'Pedals',
+    // Toasts
+    confirmation_successful: 'Confirmation Successful!',
+    invalid_numerical_id: 'Please enter a valid numerical ID',
+    found_bike: 'Found Bike #{id}',
+    scan_lookup_failed: 'Failed to lookup bike after scan.',
+    captcha_expired: 'Captcha expired',
+    captcha_failed: 'Captcha failed',
+    registration_failed: 'Registration failed. Please try again.',
 };

@@ -109,5 +109,12 @@ export default {
     seat: 'Asiento',
     sturdiness: 'Robustez',
     power: 'Potencia',
-    pedals: 'Pedales',
+    // Toasts
+    confirmation_successful: '¡Confirmación Exitosa!',
+    invalid_numerical_id: 'Por favor, introduce una ID numérica válida',
+    found_bike: 'Bicicleta encontrada #{id}',
+    scan_lookup_failed: 'Error al buscar la bicicleta tras escanear.',
+    captcha_expired: 'El Captcha ha caducado',
+    captcha_failed: 'El Captcha ha fallado',
+    registration_failed: 'El registro ha fallado. Por favor, inténtalo de nuevo.',
 };
