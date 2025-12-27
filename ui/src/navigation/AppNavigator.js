@@ -13,7 +13,9 @@ import BikesListScreen from '../screens/BikesListScreen';
 import BikeDetailsScreen from '../screens/BikeDetailsScreen';
 import CreateBikeScreen from '../screens/CreateBikeScreen';
 import CreateReviewScreen from '../screens/CreateReviewScreen';
+import UpdateBikeScreen from '../screens/UpdateBikeScreen';
 import ConfigurationScreen from '../screens/ConfigurationScreen';
+
 
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { LanguageContext } from '../context/LanguageContext';
@@ -36,7 +38,9 @@ const linking = {
             Register: 'register',
             CreateBike: 'create-bike',
             BikeDetails: 'bike/:bikeId',
+            UpdateBike: 'bikes/:bikeId/update',
             ConfirmLogin: 'confirm/:token',
+
             CreateReview: 'bikes/:bikeId/createReview',
         },
     },
@@ -137,7 +141,9 @@ const AppNavigator = () => {
                         <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
                         <Stack.Screen name="BikeDetails" component={BikeDetailsScreen} options={{ title: t('bike_details') }} />
                         <Stack.Screen name="CreateBike" component={CreateBikeScreen} options={{ title: t('add_bike_title') }} />
+                        <Stack.Screen name="UpdateBike" component={UpdateBikeScreen} options={{ title: t('update_bike_title') }} />
                         <Stack.Screen name="CreateReview" component={CreateReviewScreen} options={{ title: t('write_review') }} />
+
                     </>
                 )}
                 <Stack.Screen name="ConfirmLogin" component={ConfirmLoginScreen} options={{ title: t('confirm_login_title') }} />

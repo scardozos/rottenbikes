@@ -48,6 +48,17 @@ export default {
     hash_id_placeholder: 'Hash ID (e.g. frame-xyz)',
     electric_bike: 'Electric Bike?',
     create_bike_btn: 'Create Bike',
+    update_bike_title: 'Update Bike',
+    update_bike_btn: 'Update Bike',
+    update_success: 'Bike updated successfully',
+    unauthorized_update: 'You are not authorized to update this bike',
+    numerical_id: 'Numerical ID',
+    incorrect_info_link: 'Hash ID or bike type incorrect? Update it',
+    hash_id_input_label: 'Hash ID',
+    scan: 'Scan',
+    update_confirm_checkbox: 'I confirm that the info provided is true and accurate. If false, my account may be banned.',
+
+
 
     // Settings
     appearance: 'Appearance',

@@ -71,7 +71,16 @@ const BikeDetailsScreen = ({ route, navigation }) => {
     return (
         <View style={styles.container}>
             <Text style={styles.title}>{t('bike_title', { numerical_id: bike.numerical_id })}</Text>
+            {isReviewAllowed && (
+                <Text
+                    style={styles.updateLink}
+                    onPress={() => navigation.navigate('UpdateBike', { bike })}
+                >
+                    {t('incorrect_info_link')}
+                </Text>
+            )}
             <Text style={styles.detail}>{t('hash_id_label', { hash_id: bike.hash_id || '-' })}</Text>
+
             <Text style={styles.detail}>{t('type_label', { type: bike.is_electric ? t('electric') : t('mechanical') })}</Text>
 
             {aggregates.length > 0 && (
@@ -116,6 +125,8 @@ const BikeDetailsScreen = ({ route, navigation }) => {
                     color={theme.colors.primary}
                 />
             )}
+
+
         </View>
     );
 };
@@ -137,7 +148,14 @@ const createStyles = (theme) => StyleSheet.create({
     rating: { fontSize: 18, color: theme.colors.text },
     commentText: { color: theme.colors.text },
     user: { fontStyle: 'italic', marginTop: 5, color: theme.colors.subtext },
-    emptyText: { color: theme.colors.subtext }
+    emptyText: { color: theme.colors.subtext },
+    updateLink: {
+        fontSize: 14,
+        color: theme.colors.primary,
+        marginBottom: 10,
+        textDecorationLine: 'underline'
+    }
 });
+
 
 export default BikeDetailsScreen;

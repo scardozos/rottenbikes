@@ -48,6 +48,17 @@ export default {
     hash_id_placeholder: 'ID Hash (ex. frame-xyz)',
     electric_bike: 'Bicicleta Elèctrica?',
     create_bike_btn: 'Crear Bicicleta',
+    update_bike_title: 'Actualitzar Bicicleta',
+    update_bike_btn: 'Actualitzar Bicicleta',
+    update_success: 'Bicicleta actualitzada correctament',
+    unauthorized_update: 'No autoritzat per actualitzar aquesta bicicleta',
+    numerical_id: 'ID Numèrica',
+    incorrect_info_link: 'ID Hash o tipus incorrecte? Actualitza-ho',
+    hash_id_input_label: 'ID Hash',
+    scan: 'Escanejar',
+    update_confirm_checkbox: 'Confirmo que la informació és veraç. Si és falsa, el meu compte podria ser bloquejat.',
+
+
 
     // Settings
     appearance: 'Aparença',
