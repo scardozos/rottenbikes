@@ -3,6 +3,7 @@ import React, { useState, useCallback, useContext } from 'react';
 import { View, Text, StyleSheet, FlatList, Button } from 'react-native';
 import api from '../services/api';
 import { ThemeContext } from '../context/ThemeContext';
+import { useSession } from '../context/SessionContext';
 
 const getRelativeTime = (dateString) => {
     if (!dateString) return '';
@@ -34,6 +35,13 @@ const BikeDetailsScreen = ({ route, navigation }) => {
     const [aggregates, setAggregates] = useState([]);
     const [loading, setLoading] = useState(true);
     const { theme } = useContext(ThemeContext);
+    const { validatedBikeId } = useSession();
+
+    // Determine if review is allowed based on session context
+    // Determine if review is allowed based on session context
+    // Using loose equality or number conversion to handle potential string/number mismatches
+    console.log('[BikeDetails] ValidatedID:', validatedBikeId, 'CurrentBikeID:', bike.numerical_id);
+    const isReviewAllowed = validatedBikeId != null && Number(validatedBikeId) === Number(bike.numerical_id);
 
     const fetchData = async () => {
         setLoading(true);
@@ -98,11 +106,14 @@ const BikeDetailsScreen = ({ route, navigation }) => {
                     ListEmptyComponent={<Text style={styles.emptyText}>No reviews yet.</Text>}
                 />
             </View>
-            <Button
-                title="Write a Review"
-                onPress={() => navigation.navigate('CreateReview', { bike })}
-                color={theme.colors.primary}
-            />
+            {/* Only show "Write a Review" if validated in current session */}
+            {isReviewAllowed && (
+                <Button
+                    title="Write a Review"
+                    onPress={() => navigation.navigate('CreateReview', { bike })}
+                    color={theme.colors.primary}
+                />
+            )}
         </View>
     );
 };

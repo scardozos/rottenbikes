@@ -74,7 +74,17 @@ const CreateReviewScreen = ({ route, navigation }) => {
             await api.post(`/bikes/${bike.numerical_id}/reviews`, payload);
 
             showToast("Review submitted!", "success");
-            navigation.navigate('Home');
+
+            // Reset navigation stack and go to BikesList (Browse) tab
+            navigation.reset({
+                index: 0,
+                routes: [{
+                    name: 'Main',
+                    state: {
+                        routes: [{ name: 'BikesList' }]
+                    }
+                }],
+            });
         } catch (e) {
             console.error(e);
             const errMsg = e.response?.data?.error || "Failed to submit review.";

@@ -9,21 +9,30 @@ import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import ConfirmLoginScreen from '../screens/ConfirmLoginScreen';
 import HomeScreen from '../screens/HomeScreen';
+import BikesListScreen from '../screens/BikesListScreen';
 import BikeDetailsScreen from '../screens/BikeDetailsScreen';
 import CreateBikeScreen from '../screens/CreateBikeScreen';
 import CreateReviewScreen from '../screens/CreateReviewScreen';
-import ScannerScreen from '../screens/ScannerScreen';
+import ConfigurationScreen from '../screens/ConfigurationScreen';
+
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
 const Stack = createNativeStackNavigator();
+const Tab = createBottomTabNavigator();
 
 const linking = {
     prefixes: ['http://localhost:8081', 'rottenbikes://'],
     config: {
         screens: {
-            Home: 'home',
+            Main: {
+                screens: {
+                    Home: 'home',
+                    BikesList: 'bikes',
+                    Configuration: 'config',
+                }
+            },
             Login: 'login',
             Register: 'register',
-            Scanner: 'scanner',
             CreateBike: 'create-bike',
             BikeDetails: 'bike/:bikeId',
             ConfirmLogin: 'confirm/:token',
@@ -31,9 +40,51 @@ const linking = {
     },
 };
 
+const MainTabs = () => {
+    const { theme } = useContext(ThemeContext);
+
+    return (
+        <Tab.Navigator
+            screenOptions={({ route }) => ({
+                tabBarIcon: ({ focused, color, size }) => {
+                    let iconName;
+
+                    if (route.name === 'Home') {
+                        iconName = '📷';
+                    } else if (route.name === 'BikesList') {
+                        iconName = '🚲';
+                    } else if (route.name === 'Configuration') {
+                        iconName = '⚙️';
+                    }
+
+                    return <Text style={{ fontSize: size, color: color }}>{iconName}</Text>;
+                },
+                tabBarActiveTintColor: theme.colors.primary,
+                tabBarInactiveTintColor: 'gray',
+                headerShown: true,
+                headerTitleStyle: { color: theme.colors.text },
+                headerTintColor: theme.colors.primary,
+                headerStyle: {
+                    backgroundColor: theme.colors.card,
+                    borderBottomWidth: 1,
+                    borderBottomColor: theme.colors.border
+                },
+                tabBarStyle: {
+                    backgroundColor: theme.colors.card,
+                    borderTopColor: theme.colors.border,
+                }
+            })}
+        >
+            <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Scan & Enter' }} />
+            <Tab.Screen name="BikesList" component={BikesListScreen} options={{ title: 'Browse Bikes' }} />
+            <Tab.Screen name="Configuration" component={ConfigurationScreen} options={{ title: 'Settings' }} />
+        </Tab.Navigator>
+    );
+};
+
 const AppNavigator = () => {
     const { isLoading, userToken } = useContext(AuthContext);
-    const { theme, isDark, toggleTheme } = useContext(ThemeContext);
+    const { theme, isDark } = useContext(ThemeContext);
 
     const baseTheme = isDark ? DarkTheme : DefaultTheme;
     const navTheme = {
@@ -41,8 +92,6 @@ const AppNavigator = () => {
         colors: {
             ...baseTheme.colors,
             ...theme.colors,
-            // Ensure compatibility with React Navigation Theme object
-            // Required keys: primary, background, card, text, border, notification
             primary: theme.colors.primary,
             background: theme.colors.background,
             card: theme.colors.card,
@@ -60,18 +109,11 @@ const AppNavigator = () => {
         );
     }
 
-    const ThemeToggleButton = () => (
-        <TouchableOpacity onPress={toggleTheme} style={{ marginRight: 15 }}>
-            <Text style={{ fontSize: 24 }}>{isDark ? '☀️' : '🌙'}</Text>
-        </TouchableOpacity>
-    );
-
     return (
         <NavigationContainer linking={linking} theme={navTheme}>
             <Stack.Navigator
-                initialRouteName={userToken == null ? "Login" : "Home"}
+                initialRouteName={userToken == null ? "Login" : "Main"}
                 screenOptions={{
-                    headerRight: () => <ThemeToggleButton />,
                     headerTitleStyle: { color: theme.colors.text },
                     headerTintColor: theme.colors.primary,
                     headerStyle: {
@@ -88,11 +130,10 @@ const AppNavigator = () => {
                 ) : (
                     // App Stack
                     <>
-                        <Stack.Screen name="Home" component={HomeScreen} />
+                        <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
                         <Stack.Screen name="BikeDetails" component={BikeDetailsScreen} options={{ title: 'Bike Details' }} />
                         <Stack.Screen name="CreateBike" component={CreateBikeScreen} options={{ title: 'Add Bike' }} />
                         <Stack.Screen name="CreateReview" component={CreateReviewScreen} options={{ title: 'Write Review' }} />
-                        <Stack.Screen name="Scanner" component={ScannerScreen} options={{ title: 'Scan QR Code' }} />
                     </>
                 )}
                 <Stack.Screen name="ConfirmLogin" component={ConfirmLoginScreen} options={{ title: 'Confirming Login' }} />
