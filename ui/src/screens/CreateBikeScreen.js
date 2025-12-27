@@ -5,11 +5,14 @@ import { useToast } from '../context/ToastContext';
 import { ThemeContext } from '../context/ThemeContext';
 import { LanguageContext } from '../context/LanguageContext';
 
+import { useSession } from '../context/SessionContext';
+
 const CreateBikeScreen = ({ route, navigation }) => {
     const { initialNumericalId, initialHashId } = route.params || {};
     const { showToast } = useToast();
     const { theme } = useContext(ThemeContext);
     const { t } = useContext(LanguageContext);
+    const { validateBike } = useSession();
 
     const [numericalId, setNumericalId] = useState(initialNumericalId || '');
     const [hashId, setHashId] = useState(initialHashId || '');
@@ -30,10 +33,15 @@ const CreateBikeScreen = ({ route, navigation }) => {
                 hash_id: hashId.trim() === '' ? null : hashId,
                 is_electric: isElectric
             });
-            showToast(t('success'), "success"); // Assuming generic success message or add specific key
+            showToast(t('success'), "success");
+
+            // Validate the newly created bike so we can review it
+            validateBike(response.data.numerical_id);
+
             // Navigate to CreateReview (replacing CreateBike screen)
-            navigation.replace('CreateReview', { bike: response.data });
+            navigation.replace('CreateReview', { bikeId: response.data.numerical_id });
         } catch (e) {
+
             console.error(e);
             const errMsg = e.response?.data?.error || t('error');
             showToast(errMsg, "error");
