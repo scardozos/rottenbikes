@@ -7,12 +7,18 @@ import { LanguageContext } from '../context/LanguageContext';
 import { useSession } from '../context/SessionContext';
 import { Scanner } from '../components/Scanner';
 
+
+
 const UpdateBikeScreen = ({ route, navigation }) => {
     const { bikeId } = route.params || {};
     const { showToast } = useToast();
     const { theme } = useContext(ThemeContext);
     const { t } = useContext(LanguageContext);
     const { validatedBikeId } = useSession();
+
+    // Initialize styles first
+    const styles = createStyles(theme);
+
 
     const [bike, setBike] = useState(null);
     const [hashId, setHashId] = useState('');
@@ -78,10 +84,11 @@ const UpdateBikeScreen = ({ route, navigation }) => {
 
     if (!bike) return null;
 
-    const styles = createStyles(theme);
+    if (!bike) return null;
 
     return (
         <View style={styles.container}>
+
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 <Text style={styles.title}>{t('update_bike_title')}</Text>
 
@@ -138,6 +145,8 @@ const UpdateBikeScreen = ({ route, navigation }) => {
                     t={t}
                 />
             </Modal>
+
+
         </View>
     );
 };

@@ -57,6 +57,9 @@ export default {
     hash_id_input_label: 'Hash ID',
     scan: 'Scan',
     update_confirm_checkbox: 'I confirm that the info provided is true and accurate. If false, my account may be banned.',
+    cancel: 'Cancel',
+    error_fetching_bike: 'Error fetching bike details',
+
 
 
 

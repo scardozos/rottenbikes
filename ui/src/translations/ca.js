@@ -57,6 +57,9 @@ export default {
     hash_id_input_label: 'ID Hash',
     scan: 'Escanejar',
     update_confirm_checkbox: 'Confirmo que la informació és veraç. Si és falsa, el meu compte podria ser bloquejat.',
+    cancel: 'Cancel·lar',
+    error_fetching_bike: 'Error en obtenir detalls de la bicicleta',
+
 
 
 
