@@ -1,170 +1,377 @@
-import { useFocusEffect } from '@react-navigation/native';
-import React, { useEffect, useState, useContext, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Button, ActivityIndicator, TextInput, Platform } from 'react-native';
+import React, { useState, useRef, useContext } from 'react';
+import { Text, View, StyleSheet, Button, ActivityIndicator, Platform, Alert, TextInput, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard } from 'react-native';
+// Only import CameraView/Permissions for Native. Web uses html5-qrcode dynamically.
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import api from '../services/api';
-import { AuthContext } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { ThemeContext } from '../context/ThemeContext';
+import { AuthContext } from '../context/AuthContext';
+import { useSession } from '../context/SessionContext';
+
+let WebScanner;
+
+if (Platform.OS === 'web') {
+    try {
+        const scannerLib = require('@yudiel/react-qr-scanner');
+        WebScanner = scannerLib.Scanner;
+    } catch (e) {
+        console.warn("Failed to load @yudiel/react-qr-scanner", e);
+    }
+}
+
+class ErrorBoundary extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = { hasError: false, error: null };
+    }
+    static getDerivedStateFromError(error) {
+        return { hasError: true, error };
+    }
+    componentDidCatch(error, errorInfo) {
+        console.error("Scanner ErrorBoundary:", error, errorInfo);
+    }
+    render() {
+        if (this.state.hasError) {
+            return (
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+                    <Text style={{ color: 'red', fontSize: 16, marginBottom: 10, textAlign: 'center' }}>Scanner Error</Text>
+                    <Text style={{ color: '#555', marginBottom: 20 }}>{this.state.error?.toString()}</Text>
+                    <Button title="Retry" onPress={() => this.setState({ hasError: false })} />
+                </View>
+            );
+        }
+        return this.props.children;
+    }
+}
 
 const HomeScreen = ({ navigation }) => {
-    const [bikes, setBikes] = useState([]);
-    const [filteredBikes, setFilteredBikes] = useState([]);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [loading, setLoading] = useState(true);
-    const { logout } = useContext(AuthContext);
     const { theme } = useContext(ThemeContext);
+    const { validateBike } = useSession();
+    const [manualId, setManualId] = useState('');
+    const { showToast } = useToast();
 
-    const fetchBikes = async () => {
+    const handleManualSubmit = async () => {
+        if (!manualId.trim()) return;
+
+        // Basic numerical validation
+        if (!/^\d+$/.test(manualId)) {
+            showToast("Please enter a valid numerical ID", "error");
+            return;
+        }
+
+        const bikeId = parseInt(manualId, 10);
+
         try {
-            const bikesRes = await api.get('/bikes');
-            setBikes(bikesRes.data);
-            setFilteredBikes(bikesRes.data);
+            // Verify bike exists before validating session
+            await api.get(`/bikes/${bikeId}/details`);
+            console.log('[HomeScreen] Manual Submit & Verified:', bikeId);
+            validateBike(bikeId);
+            navigation.navigate('BikeDetails', { bikeId });
+            setManualId('');
         } catch (e) {
-            console.error('Fetch bikes error:', e);
-        } finally {
-            setLoading(false);
+            console.log('[HomeScreen] Bike not found:', bikeId);
+            showToast(`Bike #${bikeId} not found`, "error");
         }
     };
 
-    useFocusEffect(
-        useCallback(() => {
-            fetchBikes();
-        }, [])
-    );
-
-    useEffect(() => {
-        if (!searchQuery) {
-            setFilteredBikes(bikes);
-        } else {
-            const query = searchQuery.toLowerCase();
-            const filtered = bikes.filter(bike =>
-                bike.numerical_id.toString().includes(query) ||
-                (bike.hash_id && bike.hash_id.toLowerCase().includes(query))
-            );
-            setFilteredBikes(filtered);
-        }
-    }, [searchQuery, bikes]);
-
-    const styles = createStyles(theme);
-
-    const renderItem = ({ item }) => (
-        <TouchableOpacity
-            style={styles.item}
-            onPress={() => navigation.navigate('BikeDetails', { bikeId: item.numerical_id })}
-        >
-            <View style={styles.itemHeader}>
-                <Text style={styles.itemText}>
-                    #{item.numerical_id} {item.is_electric ? '⚡' : '🚲'}
-                </Text>
-                {item.average_rating != null && (
-                    <Text style={styles.ratingBadge}>{item.average_rating.toFixed(1)} ⭐</Text>
-                )}
-            </View>
-            <Text style={styles.subText}>{item.hash_id}</Text>
-        </TouchableOpacity>
-    );
-
-    const handleCreateSearchBike = () => {
-        const isNumeric = /^\d+$/.test(searchQuery);
-        const params = {};
-        if (isNumeric) {
-            params.initialNumericalId = searchQuery;
-        } else {
-            params.initialHashId = searchQuery;
-        }
-        navigation.navigate('CreateBike', params);
-    };
+    const stylesInternal = createStyles(theme);
 
     return (
-        <View style={styles.container}>
-            <View style={styles.header}>
-                <Text style={styles.title}>Bikes</Text>
-                <Button title="Logout" onPress={logout} color={theme.colors.error} />
-            </View>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <KeyboardAvoidingView
+                style={stylesInternal.container}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
+            >
+                {/* Camera Area - Top 70% */}
+                <View style={stylesInternal.cameraContainer}>
+                    {Platform.OS === 'web' ? (
+                        <ErrorBoundary>
+                            <WebScannerLocal navigation={navigation} theme={theme} validateBike={validateBike} />
+                        </ErrorBoundary>
+                    ) : (
+                        <NativeScannerLocal navigation={navigation} theme={theme} validateBike={validateBike} />
+                    )}
+                </View>
 
-            <View style={styles.searchContainer}>
-                <TextInput
-                    style={styles.searchInput}
-                    placeholder="Search by ID or Hash..."
-                    placeholderTextColor={theme.colors.placeholder}
-                    value={searchQuery}
-                    onChangeText={setSearchQuery}
-                    clearButtonMode="while-editing"
-                />
-                <TouchableOpacity
-                    style={styles.qrButton}
-                    onPress={() => navigation.navigate('Scanner')}
-                >
-                    <Text style={styles.qrButtonText}>📷</Text>
-                </TouchableOpacity>
-            </View>
+                {/* Manual Input Area - Bottom 30% */}
+                <View style={stylesInternal.inputContainer}>
+                    <Text style={stylesInternal.inputLabel}>Or enter Bike ID manually:</Text>
+                    <View style={stylesInternal.inputRow}>
+                        <TextInput
+                            style={stylesInternal.input}
+                            placeholder="Bike ID (e.g., 123)"
+                            placeholderTextColor={theme.colors.placeholder}
+                            keyboardType="numeric"
+                            value={manualId}
+                            onChangeText={setManualId}
+                            returnKeyType="done"
+                            onSubmitEditing={handleManualSubmit}
+                        />
+                        <Button title="Go" onPress={handleManualSubmit} color={theme.colors.primary} />
+                    </View>
+                </View>
+            </KeyboardAvoidingView>
+        </TouchableWithoutFeedback>
+    );
+};
 
-            {loading ? <ActivityIndicator size="large" color={theme.colors.primary} /> : (
-                <FlatList
-                    data={filteredBikes}
-                    keyExtractor={item => item.numerical_id.toString()}
-                    renderItem={renderItem}
-                    ListEmptyComponent={
-                        <View style={styles.emptyContainer}>
-                            <Text style={styles.emptyText}>
-                                {searchQuery ? `No bikes found for "${searchQuery}"` : "No bikes available"}
-                            </Text>
-                            {searchQuery && (
-                                <Button
-                                    title={`Create Bike "${searchQuery}"`}
-                                    onPress={handleCreateSearchBike}
-                                    color={theme.colors.primary}
-                                />
-                            )}
-                        </View>
+const WebScannerLocal = ({ navigation, theme, validateBike }) => {
+    const { showToast } = useToast();
+    const isScanning = useRef(false);
+
+    // Check for Secure Context
+    const isSecure = typeof window !== 'undefined' && window.isSecureContext;
+
+    const handleScanSuccess = async (data) => {
+        if (isScanning.current) return;
+        isScanning.current = true;
+
+        // Delay for navigation safety
+        setTimeout(async () => {
+            try {
+                const response = await api.get('/bikes');
+                const bikes = response.data || [];
+                const bike = bikes.find(b => b.hash_id === data);
+
+                if (bike) {
+                    showToast(`Found Bike #${bike.numerical_id}`, "success");
+                    isScanning.current = false;
+                    validateBike(bike.numerical_id);
+                    navigation.navigate('BikeDetails', { bikeId: bike.numerical_id });
+                } else {
+                    const create = window.confirm(`No bike found with Hash ID: ${data}. Create it?`);
+                    if (create) {
+                        navigation.navigate('CreateBike', { initialHashId: data });
+                    } else {
+                        isScanning.current = false;
                     }
+                }
+            } catch (e) {
+                const errMsg = e.response?.data?.error || "Failed to lookup bike after scan.";
+                showToast(errMsg, "error");
+                isScanning.current = false;
+            }
+        }, 300);
+    };
+
+    const stylesInternal = createStyles(theme);
+
+    if (Platform.OS === 'web' && !isSecure) {
+        return (
+            <View style={[stylesInternal.scannerMessageContainer, { backgroundColor: theme.colors.background }]}>
+                <Text style={[stylesInternal.message, { color: 'red' }]}>
+                    Camera requires a Secure Context (HTTPS or Localhost).
+                </Text>
+            </View>
+        );
+    }
+
+    if (!WebScanner) {
+        return (
+            <View style={[stylesInternal.scannerMessageContainer, { backgroundColor: theme.colors.background }]}>
+                <Text style={[stylesInternal.message, { color: 'red' }]}>
+                    Scanner library not loaded.
+                </Text>
+            </View>
+        );
+    }
+
+    return (
+        <View style={{ flex: 1, backgroundColor: 'black', width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' }}>
+            <View style={{ width: '100%', height: '100%', maxWidth: 500, maxHeight: 500 }}>
+                <WebScanner
+                    onScan={(result) => {
+                        if (result && result.length > 0) {
+                            handleScanSuccess(result[0].rawValue);
+                        }
+                    }}
+                    components={{
+                        audio: false,
+                        finder: false
+                    }}
+                    styles={{
+                        container: {
+                            width: "100%",
+                            height: "100%"
+                        }
+                    }}
                 />
-            )}
-            {/* Legacy Add Bike button removed */}
+            </View>
+            <Text style={{ color: 'white', marginTop: 20 }}>Scan QR Code</Text>
         </View>
     );
 };
 
+const NativeScannerLocal = ({ navigation, theme, validateBike }) => {
+    const [permission, requestPermission] = useCameraPermissions();
+    const [scanned, setScanned] = useState(false);
+    const { showToast } = useToast();
+    const isScanning = useRef(false);
+
+    if (!permission) {
+        return (
+            <View style={[styles.scannerMessageContainer, { backgroundColor: theme.colors.background }]}>
+                <ActivityIndicator size="large" color={theme.colors.primary} />
+                <Text style={{ marginTop: 10, color: theme.colors.text }}>Initializing Camera...</Text>
+            </View>
+        );
+    }
+
+    if (!permission.granted) {
+        return (
+            <View style={[styles.scannerMessageContainer, { backgroundColor: theme.colors.background }]}>
+                <Text style={styles.message}>We need your permission to show the camera</Text>
+                <Button onPress={requestPermission} title="Grant Permission" color={theme.colors.primary} />
+            </View>
+        );
+    }
+
+    const handleBarCodeScanned = async ({ data }) => {
+        if (isScanning.current) return;
+        isScanning.current = true;
+        setScanned(true);
+
+        try {
+            const response = await api.get('/bikes');
+            const bikes = response.data || [];
+            const bike = bikes.find(b => b.hash_id === data);
+
+            if (bike) {
+                showToast(`Found Bike #${bike.numerical_id}`, "success");
+                isScanning.current = false;
+                validateBike(bike.numerical_id);
+                navigation.navigate('BikeDetails', { bikeId: bike.numerical_id });
+            } else {
+                Alert.alert(
+                    "Not Found",
+                    `No bike found with Hash ID: ${data}. Would you like to create it?`,
+                    [
+                        {
+                            text: "Cancel",
+                            onPress: () => {
+                                isScanning.current = false;
+                                setScanned(false);
+                            },
+                            style: "cancel"
+                        },
+                        {
+                            text: "Create",
+                            onPress: () => {
+                                navigation.replace('CreateBike', { initialHashId: data });
+                            }
+                        }
+                    ]
+                );
+            }
+        } catch (e) {
+            console.error("error during scan lookup", e);
+            const errMsg = e.response?.data?.error || "Failed to lookup bike after scan.";
+            showToast(errMsg, "error");
+            isScanning.current = false;
+            setScanned(false);
+        }
+    };
+
+    const stylesInternal = createStyles(theme);
+
+    return (
+        <View style={stylesInternal.nativeCameraContainer}>
+            <CameraView
+                style={StyleSheet.absoluteFillObject}
+                onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+                barcodeScannerSettings={{
+                    barcodeTypes: ["qr", "aztec", "ean13", "code128", "pdf417", "upc_e", "datamatrix"],
+                }}
+            />
+            {scanned && (
+                <View style={{
+                    position: 'absolute',
+                    bottom: 20,
+                    left: 20,
+                    right: 20,
+                    backgroundColor: theme.colors.card,
+                    borderRadius: 10,
+                    padding: 10,
+                    opacity: 0.9,
+                    alignItems: 'center'
+                }}>
+                    <Button title={'Tap to Scan Again'} onPress={() => setScanned(false)} color={theme.colors.primary} />
+                </View>
+            )}
+        </View>
+    );
+};
+
+const styles = { container: { flex: 1 }, scannerMessageContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' } };
+
 const createStyles = (theme) => StyleSheet.create({
-    container: { flex: 1, padding: 20, backgroundColor: theme.colors.background },
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-    title: { fontSize: 24, fontWeight: 'bold', color: theme.colors.text },
-    searchInput: {
+    container: {
+        flex: 1,
+        backgroundColor: theme.colors.background
+    },
+    cameraContainer: {
+        flex: 2, // Takes up ~66% of screen
+        backgroundColor: 'black',
+        overflow: 'hidden'
+    },
+    inputContainer: {
+        flex: 1, // Takes up ~33% of screen
+        backgroundColor: theme.colors.card,
+        padding: 20,
+        justifyContent: 'center',
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: -2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 5,
+            },
+            android: {
+                elevation: 10,
+            },
+        }),
+    },
+    inputLabel: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        marginBottom: 10,
+        color: theme.colors.text
+    },
+    inputRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 10
+    },
+    input: {
         flex: 1,
         height: 50,
         borderColor: theme.colors.border,
         borderWidth: 1,
         borderRadius: 8,
         paddingHorizontal: 15,
+        marginRight: 10,
         backgroundColor: theme.colors.inputBackground,
-        fontSize: 16,
+        fontSize: 18,
         color: theme.colors.text
     },
-    searchContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 20,
-    },
-    qrButton: {
-        marginLeft: 10,
-        backgroundColor: theme.colors.inputBackground,
-        height: 50,
-        width: 50,
-        borderRadius: 8,
+    scannerMessageContainer: {
+        flex: 1,
         justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: theme.colors.border
+        alignItems: 'center'
     },
-    qrButtonText: {
-        fontSize: 24
+    message: {
+        textAlign: 'center',
+        padding: 20,
+        color: theme.colors.text,
+        fontSize: 16
     },
-    item: { padding: 20, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
-    itemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    itemText: { fontSize: 24, fontWeight: 'bold', color: theme.colors.text },
-    ratingBadge: { fontSize: 20, fontWeight: 'bold', color: '#f39c12', backgroundColor: theme.colors.card, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, overflow: 'hidden' }, // Helper color for badge
-    subText: { fontSize: 18, color: theme.colors.subtext, marginTop: 5 },
-    emptyContainer: { alignItems: 'center', marginTop: 30 },
-    emptyText: { fontSize: 18, color: theme.colors.subtext, marginBottom: 20 }
+    nativeCameraContainer: {
+        flex: 1,
+        width: '100%'
+    }
 });
 
 export default HomeScreen;

@@ -19,7 +19,7 @@ const ConfirmLoginScreen = ({ route, navigation }) => {
     useEffect(() => {
         // Only trigger automatic redirection if we just successfully logged in on this device
         if (status === 'success' && !isCrossDevice) {
-            navigation.replace('Home');
+            navigation.replace('Main');
         }
     }, [status, isCrossDevice, navigation]);
 
@@ -47,7 +47,7 @@ const ConfirmLoginScreen = ({ route, navigation }) => {
                 await completeLogin(token);
                 setStatus('success');
                 // Automatically redirect to Home for same-device logins
-                navigation.replace('Home');
+                navigation.replace('Main');
             }
         } catch (e) {
             setStatus('error');
@@ -110,7 +110,7 @@ const ConfirmLoginScreen = ({ route, navigation }) => {
                             onPress={() => {
                                 navigation.reset({
                                     index: 0,
-                                    routes: [{ name: 'Home' }],
+                                    routes: [{ name: 'Main' }],
                                 });
                             }}
                             color={theme.colors.primary}
