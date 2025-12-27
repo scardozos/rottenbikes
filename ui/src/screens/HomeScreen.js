@@ -70,48 +70,74 @@ const HomeScreen = ({ navigation }) => {
             setManualId('');
         } catch (e) {
             console.log('[HomeScreen] Bike not found:', bikeId);
-            showToast(`Bike #${bikeId} not found`, "error");
+
+            if (Platform.OS === 'web') {
+                const create = window.confirm(`Bike #${bikeId} not found. Would you like to create it?`);
+                if (create) {
+                    navigation.navigate('CreateBike', { initialNumericalId: bikeId });
+                }
+            } else {
+                Alert.alert(
+                    "Bike Not Found",
+                    `Bike #${bikeId} not found. Would you like to create it?`,
+                    [
+                        { text: "Cancel", style: "cancel" },
+                        {
+                            text: "Create",
+                            onPress: () => navigation.navigate('CreateBike', { initialNumericalId: bikeId })
+                        }
+                    ]
+                );
+            }
         }
     };
 
     const stylesInternal = createStyles(theme);
 
+    const content = (
+        <KeyboardAvoidingView
+            style={stylesInternal.container}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
+        >
+            {/* Camera Area - Top 70% */}
+            <View style={stylesInternal.cameraContainer}>
+                {Platform.OS === 'web' ? (
+                    <ErrorBoundary>
+                        <WebScannerLocal navigation={navigation} theme={theme} validateBike={validateBike} />
+                    </ErrorBoundary>
+                ) : (
+                    <NativeScannerLocal navigation={navigation} theme={theme} validateBike={validateBike} />
+                )}
+            </View>
+
+            {/* Manual Input Area - Bottom 30% */}
+            <View style={stylesInternal.inputContainer}>
+                <Text style={stylesInternal.inputLabel}>Or enter Bike ID manually:</Text>
+                <View style={stylesInternal.inputRow}>
+                    <TextInput
+                        style={stylesInternal.input}
+                        placeholder="Bike ID (e.g., 123)"
+                        placeholderTextColor={theme.colors.placeholder}
+                        keyboardType="numeric"
+                        value={manualId}
+                        onChangeText={setManualId}
+                        returnKeyType="done"
+                        onSubmitEditing={handleManualSubmit}
+                    />
+                    <Button title="Go" onPress={handleManualSubmit} color={theme.colors.primary} />
+                </View>
+            </View>
+        </KeyboardAvoidingView>
+    );
+
+    if (Platform.OS === 'web') {
+        return content;
+    }
+
     return (
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-            <KeyboardAvoidingView
-                style={stylesInternal.container}
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
-            >
-                {/* Camera Area - Top 70% */}
-                <View style={stylesInternal.cameraContainer}>
-                    {Platform.OS === 'web' ? (
-                        <ErrorBoundary>
-                            <WebScannerLocal navigation={navigation} theme={theme} validateBike={validateBike} />
-                        </ErrorBoundary>
-                    ) : (
-                        <NativeScannerLocal navigation={navigation} theme={theme} validateBike={validateBike} />
-                    )}
-                </View>
-
-                {/* Manual Input Area - Bottom 30% */}
-                <View style={stylesInternal.inputContainer}>
-                    <Text style={stylesInternal.inputLabel}>Or enter Bike ID manually:</Text>
-                    <View style={stylesInternal.inputRow}>
-                        <TextInput
-                            style={stylesInternal.input}
-                            placeholder="Bike ID (e.g., 123)"
-                            placeholderTextColor={theme.colors.placeholder}
-                            keyboardType="numeric"
-                            value={manualId}
-                            onChangeText={setManualId}
-                            returnKeyType="done"
-                            onSubmitEditing={handleManualSubmit}
-                        />
-                        <Button title="Go" onPress={handleManualSubmit} color={theme.colors.primary} />
-                    </View>
-                </View>
-            </KeyboardAvoidingView>
+            {content}
         </TouchableWithoutFeedback>
     );
 };
