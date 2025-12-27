@@ -2,6 +2,7 @@ import React, { useEffect, useContext, useState } from 'react';
 import { View, Text, ActivityIndicator, StyleSheet, Button, Platform } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
 import { ThemeContext } from '../context/ThemeContext';
+import { LanguageContext } from '../context/LanguageContext';
 
 const ConfirmLoginScreen = ({ route, navigation }) => {
     const { token } = route.params || {};
@@ -11,6 +12,7 @@ const ConfirmLoginScreen = ({ route, navigation }) => {
 
     const { completeLogin, confirmAttempt, userToken } = useContext(AuthContext);
     const { theme } = useContext(ThemeContext);
+    const { t } = useContext(LanguageContext);
     const [status, setStatus] = useState('loading'); // loading, ready, success, error
     const [errorMsg, setErrorMsg] = useState('');
     const [isCrossDevice, setIsCrossDevice] = useState(false);
@@ -26,7 +28,7 @@ const ConfirmLoginScreen = ({ route, navigation }) => {
     useEffect(() => {
         if (!token) {
             setStatus('error');
-            setErrorMsg('No token provided');
+            setErrorMsg(t('no_token'));
         } else {
             setStatus('ready');
         }
@@ -51,7 +53,7 @@ const ConfirmLoginScreen = ({ route, navigation }) => {
             }
         } catch (e) {
             setStatus('error');
-            setErrorMsg('Invalid or expired token');
+            setErrorMsg(t('invalid_token'));
         } finally {
             setSubmitting(false);
         }
@@ -62,13 +64,13 @@ const ConfirmLoginScreen = ({ route, navigation }) => {
     if (status === 'ready') {
         return (
             <View style={styles.container}>
-                <Text style={styles.title}>Finish Logging In</Text>
-                <Text style={styles.text}>Click below to complete your login request.</Text>
+                <Text style={styles.title}>{t('finish_login')}</Text>
+                <Text style={styles.text}>{t('click_to_complete')}</Text>
                 <View style={{ marginTop: 20, width: '100%' }}>
-                    <Button title="Confirm Login" onPress={handleConfirm} disabled={submitting} color={theme.colors.primary} />
+                    <Button title={t('confirm_login_btn')} onPress={handleConfirm} disabled={submitting} color={theme.colors.primary} />
                 </View>
                 <View style={{ marginTop: 10 }}>
-                    <Button title="Cancel" onPress={() => navigation.navigate('Login')} color={theme.colors.subtext} disabled={submitting} />
+                    <Button title={t('cancel')} onPress={() => navigation.navigate('Login')} color={theme.colors.subtext} disabled={submitting} />
                 </View>
             </View>
         );
@@ -78,7 +80,7 @@ const ConfirmLoginScreen = ({ route, navigation }) => {
         return (
             <View style={styles.container}>
                 <ActivityIndicator size="large" color={theme.colors.primary} />
-                <Text style={styles.text}>Confirming your login...</Text>
+                <Text style={styles.text}>{t('confirming_login')}</Text>
             </View>
         );
     }
@@ -87,7 +89,7 @@ const ConfirmLoginScreen = ({ route, navigation }) => {
         return (
             <View style={styles.container}>
                 <Text style={[styles.text, { color: theme.colors.error }]}>{errorMsg}</Text>
-                <Button title="Back to Login" onPress={() => navigation.navigate('Login')} color={theme.colors.primary} />
+                <Button title={t('back_to_login')} onPress={() => navigation.navigate('Login')} color={theme.colors.primary} />
             </View>
         );
     }
@@ -96,17 +98,17 @@ const ConfirmLoginScreen = ({ route, navigation }) => {
         return (
             <View style={styles.container}>
                 <Text style={[styles.text, styles.successText]}>
-                    {isCrossDevice ? 'Login Confirmed!' : 'Login Confirmed! Success!'}
+                    {isCrossDevice ? t('login_confirmed') : t('login_confirmed_success')}
                 </Text>
                 <Text style={styles.subText}>
                     {isCrossDevice
-                        ? 'Your mobile app will log you in automatically. You can close this window.'
-                        : 'Redirecting you to the app...'}
+                        ? t('mobile_auto_login')
+                        : t('redirecting')}
                 </Text>
                 {isCrossDevice && (
                     <View style={{ marginTop: 20 }}>
                         <Button
-                            title="Continue to App"
+                            title={t('continue_to_app')}
                             onPress={() => {
                                 navigation.reset({
                                     index: 0,

@@ -1,0 +1,112 @@
+export default {
+    // Navigation
+    home: 'Inici',
+    browse_bikes: 'Explorar Bicicletes',
+    create_bike: 'Crear Bicicleta',
+    settings: 'Configuració',
+    bike_details: 'Detalls de la Bicicleta',
+    confirm_login_title: 'Confirmant Inici de Sessió',
+    add_bike_title: 'Afegir Bicicleta',
+
+    // Auth
+    login: 'Iniciar Sessió',
+    register: 'Registrar-se',
+    logout: 'Tancar Sessió',
+    email_or_username: 'Correu o Nom d\'usuari',
+    get_magic_link: 'Obtenir Enllaç Màgic',
+    complete_challenge_login: 'Completa el repte per iniciar sessió',
+    complete_challenge_register: 'Completa el repte per registrar-te',
+    cancel: 'Cancel·lar',
+    magic_link_requested: 'Enllaç màgic sol·licitat per {identifier}!',
+    check_email: 'Comprova el teu correu per l\'enllaç i clica-hi per entrar.',
+    back: 'Tornar',
+    registration_successful: 'Registre completat!',
+    magic_link_sent: 'Hem enviat un enllaç màgic a {email}.',
+    username: 'Nom d\'usuari',
+    email: 'Correu electrònic',
+    please_fill_all: 'Siusplau omple tots els camps',
+    username_invalid: 'El nom d\'usuari només pot contenir lletres, números i punts',
+    email_invalid: 'Siusplau introdueix un correu vàlid',
+
+    // General
+    loading: 'Carregant...',
+    error: 'Error',
+    success: 'Èxit',
+
+    // HomeScreen
+    camera_permission: 'Necessitem el teu permís per mostrar la càmera',
+    grant_permission: 'Donar Permís',
+    scan_qr: 'Escaneja el codi QR',
+    enter_manual_id: 'O introdueix la ID manualment:',
+    bike_id_placeholder: 'ID de la Bicicleta (ex. 123)',
+    go: 'Vés-hi',
+
+    // Create Bike
+    add_new_bike: 'Afegir Nova Bicicleta',
+    numerical_id_placeholder: 'ID Numèrica (ex. 101)',
+    hash_id_placeholder: 'ID Hash (ex. frame-xyz)',
+    electric_bike: 'Bicicleta Elèctrica?',
+    create_bike_btn: 'Crear Bicicleta',
+
+    // Settings
+    appearance: 'Aparença',
+    dark_mode: 'Mode Fosc',
+    account: 'Compte',
+
+    // Bike Details
+    bike_title: 'Bicicleta #{numerical_id}',
+    hash_id_label: 'ID Hash: {hash_id}',
+    type_label: 'Tipus: {type}',
+    electric: 'Elèctrica ⚡',
+    mechanical: 'Mecànica 🚲',
+    average_ratings: 'Mitjana de Valoracions',
+    reviews: 'Ressenyes',
+    write_review: 'Escriure Ressenya',
+    no_reviews: 'Encara no hi ha ressenyes.',
+    just_now: 'ara mateix',
+    m_ago: 'fa {minutes}m',
+    h_ago: 'fa {hours}h',
+    d_ago: 'fa {days}d',
+    w_ago: 'fa {weeks}w',
+    mo_ago: 'fa {months}me',
+    y_ago: 'fa {years}a',
+    anonymous: 'Anònim',
+
+    // Bikes List
+    all_bikes: 'Totes les Bicicletes',
+    search_list_placeholder: 'Cerca a la llista...',
+    no_bikes_found: 'No s\'han trobat bicicletes per "{query}"',
+    no_bikes_available: 'No hi ha bicicletes disponibles',
+
+    // Confirm Login
+    finish_login: 'Finalitzar Inici de Sessió',
+    click_to_complete: 'Clica a sota per completar la sol·licitud.',
+    confirm_login_btn: 'Confirmar Inici de Sessió',
+    confirming_login: 'Confirmant inici de sessió...',
+    back_to_login: 'Tornar a Iniciar Sessió',
+    login_confirmed_success: 'Sessió Iniciada! Èxit!',
+    login_confirmed: 'Sessió Iniciada!',
+    mobile_auto_login: 'La teva app mòbil iniciarà sessió automàticament. Pots tancar aquesta finestra.',
+    redirecting: 'Redirigint a l\'app...',
+    continue_to_app: 'Continuar a l\'App',
+    invalid_token: 'Token invàlid o caducat',
+    no_token: 'No s\'ha proporcionat token',
+
+    // Create Review
+    review_bike_title: 'Ressenya Bicicleta #{numerical_id}',
+    ratings: 'Valoraciones',
+    overall_rating: 'Valoració General:',
+    comment: 'Comentari',
+    write_review_placeholder: 'Escriu la teva ressenya...',
+    image_upload_placeholder: 'Marcador de Pujada d\'Imatges',
+    select_image_mock: 'Seleccionar Imatge (Simulat)',
+    submit_review: 'Enviar Ressenya',
+    please_rate: 'Siusplau valora almenys una categoria',
+    review_submitted: 'Ressenya enviada!',
+    failed_submit_review: 'Error en enviar la ressenya.',
+    breaks: 'Frens',
+    seat: 'Seient',
+    sturdiness: 'Robustesa',
+    power: 'Potència',
+    pedals: 'Pedals',
+};

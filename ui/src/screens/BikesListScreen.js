@@ -4,6 +4,7 @@ import { View, Text, FlatList, TouchableOpacity, StyleSheet, Button, ActivityInd
 import api from '../services/api';
 import { AuthContext } from '../context/AuthContext';
 import { ThemeContext } from '../context/ThemeContext';
+import { LanguageContext } from '../context/LanguageContext';
 
 const BikesListScreen = ({ navigation }) => {
     const [bikes, setBikes] = useState([]);
@@ -11,6 +12,7 @@ const BikesListScreen = ({ navigation }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
     const { theme } = useContext(ThemeContext);
+    const { t } = useContext(LanguageContext);
 
     const fetchBikes = async () => {
         try {
@@ -78,13 +80,13 @@ const BikesListScreen = ({ navigation }) => {
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.title}>All Bikes</Text>
+                <Text style={styles.title}>{t('all_bikes')}</Text>
             </View>
 
             <View style={styles.searchContainer}>
                 <TextInput
                     style={styles.searchInput}
-                    placeholder="Search list..."
+                    placeholder={t('search_list_placeholder')}
                     placeholderTextColor={theme.colors.placeholder}
                     value={searchQuery}
                     onChangeText={setSearchQuery}
@@ -100,7 +102,7 @@ const BikesListScreen = ({ navigation }) => {
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
                             <Text style={styles.emptyText}>
-                                {searchQuery ? `No bikes found for "${searchQuery}"` : "No bikes available"}
+                                {searchQuery ? t('no_bikes_found', { query: searchQuery }) : t('no_bikes_available')}
                             </Text>
                         </View>
                     }

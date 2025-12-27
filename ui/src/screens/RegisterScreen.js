@@ -3,6 +3,7 @@ import { View, Text, TextInput, Button, StyleSheet, Alert, Modal, Platform } fro
 import { WebView } from 'react-native-webview';
 import { AuthContext } from '../context/AuthContext';
 import { ThemeContext } from '../context/ThemeContext';
+import { LanguageContext } from '../context/LanguageContext';
 import HCaptchaView from '../components/HCaptchaView';
 import { useToast } from '../context/ToastContext';
 
@@ -17,6 +18,7 @@ const RegisterScreen = ({ navigation }) => {
   const { register, checkLoginStatus } = useContext(AuthContext);
   const { showToast } = useToast();
   const { theme } = useContext(ThemeContext);
+  const { t } = useContext(LanguageContext);
 
   // Replace with your real sitekey
   const HCAPTCHA_SITEKEY = window.EXPO_PUBLIC_HCAPTCHA_SITEKEY || process.env.EXPO_PUBLIC_HCAPTCHA_SITEKEY || "10000000-ffff-ffff-ffff-000000000001";
@@ -41,20 +43,20 @@ const RegisterScreen = ({ navigation }) => {
     setEmailError('');
     setUsernameError('');
     if (!email || !username) {
-      showToast("Please fill in all fields", "error");
+      showToast(t('please_fill_all'), "error");
       return;
     }
 
     // Validate username (alphanumeric and dots only)
     const usernameRegex = /^[a-zA-Z0-9.]+$/;
     if (!usernameRegex.test(username)) {
-      setUsernameError('Username can only contain letters, numbers and dots');
+      setUsernameError(t('username_invalid'));
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      setEmailError('Please enter a valid email address');
+      setEmailError(t('email_invalid'));
       return;
     }
     setShowCaptcha(true);
@@ -81,13 +83,13 @@ const RegisterScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Register</Text>
+      <Text style={styles.title}>{t('register')}</Text>
 
       {step === 1 ? (
         <>
           <TextInput
             style={[styles.input, usernameError ? styles.inputError : null]}
-            placeholder="Username"
+            placeholder={t('username')}
             placeholderTextColor={theme.colors.placeholder}
             value={username}
             onChangeText={(text) => {
@@ -100,7 +102,7 @@ const RegisterScreen = ({ navigation }) => {
 
           <TextInput
             style={[styles.input, emailError ? styles.inputError : null]}
-            placeholder="Email"
+            placeholder={t('email')}
             placeholderTextColor={theme.colors.placeholder}
             value={email}
             onChangeText={(text) => {
@@ -112,12 +114,12 @@ const RegisterScreen = ({ navigation }) => {
           />
           {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
 
-          <Button title="Register" onPress={handleRegister} color={theme.colors.primary} />
+          <Button title={t('register')} onPress={handleRegister} color={theme.colors.primary} />
 
           <Modal visible={showCaptcha} animationType="slide">
             <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingVertical: 50 }}>
               <Text style={{ textAlign: 'center', fontSize: 18, marginBottom: 20, color: theme.colors.text }}>
-                Complete the challenge to register
+                {t('complete_challenge_register')}
               </Text>
               <HCaptchaView
                 siteKey={HCAPTCHA_SITEKEY}
@@ -132,7 +134,7 @@ const RegisterScreen = ({ navigation }) => {
                 }}
               />
               <View style={{ marginTop: 40, paddingHorizontal: 20 }}>
-                <Button title="Cancel" onPress={() => setShowCaptcha(false)} color={theme.colors.error} />
+                <Button title={t('cancel')} onPress={() => setShowCaptcha(false)} color={theme.colors.error} />
               </View>
             </View>
           </Modal>
@@ -140,11 +142,11 @@ const RegisterScreen = ({ navigation }) => {
       ) : (
         <>
           <Text style={{ marginBottom: 20, textAlign: 'center', fontSize: 16, color: theme.colors.text }}>
-            Registration successful!{'\n\n'}
-            We've sent a magic link to {email}.{'\n\n'}
-            Check your email and click the link to confirm your account and log in automatically.
+            {t('registration_successful')}!{'\n\n'}
+            {t('magic_link_sent', { email })}.{'\n\n'}
+            {t('check_email')}
           </Text>
-          <Button title="Back" onPress={() => setStep(1)} color={theme.colors.subtext} />
+          <Button title={t('back')} onPress={() => setStep(1)} color={theme.colors.subtext} />
         </>
       )}
     </View>

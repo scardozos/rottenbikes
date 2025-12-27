@@ -4,6 +4,7 @@ import HCaptchaView from '../components/HCaptchaView';
 import { AuthContext } from '../context/AuthContext';
 import { ThemeContext } from '../context/ThemeContext';
 import { useToast } from '../context/ToastContext';
+import { LanguageContext } from '../context/LanguageContext';
 
 const LoginScreen = ({ navigation }) => {
     const [identifier, setIdentifier] = useState('');
@@ -12,6 +13,7 @@ const LoginScreen = ({ navigation }) => {
     const { requestLogin, checkLoginStatus } = useContext(AuthContext);
     const { showToast } = useToast();
     const { theme } = useContext(ThemeContext);
+    const { t } = useContext(LanguageContext);
     const [loading, setLoading] = useState(false);
     const [showCaptcha, setShowCaptcha] = useState(false);
 
@@ -36,7 +38,7 @@ const LoginScreen = ({ navigation }) => {
 
     const handleRequestLink = async () => {
         if (!identifier) {
-            showToast("Please enter your email or username", "error");
+            showToast(t('email_or_username'), "error");
             return;
         }
         setShowCaptcha(true);
@@ -53,7 +55,7 @@ const LoginScreen = ({ navigation }) => {
             setPendingMagicToken(mToken);
             setStep(2);
         } catch (e) {
-            const errMsg = e.message || 'Failed to request magic link';
+            const errMsg = e.message || t('error');
             showToast(errMsg, 'error');
         } finally {
             setLoading(false);
@@ -64,13 +66,13 @@ const LoginScreen = ({ navigation }) => {
 
     return (
         <View style={styles.container}>
-            <Text style={styles.title}>RottenBikes Login</Text>
+            <Text style={styles.title}>RottenBikes {t('login')}</Text>
 
             {step === 1 ? (
                 <>
                     <TextInput
                         style={styles.input}
-                        placeholder="Email or Username"
+                        placeholder={t('email_or_username')}
                         placeholderTextColor={theme.colors.placeholder}
                         value={identifier}
                         onChangeText={setIdentifier}
@@ -80,13 +82,13 @@ const LoginScreen = ({ navigation }) => {
                     {loading ? (
                         <ActivityIndicator size="large" color={theme.colors.primary} />
                     ) : (
-                        <Button title="Get Magic Link" onPress={handleRequestLink} color={theme.colors.primary} />
+                        <Button title={t('get_magic_link')} onPress={handleRequestLink} color={theme.colors.primary} />
                     )}
 
                     <Modal visible={showCaptcha} animationType="slide">
                         <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingVertical: 50 }}>
                             <Text style={{ textAlign: 'center', fontSize: 18, marginBottom: 20, color: theme.colors.text }}>
-                                Complete the challenge to login
+                                {t('complete_challenge_login')}
                             </Text>
                             <HCaptchaView
                                 siteKey={HCAPTCHA_SITEKEY}
@@ -101,7 +103,7 @@ const LoginScreen = ({ navigation }) => {
                                 }}
                             />
                             <View style={{ marginTop: 40, paddingHorizontal: 20 }}>
-                                <Button title="Cancel" onPress={() => setShowCaptcha(false)} color={theme.colors.error} />
+                                <Button title={t('cancel')} onPress={() => setShowCaptcha(false)} color={theme.colors.error} />
                             </View>
                         </View>
                     </Modal>
@@ -109,16 +111,16 @@ const LoginScreen = ({ navigation }) => {
             ) : (
                 <>
                     <Text style={{ marginBottom: 20, textAlign: 'center', fontSize: 16, color: theme.colors.text }}>
-                        Magic link requested for {identifier}!{'\n\n'}
-                        Check your email for the link and click it to log in.
+                        {t('magic_link_requested', { identifier })}!{'\n\n'}
+                        {t('check_email')}
                     </Text>
-                    <Button title="Back" onPress={() => setStep(1)} color={theme.colors.subtext} />
+                    <Button title={t('back')} onPress={() => setStep(1)} color={theme.colors.subtext} />
                 </>
             )}
 
             <View style={{ marginTop: 20 }}>
                 <Button
-                    title="Register"
+                    title={t('register')}
                     onPress={() => navigation.navigate('Register')}
                     color={theme.colors.secondary}
                 />

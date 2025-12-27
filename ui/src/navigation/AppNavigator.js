@@ -16,6 +16,7 @@ import CreateReviewScreen from '../screens/CreateReviewScreen';
 import ConfigurationScreen from '../screens/ConfigurationScreen';
 
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { LanguageContext } from '../context/LanguageContext';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -42,6 +43,7 @@ const linking = {
 
 const MainTabs = () => {
     const { theme } = useContext(ThemeContext);
+    const { t } = useContext(LanguageContext);
 
     return (
         <Tab.Navigator
@@ -75,9 +77,9 @@ const MainTabs = () => {
                 }
             })}
         >
-            <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Scan & Enter' }} />
-            <Tab.Screen name="BikesList" component={BikesListScreen} options={{ title: 'Browse Bikes' }} />
-            <Tab.Screen name="Configuration" component={ConfigurationScreen} options={{ title: 'Settings' }} />
+            <Tab.Screen name="Home" component={HomeScreen} options={{ title: t('home') }} />
+            <Tab.Screen name="BikesList" component={BikesListScreen} options={{ title: t('browse_bikes') }} />
+            <Tab.Screen name="Configuration" component={ConfigurationScreen} options={{ title: t('settings') }} />
         </Tab.Navigator>
     );
 };
@@ -85,6 +87,7 @@ const MainTabs = () => {
 const AppNavigator = () => {
     const { isLoading, userToken } = useContext(AuthContext);
     const { theme, isDark } = useContext(ThemeContext);
+    const { t } = useContext(LanguageContext);
 
     const baseTheme = isDark ? DarkTheme : DefaultTheme;
     const navTheme = {
@@ -125,18 +128,18 @@ const AppNavigator = () => {
                     // Auth Stack
                     <>
                         <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-                        <Stack.Screen name="Register" component={RegisterScreen} />
+                        <Stack.Screen name="Register" component={RegisterScreen} options={{ title: t('register') }} />
                     </>
                 ) : (
                     // App Stack
                     <>
                         <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
-                        <Stack.Screen name="BikeDetails" component={BikeDetailsScreen} options={{ title: 'Bike Details' }} />
-                        <Stack.Screen name="CreateBike" component={CreateBikeScreen} options={{ title: 'Add Bike' }} />
-                        <Stack.Screen name="CreateReview" component={CreateReviewScreen} options={{ title: 'Write Review' }} />
+                        <Stack.Screen name="BikeDetails" component={BikeDetailsScreen} options={{ title: t('bike_details') }} />
+                        <Stack.Screen name="CreateBike" component={CreateBikeScreen} options={{ title: t('add_bike_title') }} />
+                        <Stack.Screen name="CreateReview" component={CreateReviewScreen} options={{ title: t('write_review') }} />
                     </>
                 )}
-                <Stack.Screen name="ConfirmLogin" component={ConfirmLoginScreen} options={{ title: 'Confirming Login' }} />
+                <Stack.Screen name="ConfirmLogin" component={ConfirmLoginScreen} options={{ title: t('confirm_login_title') }} />
             </Stack.Navigator>
         </NavigationContainer>
     );

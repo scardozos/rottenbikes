@@ -2,21 +2,23 @@ import React, { useContext } from 'react';
 import { View, Text, Switch, StyleSheet, Button, TouchableOpacity } from 'react-native';
 import { ThemeContext } from '../context/ThemeContext';
 import { AuthContext } from '../context/AuthContext';
+import { LanguageContext } from '../context/LanguageContext';
 
 const ConfigurationScreen = () => {
     const { theme, isDark, toggleTheme } = useContext(ThemeContext);
     const { logout } = useContext(AuthContext);
+    const { t, language, changeLanguage } = useContext(LanguageContext);
 
     const styles = createStyles(theme);
 
     return (
         <View style={styles.container}>
-            <Text style={styles.header}>Settings</Text>
+            <Text style={styles.header}>{t('settings')}</Text>
 
             <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Appearance</Text>
+                <Text style={styles.sectionTitle}>{t('appearance')}</Text>
                 <View style={styles.row}>
-                    <Text style={styles.label}>Dark Mode</Text>
+                    <Text style={styles.label}>{t('dark_mode')}</Text>
                     <Switch
                         trackColor={{ false: "#767577", true: theme.colors.primary }}
                         thumbColor={isDark ? "#f4f3f4" : "#f4f3f4"}
@@ -28,9 +30,32 @@ const ConfigurationScreen = () => {
             </View>
 
             <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Account</Text>
+                <Text style={styles.sectionTitle}>Language</Text>
+                <View style={styles.langRow}>
+                    {['ca', 'es', 'en'].map((lang) => (
+                        <TouchableOpacity
+                            key={lang}
+                            style={[
+                                styles.langButton,
+                                language === lang && styles.langButtonActive
+                            ]}
+                            onPress={() => changeLanguage(lang)}
+                        >
+                            <Text style={[
+                                styles.langText,
+                                language === lang && styles.langTextActive
+                            ]}>
+                                {lang.toUpperCase()}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+            </View>
+
+            <View style={styles.section}>
+                <Text style={styles.sectionTitle}>{t('account')}</Text>
                 <TouchableOpacity style={styles.logoutButton} onPress={logout}>
-                    <Text style={styles.logoutText}>Logout</Text>
+                    <Text style={styles.logoutText}>{t('logout')}</Text>
                 </TouchableOpacity>
             </View>
         </View>
@@ -80,6 +105,30 @@ const createStyles = (theme) => StyleSheet.create({
     label: {
         fontSize: 18,
         color: theme.colors.text,
+    },
+    langRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        paddingVertical: 10,
+    },
+    langButton: {
+        paddingVertical: 8,
+        paddingHorizontal: 20,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        backgroundColor: theme.colors.background,
+    },
+    langButtonActive: {
+        backgroundColor: theme.colors.primary,
+        borderColor: theme.colors.primary,
+    },
+    langText: {
+        color: theme.colors.text,
+        fontWeight: '600',
+    },
+    langTextActive: {
+        color: 'white', // Assuming primary is dark or contrasting
     },
     logoutButton: {
         backgroundColor: theme.colors.error,
