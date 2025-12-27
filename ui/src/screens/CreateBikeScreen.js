@@ -25,7 +25,7 @@ const CreateBikeScreen = ({ route, navigation }) => {
         try {
             const response = await api.post('/bikes', {
                 numerical_id: parseInt(numericalId),
-                hash_id: hashId,
+                hash_id: hashId.trim() === '' ? null : hashId,
                 is_electric: isElectric
             });
             showToast("Bike created successfully!", "success");

@@ -55,7 +55,7 @@ func TestCreateBike(t *testing.T) {
 			AddRow(numericalID, hashID, isElectric, time.Now(), time.Now())
 
 		mock.ExpectQuery("INSERT INTO bikes").
-			WithArgs(numericalID, hashID, isElectric, creatorID).
+			WithArgs(numericalID, &hashID, isElectric, creatorID).
 			WillReturnRows(rows)
 
 		store := NewStore(db)
@@ -124,7 +124,7 @@ func TestUpdateBike(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		mock.ExpectExec("UPDATE bikes").
-			WithArgs(hashID, isElectric, id).
+			WithArgs(&hashID, &isElectric, id).
 			WillReturnResult(sqlmock.NewResult(0, 1))
 
 		store := NewStore(db)

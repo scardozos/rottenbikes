@@ -14,12 +14,16 @@ import (
 	"github.com/scardozos/rottenbikes/internal/domain"
 )
 
+func strPtr(s string) *string {
+	return &s
+}
+
 func TestHandleListBikes(t *testing.T) {
 	mockService := &MockService{
 		ListBikesFunc: func(ctx context.Context) ([]domain.Bike, error) {
 			return []domain.Bike{
-				{NumericalID: 1, HashID: "hash1", IsElectric: true},
-				{NumericalID: 2, HashID: "hash2", IsElectric: false},
+				{NumericalID: 1, HashID: strPtr("hash1"), IsElectric: true},
+				{NumericalID: 2, HashID: strPtr("hash2"), IsElectric: false},
 			}, nil
 		},
 		GetPosterByAPITokenFunc: func(ctx context.Context, token string) (*domain.AuthPoster, error) {
@@ -56,7 +60,7 @@ func TestHandleCreateBike(t *testing.T) {
 		CreateBikeFunc: func(ctx context.Context, numericalID int64, hashID *string, isElectric bool, creatorID int64) (*domain.Bike, error) {
 			return &domain.Bike{
 				NumericalID: numericalID,
-				HashID:      *hashID,
+				HashID:      hashID,
 				IsElectric:  isElectric,
 				CreatedAt:   time.Now(),
 				UpdatedAt:   time.Now(),
@@ -97,7 +101,7 @@ func TestHandleGetBike(t *testing.T) {
 	mockService := &MockService{
 		GetBikeFunc: func(ctx context.Context, id int64) (*domain.Bike, error) {
 			if id == 1 {
-				return &domain.Bike{NumericalID: 1, HashID: "hash1", IsElectric: true}, nil
+				return &domain.Bike{NumericalID: 1, HashID: strPtr("hash1"), IsElectric: true}, nil
 			}
 			return nil, sql.ErrNoRows
 		},

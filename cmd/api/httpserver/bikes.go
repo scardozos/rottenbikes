@@ -65,6 +65,11 @@ func (s *HTTPServer) handleCreateBike(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Treat empty string hash_id as nil to allow multiple bikes without hash_ids
+	if req.HashID != nil && *req.HashID == "" {
+		req.HashID = nil
+	}
+
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
 

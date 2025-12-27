@@ -1,0 +1,1 @@
+ALTER TABLE bikes ALTER COLUMN hash_id SET NOT NULL;

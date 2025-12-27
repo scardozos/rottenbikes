@@ -9,7 +9,7 @@ import (
 
 type Bike struct {
 	NumericalID   int64     `db:"numerical_id" json:"numerical_id"` // PK
-	HashID        string    `db:"hash_id" json:"hash_id"`
+	HashID        *string   `db:"hash_id" json:"hash_id"`
 	IsElectric    bool      `db:"is_electric" json:"is_electric"`
 	AverageRating *float64  `db:"average_rating" json:"average_rating"`
 	CreatedAt     time.Time `db:"created_ts" json:"created_ts"`
