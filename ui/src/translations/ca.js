@@ -59,6 +59,14 @@ export default {
     update_confirm_checkbox: 'Confirmo que la informació és veraç. Si és falsa, el meu compte podria ser bloquejat.',
     cancel: 'Cancel·lar',
     error_fetching_bike: 'Error en obtenir detalls de la bicicleta',
+    sort_by_label: 'Ordenar per',
+    sort_date: 'Data',
+    sort_rating: 'Valoració',
+    sort_order_label: 'Ordre',
+    sort_asc: 'Ascendent',
+    sort_desc: 'Descendent',
+
+
 
 
 

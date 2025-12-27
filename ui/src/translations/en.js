@@ -59,6 +59,14 @@ export default {
     update_confirm_checkbox: 'I confirm that the info provided is true and accurate. If false, my account may be banned.',
     cancel: 'Cancel',
     error_fetching_bike: 'Error fetching bike details',
+    sort_by_label: 'Sort By',
+    sort_date: 'Date',
+    sort_rating: 'Rating',
+    sort_order_label: 'Order',
+    sort_asc: 'Ascending',
+    sort_desc: 'Descending',
+
+
 
 
 

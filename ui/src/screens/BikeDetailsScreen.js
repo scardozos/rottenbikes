@@ -1,6 +1,8 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useState, useCallback, useContext } from 'react';
-import { View, Text, StyleSheet, FlatList, Button } from 'react-native';
+
+import { View, Text, StyleSheet, FlatList, Button, TouchableOpacity } from 'react-native';
+
 import api from '../services/api';
 import { ThemeContext } from '../context/ThemeContext';
 import { useSession } from '../context/SessionContext';
@@ -35,9 +37,13 @@ const BikeDetailsScreen = ({ route, navigation }) => {
     const [reviews, setReviews] = useState([]);
     const [aggregates, setAggregates] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [sortBy, setSortBy] = useState('date'); // 'date' | 'rating'
+    const [sortOrder, setSortOrder] = useState('desc'); // 'asc' | 'desc'
     const { theme } = useContext(ThemeContext);
     const { validatedBikeId } = useSession();
     const { t } = useContext(LanguageContext);
+
+
 
     // Determine if review is allowed based on session context
     // Determine if review is allowed based on session context
@@ -101,10 +107,44 @@ const BikeDetailsScreen = ({ route, navigation }) => {
             )}
 
             <View style={styles.reviewsSection}>
-                <Text style={styles.subtitle}>{t('reviews')}</Text>
+                <View style={styles.reviewsHeader}>
+                    <Text style={styles.subtitle}>{t('reviews')}</Text>
+
+                    {/* Compact Sorting Controls */}
+                    <View style={styles.sortContainer}>
+                        <TouchableOpacity
+                            style={styles.sortButton}
+                            onPress={() => setSortBy(prev => prev === 'date' ? 'rating' : 'date')}
+                        >
+                            <Text style={styles.sortButtonText}>
+                                {t('sort_by_label')}: {sortBy === 'date' ? t('sort_date') : t('sort_rating')}
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.sortButton}
+                            onPress={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                        >
+                            <Text style={styles.sortButtonText}>
+                                {sortOrder === 'asc' ? '↑' : '↓'}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
+
                 <FlatList
-                    data={reviews}
+                    data={[...reviews].sort((a, b) => {
+                        let diff = 0;
+                        if (sortBy === 'date') {
+                            diff = new Date(a.created_at) - new Date(b.created_at);
+                        } else {
+                            diff = (a.ratings?.overall || 0) - (b.ratings?.overall || 0);
+                        }
+                        return sortOrder === 'asc' ? diff : -diff;
+                    })}
                     keyExtractor={item => item.review_id ? item.review_id.toString() : Math.random().toString()}
+
                     renderItem={({ item }) => (
                         <View style={styles.reviewItem}>
                             <View style={styles.reviewHeader}>
@@ -155,8 +195,34 @@ const createStyles = (theme) => StyleSheet.create({
         color: theme.colors.primary,
         marginBottom: 10,
         textDecorationLine: 'underline'
+    },
+    reviewsHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 10
+    },
+    sortContainer: {
+        flexDirection: 'row',
+        gap: 8
+    },
+    sortButton: {
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: 20,
+        backgroundColor: theme.colors.card,
+        borderWidth: 1,
+        borderColor: theme.colors.border
+    },
+    sortButtonText: {
+        fontSize: 14,
+        color: theme.colors.text,
+        fontWeight: '500'
     }
 });
+
+
+
 
 
 export default BikeDetailsScreen;
