@@ -6,16 +6,14 @@ import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { ThemeContext } from '../context/ThemeContext';
 
-let Html5Qrcode;
-let Html5QrcodeSupportedFormats;
+let WebScanner;
 
 if (Platform.OS === 'web') {
     try {
-        const html5QrCodeLib = require('html5-qrcode');
-        Html5Qrcode = html5QrCodeLib.Html5Qrcode;
-        Html5QrcodeSupportedFormats = html5QrCodeLib.Html5QrcodeSupportedFormats;
+        const scannerLib = require('@yudiel/react-qr-scanner');
+        WebScanner = scannerLib.Scanner;
     } catch (e) {
-        console.warn("Failed to load html5-qrcode", e);
+        console.warn("Failed to load @yudiel/react-qr-scanner", e);
     }
 }
 
@@ -56,97 +54,16 @@ const ScannerScreen = (props) => {
 };
 
 const WebScannerLocal = ({ navigation }) => {
-    // cameraActive = false -> Show Start Overlay
-    // cameraActive = true -> Hide Overlay (Camera is scanning underneath)
-    const [cameraActive, setCameraActive] = useState(false);
     const { showToast } = useToast();
     const { theme } = useContext(ThemeContext);
-    const scannerRef = useRef(null);
     const isScanning = useRef(false);
 
     // Check for Secure Context
     const isSecure = typeof window !== 'undefined' && window.isSecureContext;
 
-    useEffect(() => {
-        return () => {
-            // Cleanup on unmount
-            if (scannerRef.current) {
-                try {
-                    // Try to stop if running
-                    scannerRef.current.stop().catch(e => console.warn(e));
-                    scannerRef.current.clear();
-                } catch (e) { }
-            }
-        };
-    }, []);
-
-    const startScanning = async () => {
-        if (!Html5Qrcode) {
-            Alert.alert("Error", "Scanner library not loaded.");
-            return;
-        }
-
-        try {
-            const element = document.getElementById("reader");
-            if (!element) {
-                Alert.alert("Error", "Reader element missing. Please reload.");
-                return;
-            }
-
-            // Ensure formats are available
-            const formatsToSupport = [];
-            if (Html5QrcodeSupportedFormats) {
-                if (Html5QrcodeSupportedFormats.QR_CODE) formatsToSupport.push(Html5QrcodeSupportedFormats.QR_CODE);
-                if (Html5QrcodeSupportedFormats.DATA_MATRIX) formatsToSupport.push(Html5QrcodeSupportedFormats.DATA_MATRIX);
-            }
-
-            const config = formatsToSupport.length > 0 ? { formatsToSupport } : undefined;
-
-            // Initialize on the ALREADY VISIBLE (but covered) element
-            const html5QrCode = new Html5Qrcode("reader", config);
-            scannerRef.current = html5QrCode;
-
-            // Start immediately - User Gesture is preserved here
-            await html5QrCode.start(
-                { facingMode: "environment" },
-                { fps: 10, qrbox: { width: 250, height: 250 } },
-                (decodedText) => handleScanSuccess(decodedText),
-                () => { }
-            );
-
-            // Once started successfully, hide the overlay to reveal the camera
-            setCameraActive(true);
-
-        } catch (err) {
-            console.error("Error starting scanner", err);
-            Alert.alert("Start Failed", err?.message || "Unknown error");
-        }
-    };
-
-    const stopScanning = async () => {
-        if (scannerRef.current) {
-            try {
-                await scannerRef.current.stop();
-                scannerRef.current.clear();
-            } catch (ignore) { }
-        }
-        setCameraActive(false); // Show overlay again
-    };
-
     const handleScanSuccess = async (data) => {
         if (isScanning.current) return;
         isScanning.current = true;
-
-        // Stop scanning
-        if (scannerRef.current) {
-            try {
-                await scannerRef.current.stop();
-                scannerRef.current.clear();
-            } catch (e) { }
-        }
-
-        // Show overlay (or loading state) while we process
-        setCameraActive(false);
 
         // Delay for navigation safety
         setTimeout(async () => {
@@ -187,41 +104,38 @@ const WebScannerLocal = ({ navigation }) => {
         );
     }
 
+    if (!WebScanner) {
+        return (
+            <View style={[stylesInternal.container, { backgroundColor: theme.colors.background }]}>
+                <Text style={[stylesInternal.message, { color: 'red' }]}>
+                    Scanner library not loaded.
+                </Text>
+            </View>
+        );
+    }
+
     return (
-        <View style={{ flex: 1, backgroundColor: 'black', position: 'relative', width: '100%' }}>
-
-            {/* 1. READER LAYER (Bottom) */}
-            {/* Always rendered, always layout-ready. */}
-            <View
-                nativeID="reader"
-                style={{
-                    width: '100%',
-                    height: '100%',
-                    backgroundColor: 'black'
-                }}
-            />
-
-            {/* 2. OVERLAY LAYER (Top) */}
-            {/* Covers the reader when camera is NOT active */}
-            {!cameraActive && (
-                <View style={{
-                    ...StyleSheet.absoluteFillObject,
-                    backgroundColor: theme.colors.background,
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    zIndex: 10
-                }}>
-                    <Text style={stylesInternal.message}>Ready to Scan (Web)</Text>
-                    <Button title="Start Camera" onPress={startScanning} color={theme.colors.primary} />
-                </View>
-            )}
-
-            {/* 3. STOP BUTTON (Floating on top when active) */}
-            {cameraActive && (
-                <View style={{ position: 'absolute', bottom: 30, width: '100%', alignItems: 'center', zIndex: 20 }}>
-                    <Button title="Stop Camera" onPress={stopScanning} color="red" />
-                </View>
-            )}
+        <View style={{ flex: 1, backgroundColor: 'black', width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' }}>
+            <View style={{ width: '100%', height: '100%', maxWidth: 500, maxHeight: 500 }}>
+                <WebScanner
+                    onScan={(result) => {
+                        if (result && result.length > 0) {
+                            handleScanSuccess(result[0].rawValue);
+                        }
+                    }}
+                    components={{
+                        audio: false,
+                        finder: false
+                    }}
+                    styles={{
+                        container: {
+                            width: "100%",
+                            height: "100%"
+                        }
+                    }}
+                />
+            </View>
+            <Text style={{ color: 'white', marginTop: 20 }}>Point camera at a QR code</Text>
         </View>
     );
 };
