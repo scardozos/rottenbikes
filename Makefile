@@ -27,7 +27,16 @@ db-migrate-down:
 	@echo "Running migrations down..."
 	migrate -path $(MIGRATIONS_DIR) -database "$(DB_DSN)" down 1
 
+reset-login-local:
+	@if [ -z "$(USER)" ]; then echo "Usage: make reset-login-local USER=<email_or_username>"; exit 1; fi
+	@.scripts/reset_login_attempts.sh $(USER) .env.local
+
+reset-login-dev:
+	@if [ -z "$(USER)" ]; then echo "Usage: make reset-login-dev USER=<email_or_username>"; exit 1; fi
+	@.scripts/reset_login_attempts.sh $(USER) .env.dev
+
 db-reset:
+
 	@echo "Resetting database (drop + re-run migrations)..."
 	migrate -path $(MIGRATIONS_DIR) -database "$(DB_DSN)" drop -f
 	migrate -path $(MIGRATIONS_DIR) -database "$(DB_DSN)" up
