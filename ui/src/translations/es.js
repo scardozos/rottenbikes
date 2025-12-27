@@ -68,9 +68,9 @@ export default {
     m_ago: 'hace {minutes}m',
     h_ago: 'hace {hours}h',
     d_ago: 'hace {days}d',
-    w_ago: 'hace {weeks}w',
-    mo_ago: 'hace {months}me',
-    y_ago: 'hace {years}a',
+    w_ago: 'hace {weeks} semanas',
+    mo_ago: 'hace {months} meses',
+    y_ago: 'hace {years} años',
     anonymous: 'Anónimo',
 
     // Bikes List

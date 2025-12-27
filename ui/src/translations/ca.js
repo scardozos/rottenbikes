@@ -68,9 +68,9 @@ export default {
     m_ago: 'fa {minutes}m',
     h_ago: 'fa {hours}h',
     d_ago: 'fa {days}d',
-    w_ago: 'fa {weeks}w',
-    mo_ago: 'fa {months}me',
-    y_ago: 'fa {years}a',
+    w_ago: 'fa {weeks} setmana',
+    mo_ago: 'fa {months} mesos',
+    y_ago: 'fa {years} anys',
     anonymous: 'Anònim',
 
     // Bikes List
