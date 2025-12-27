@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, Switch, ScrollView, Modal, TouchableOpacity } from 'react-native';
+import { View, Text, TextInput, Button, StyleSheet, Switch, ScrollView, Modal, ActivityIndicator } from 'react-native';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { ThemeContext } from '../context/ThemeContext';
@@ -8,30 +8,52 @@ import { useSession } from '../context/SessionContext';
 import { Scanner } from '../components/Scanner';
 
 const UpdateBikeScreen = ({ route, navigation }) => {
-    const { bike } = route.params || {};
+    const { bikeId } = route.params || {};
     const { showToast } = useToast();
     const { theme } = useContext(ThemeContext);
     const { t } = useContext(LanguageContext);
     const { validatedBikeId } = useSession();
 
-    const [hashId, setHashId] = useState(bike?.hash_id || '');
-    const [isElectric, setIsElectric] = useState(bike?.is_electric || false);
-    const [loading, setLoading] = useState(false);
+    const [bike, setBike] = useState(null);
+    const [hashId, setHashId] = useState('');
+    const [isElectric, setIsElectric] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
     const [showScanner, setShowScanner] = useState(false);
     const [confirmed, setConfirmed] = useState(false);
 
-    // Security Check
+    // Initial Fetch & Security Check
     useEffect(() => {
-        if (!bike || Number(validatedBikeId) !== Number(bike.numerical_id)) {
-            showToast(t('unauthorized_update'), "error");
-            navigation.goBack();
-        }
-    }, [bike, validatedBikeId]);
+        const checkAndFetch = async () => {
+            // Security Check
+            if (!bikeId || Number(validatedBikeId) !== Number(bikeId)) {
+                showToast(t('unauthorized_update'), "error");
+                navigation.goBack();
+                return;
+            }
+
+            try {
+                const res = await api.get(`/bikes/${bikeId}/details`);
+                const details = res.data;
+                setBike(details);
+                setHashId(details.hash_id || '');
+                setIsElectric(details.is_electric || false);
+            } catch (e) {
+                console.error("Failed to fetch bike for update", e);
+                showToast(t('error_fetching_bike'), "error");
+                navigation.goBack();
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        checkAndFetch();
+    }, [bikeId, validatedBikeId]);
 
     const handleSubmit = async () => {
-        setLoading(true);
+        setSubmitting(true);
         try {
-            await api.put(`/bikes/${bike.numerical_id}`, {
+            await api.put(`/bikes/${bikeId}`, {
                 hash_id: hashId.trim() === '' ? null : hashId,
                 is_electric: isElectric
             });
@@ -42,9 +64,17 @@ const UpdateBikeScreen = ({ route, navigation }) => {
             const errMsg = e.response?.data?.error || t('error');
             showToast(errMsg, "error");
         } finally {
-            setLoading(false);
+            setSubmitting(false);
         }
     };
+
+    if (loading) {
+        return (
+            <View style={[styles.container, styles.center]}>
+                <ActivityIndicator size="large" color={theme.colors.primary} />
+            </View>
+        );
+    }
 
     if (!bike) return null;
 
@@ -92,7 +122,7 @@ const UpdateBikeScreen = ({ route, navigation }) => {
                 <Button
                     title={t('update_bike_btn')}
                     onPress={handleSubmit}
-                    disabled={loading || !confirmed}
+                    disabled={submitting || !confirmed}
                     color={theme.colors.primary}
                 />
             </ScrollView>
@@ -114,6 +144,7 @@ const UpdateBikeScreen = ({ route, navigation }) => {
 
 const createStyles = (theme) => StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.colors.background },
+    center: { justifyContent: 'center', alignItems: 'center' },
     scrollContent: { padding: 20 },
     title: { fontSize: 24, marginBottom: 20, color: theme.colors.text },
     label: { fontSize: 16, marginBottom: 5, color: theme.colors.text, fontWeight: 'bold' },
@@ -154,4 +185,5 @@ const createStyles = (theme) => StyleSheet.create({
 });
 
 export default UpdateBikeScreen;
+
 

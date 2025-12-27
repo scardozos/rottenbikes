@@ -74,11 +74,12 @@ const BikeDetailsScreen = ({ route, navigation }) => {
             {isReviewAllowed && (
                 <Text
                     style={styles.updateLink}
-                    onPress={() => navigation.navigate('UpdateBike', { bike })}
+                    onPress={() => navigation.navigate('UpdateBike', { bikeId: bike.numerical_id })}
                 >
                     {t('incorrect_info_link')}
                 </Text>
             )}
+
             <Text style={styles.detail}>{t('hash_id_label', { hash_id: bike.hash_id || '-' })}</Text>
 
             <Text style={styles.detail}>{t('type_label', { type: bike.is_electric ? t('electric') : t('mechanical') })}</Text>
