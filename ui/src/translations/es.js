@@ -59,6 +59,14 @@ export default {
     update_confirm_checkbox: 'Confirmo que la información es veraz. Si es falsa, mi cuenta podría ser baneada.',
     cancel: 'Cancelar',
     error_fetching_bike: 'Error al obtener detalles de la bicicleta',
+    sort_by_label: 'Ordenar por',
+    sort_date: 'Fecha',
+    sort_rating: 'Valoración',
+    sort_order_label: 'Orden',
+    sort_asc: 'Ascendente',
+    sort_desc: 'Descendente',
+
+
 
 
 
