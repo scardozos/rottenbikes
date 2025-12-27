@@ -25,38 +25,53 @@ const CreateReviewScreen = ({ route, navigation }) => {
     const { theme } = useContext(ThemeContext);
 
     // Subcategories
-    const [breaks, setBreaks] = useState(3);
-    const [seat, setSeat] = useState(3);
-    const [sturdiness, setSturdiness] = useState(3);
-    const [power, setPower] = useState(3);
-    const [pedals, setPedals] = useState(3);
+    const [breaks, setBreaks] = useState(null);
+    const [seat, setSeat] = useState(null);
+    const [sturdiness, setSturdiness] = useState(null);
+    const [power, setPower] = useState(null);
+    const [pedals, setPedals] = useState(null);
 
-    const [overall, setOverall] = useState(3.0);
+    const [overall, setOverall] = useState(null);
     const [comment, setComment] = useState('');
     const [loading, setLoading] = useState(false);
 
     // Auto-calculate overall
     useEffect(() => {
-        const sum = breaks + seat + sturdiness + power + pedals;
-        const avg = sum / 5;
+        const ratings = [breaks, seat, sturdiness, power, pedals].filter(r => r > 0);
+        if (ratings.length === 0) {
+            setOverall(null);
+            return;
+        }
+        const sum = ratings.reduce((a, b) => a + b, 0);
+        const avg = sum / ratings.length;
         setOverall(avg);
     }, [breaks, seat, sturdiness, power, pedals]);
 
     const handleSubmit = async () => {
+        // Validate that at least one rating is provided
+        const ratings = [breaks, seat, sturdiness, power, pedals];
+        const hasRating = ratings.some(r => r > 0);
+
+        if (!hasRating) {
+            showToast("Please rate at least one category", "error");
+            return;
+        }
 
         setLoading(true);
         try {
-            await api.post(`/bikes/${bike.numerical_id}/reviews`, {
+            const payload = {
                 comment: comment,
-                // Send subcategories as integers
-                breaks: breaks,
-                seat: seat,
-                sturdiness: sturdiness,
-                power: power,
-                pedals: pedals,
-                // Send rounded overall to backend (as it expects int16)
-                overall: Math.round(overall)
-            });
+                overall: overall ? Math.round(overall) : undefined
+            };
+
+            // Only include non-null ratings in payload
+            if (breaks > 0) payload.breaks = breaks;
+            if (seat > 0) payload.seat = seat;
+            if (sturdiness > 0) payload.sturdiness = sturdiness;
+            if (power > 0) payload.power = power;
+            if (pedals > 0) payload.pedals = pedals;
+
+            await api.post(`/bikes/${bike.numerical_id}/reviews`, payload);
 
             showToast("Review submitted!", "success");
             navigation.navigate('Home');
@@ -87,16 +102,16 @@ const CreateReviewScreen = ({ route, navigation }) => {
                 <View style={styles.ratingsContainer}>
                     <Text style={styles.subtitle}>Ratings</Text>
                     <View style={styles.divider} />
-                    <StarRating label="Breaks" value={breaks} onValueChange={setBreaks} theme={theme} styles={styles} />
-                    <StarRating label="Seat" value={seat} onValueChange={setSeat} theme={theme} styles={styles} />
-                    <StarRating label="Sturdiness" value={sturdiness} onValueChange={setSturdiness} theme={theme} styles={styles} />
-                    <StarRating label="Power" value={power} onValueChange={setPower} theme={theme} styles={styles} />
-                    <StarRating label="Pedals" value={pedals} onValueChange={setPedals} theme={theme} styles={styles} />
+                    <StarRating label="Breaks" value={breaks || 0} onValueChange={setBreaks} theme={theme} styles={styles} />
+                    <StarRating label="Seat" value={seat || 0} onValueChange={setSeat} theme={theme} styles={styles} />
+                    <StarRating label="Sturdiness" value={sturdiness || 0} onValueChange={setSturdiness} theme={theme} styles={styles} />
+                    <StarRating label="Power" value={power || 0} onValueChange={setPower} theme={theme} styles={styles} />
+                    <StarRating label="Pedals" value={pedals || 0} onValueChange={setPedals} theme={theme} styles={styles} />
 
                     <View style={styles.overallRow}>
                         <Text style={styles.overallLabel}>Overall Rating:</Text>
                         {/* Display with 1 decimal place */}
-                        <Text style={styles.overallValue}>{overall.toFixed(1)} ⭐</Text>
+                        <Text style={styles.overallValue}>{overall !== null ? overall.toFixed(1) : '-'} ⭐</Text>
                     </View>
                 </View>
 
