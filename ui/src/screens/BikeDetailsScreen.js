@@ -4,26 +4,27 @@ import { View, Text, StyleSheet, FlatList, Button } from 'react-native';
 import api from '../services/api';
 import { ThemeContext } from '../context/ThemeContext';
 import { useSession } from '../context/SessionContext';
+import { LanguageContext } from '../context/LanguageContext';
 
-const getRelativeTime = (dateString) => {
+const getRelativeTime = (dateString, t) => {
     if (!dateString) return '';
     const now = new Date();
     const then = new Date(dateString);
     const seconds = Math.floor((now - then) / 1000);
 
-    if (seconds < 60) return 'just now';
+    if (seconds < 60) return t('just_now');
     const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
+    if (minutes < 60) return t('m_ago', { minutes });
     const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
+    if (hours < 24) return t('h_ago', { hours });
     const days = Math.floor(hours / 24);
-    if (days < 7) return `${days}d ago`;
+    if (days < 7) return t('d_ago', { days });
     const weeks = Math.floor(days / 7);
-    if (weeks < 4) return `${weeks}w ago`;
+    if (weeks < 4) return t('w_ago', { weeks });
     const months = Math.floor(days / 30);
-    if (months < 12) return `${months}mo ago`;
+    if (months < 12) return t('mo_ago', { months });
     const years = Math.floor(days / 365);
-    return `${years}y ago`;
+    return t('y_ago', { years });
 };
 
 const BikeDetailsScreen = ({ route, navigation }) => {
@@ -36,6 +37,7 @@ const BikeDetailsScreen = ({ route, navigation }) => {
     const [loading, setLoading] = useState(true);
     const { theme } = useContext(ThemeContext);
     const { validatedBikeId } = useSession();
+    const { t } = useContext(LanguageContext);
 
     // Determine if review is allowed based on session context
     // Determine if review is allowed based on session context
@@ -68,19 +70,19 @@ const BikeDetailsScreen = ({ route, navigation }) => {
 
     return (
         <View style={styles.container}>
-            <Text style={styles.title}>Bike #{bike.numerical_id}</Text>
-            <Text style={styles.detail}>Hash ID: {bike.hash_id}</Text>
-            <Text style={styles.detail}>Type: {bike.is_electric ? 'Electric ⚡' : 'Mechanical 🚲'}</Text>
+            <Text style={styles.title}>{t('bike_title', { numerical_id: bike.numerical_id })}</Text>
+            <Text style={styles.detail}>{t('hash_id_label', { hash_id: bike.hash_id || '-' })}</Text>
+            <Text style={styles.detail}>{t('type_label', { type: bike.is_electric ? t('electric') : t('mechanical') })}</Text>
 
             {aggregates.length > 0 && (
                 <View style={styles.aggregatesSection}>
-                    <Text style={styles.subtitle}>Average Ratings</Text>
+                    <Text style={styles.subtitle}>{t('average_ratings')}</Text>
                     <View style={styles.aggregatesGrid}>
                         {aggregates
                             .filter(agg => agg.subcategory !== 'overall')
                             .map(agg => (
                                 <View key={agg.subcategory} style={styles.aggItem}>
-                                    <Text style={styles.aggLabel}>{agg.subcategory.charAt(0).toUpperCase() + agg.subcategory.slice(1)}</Text>
+                                    <Text style={styles.aggLabel}>{t(agg.subcategory) || agg.subcategory.charAt(0).toUpperCase() + agg.subcategory.slice(1)}</Text>
                                     <Text style={styles.aggValue}>{agg.average_rating.toFixed(1)} ⭐</Text>
                                 </View>
                             ))}
@@ -89,7 +91,7 @@ const BikeDetailsScreen = ({ route, navigation }) => {
             )}
 
             <View style={styles.reviewsSection}>
-                <Text style={styles.subtitle}>Reviews</Text>
+                <Text style={styles.subtitle}>{t('reviews')}</Text>
                 <FlatList
                     data={reviews}
                     keyExtractor={item => item.review_id ? item.review_id.toString() : Math.random().toString()}
@@ -97,19 +99,19 @@ const BikeDetailsScreen = ({ route, navigation }) => {
                         <View style={styles.reviewItem}>
                             <View style={styles.reviewHeader}>
                                 <Text style={styles.rating}>{'⭐'.repeat(item.ratings?.overall || 0)}</Text>
-                                <Text style={styles.timeText}>{getRelativeTime(item.created_at)}</Text>
+                                <Text style={styles.timeText}>{getRelativeTime(item.created_at, t)}</Text>
                             </View>
                             <Text style={styles.commentText}>{item.comment}</Text>
-                            <Text style={styles.user}>- {item.poster_username || 'Anonymous'}</Text>
+                            <Text style={styles.user}>- {item.poster_username || t('anonymous')}</Text>
                         </View>
                     )}
-                    ListEmptyComponent={<Text style={styles.emptyText}>No reviews yet.</Text>}
+                    ListEmptyComponent={<Text style={styles.emptyText}>{t('no_reviews')}</Text>}
                 />
             </View>
             {/* Only show "Write a Review" if validated in current session */}
             {isReviewAllowed && (
                 <Button
-                    title="Write a Review"
+                    title={t('write_review')}
                     onPress={() => navigation.navigate('CreateReview', { bike })}
                     color={theme.colors.primary}
                 />

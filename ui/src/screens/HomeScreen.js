@@ -7,6 +7,7 @@ import { useToast } from '../context/ToastContext';
 import { ThemeContext } from '../context/ThemeContext';
 import { AuthContext } from '../context/AuthContext';
 import { useSession } from '../context/SessionContext';
+import { LanguageContext } from '../context/LanguageContext';
 
 let WebScanner;
 
@@ -49,13 +50,14 @@ const HomeScreen = ({ navigation }) => {
     const { validateBike } = useSession();
     const [manualId, setManualId] = useState('');
     const { showToast } = useToast();
+    const { t } = useContext(LanguageContext); // Use language context
 
     const handleManualSubmit = async () => {
         if (!manualId.trim()) return;
 
         // Basic numerical validation
         if (!/^\d+$/.test(manualId)) {
-            showToast("Please enter a valid numerical ID", "error");
+            showToast("Please enter a valid numerical ID", "error"); // TODO: Translate toast?
             return;
         }
 
@@ -104,20 +106,20 @@ const HomeScreen = ({ navigation }) => {
             <View style={stylesInternal.cameraContainer}>
                 {Platform.OS === 'web' ? (
                     <ErrorBoundary>
-                        <WebScannerLocal navigation={navigation} theme={theme} validateBike={validateBike} />
+                        <WebScannerLocal navigation={navigation} theme={theme} validateBike={validateBike} t={t} />
                     </ErrorBoundary>
                 ) : (
-                    <NativeScannerLocal navigation={navigation} theme={theme} validateBike={validateBike} />
+                    <NativeScannerLocal navigation={navigation} theme={theme} validateBike={validateBike} t={t} />
                 )}
             </View>
 
             {/* Manual Input Area - Bottom 30% */}
             <View style={stylesInternal.inputContainer}>
-                <Text style={stylesInternal.inputLabel}>Or enter Bike ID manually:</Text>
+                <Text style={stylesInternal.inputLabel}>{t('enter_manual_id')}</Text>
                 <View style={stylesInternal.inputRow}>
                     <TextInput
                         style={stylesInternal.input}
-                        placeholder="Bike ID (e.g., 123)"
+                        placeholder={t('bike_id_placeholder')}
                         placeholderTextColor={theme.colors.placeholder}
                         keyboardType="numeric"
                         value={manualId}
@@ -125,7 +127,7 @@ const HomeScreen = ({ navigation }) => {
                         returnKeyType="done"
                         onSubmitEditing={handleManualSubmit}
                     />
-                    <Button title="Go" onPress={handleManualSubmit} color={theme.colors.primary} />
+                    <Button title={t('go')} onPress={handleManualSubmit} color={theme.colors.primary} />
                 </View>
             </View>
         </KeyboardAvoidingView>
@@ -142,7 +144,7 @@ const HomeScreen = ({ navigation }) => {
     );
 };
 
-const WebScannerLocal = ({ navigation, theme, validateBike }) => {
+const WebScannerLocal = ({ navigation, theme, validateBike, t }) => {
     const { showToast } = useToast();
     const isScanning = useRef(false);
 
@@ -224,12 +226,12 @@ const WebScannerLocal = ({ navigation, theme, validateBike }) => {
                     }}
                 />
             </View>
-            <Text style={{ color: 'white', marginTop: 20 }}>Scan QR Code</Text>
+            <Text style={{ color: 'white', marginTop: 20 }}>{t('scan_qr')}</Text>
         </View>
     );
 };
 
-const NativeScannerLocal = ({ navigation, theme, validateBike }) => {
+const NativeScannerLocal = ({ navigation, theme, validateBike, t }) => {
     const [permission, requestPermission] = useCameraPermissions();
     const [scanned, setScanned] = useState(false);
     const { showToast } = useToast();
@@ -239,7 +241,7 @@ const NativeScannerLocal = ({ navigation, theme, validateBike }) => {
         return (
             <View style={[styles.scannerMessageContainer, { backgroundColor: theme.colors.background }]}>
                 <ActivityIndicator size="large" color={theme.colors.primary} />
-                <Text style={{ marginTop: 10, color: theme.colors.text }}>Initializing Camera...</Text>
+                <Text style={{ marginTop: 10, color: theme.colors.text }}>{t('loading')}</Text>
             </View>
         );
     }
@@ -247,8 +249,8 @@ const NativeScannerLocal = ({ navigation, theme, validateBike }) => {
     if (!permission.granted) {
         return (
             <View style={[styles.scannerMessageContainer, { backgroundColor: theme.colors.background }]}>
-                <Text style={styles.message}>We need your permission to show the camera</Text>
-                <Button onPress={requestPermission} title="Grant Permission" color={theme.colors.primary} />
+                <Text style={styles.message}>{t('camera_permission')}</Text>
+                <Button onPress={requestPermission} title={t('grant_permission')} color={theme.colors.primary} />
             </View>
         );
     }

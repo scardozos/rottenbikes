@@ -3,11 +3,13 @@ import { View, Text, TextInput, Button, StyleSheet, Switch, Alert } from 'react-
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { ThemeContext } from '../context/ThemeContext';
+import { LanguageContext } from '../context/LanguageContext';
 
 const CreateBikeScreen = ({ route, navigation }) => {
     const { initialNumericalId, initialHashId } = route.params || {};
     const { showToast } = useToast();
     const { theme } = useContext(ThemeContext);
+    const { t } = useContext(LanguageContext);
 
     const [numericalId, setNumericalId] = useState(initialNumericalId || '');
     const [hashId, setHashId] = useState(initialHashId || '');
@@ -28,12 +30,12 @@ const CreateBikeScreen = ({ route, navigation }) => {
                 hash_id: hashId.trim() === '' ? null : hashId,
                 is_electric: isElectric
             });
-            showToast("Bike created successfully!", "success");
+            showToast(t('success'), "success"); // Assuming generic success message or add specific key
             // Navigate to CreateReview (replacing CreateBike screen)
             navigation.replace('CreateReview', { bike: response.data });
         } catch (e) {
             console.error(e);
-            const errMsg = e.response?.data?.error || "Failed to create bike.";
+            const errMsg = e.response?.data?.error || t('error');
             showToast(errMsg, "error");
         } finally {
             setLoading(false);
@@ -44,17 +46,17 @@ const CreateBikeScreen = ({ route, navigation }) => {
 
     return (
         <ErrorBoundary>
-            <CreateBikeContent {...{ theme, styles, numericalId, setNumericalId, hashId, setHashId, isElectric, setIsElectric, loading, handleSubmit }} />
+            <CreateBikeContent {...{ theme, styles, numericalId, setNumericalId, hashId, setHashId, isElectric, setIsElectric, loading, handleSubmit, t }} />
         </ErrorBoundary>
     );
 };
 
-const CreateBikeContent = ({ theme, styles, numericalId, setNumericalId, hashId, setHashId, isElectric, setIsElectric, loading, handleSubmit }) => (
+const CreateBikeContent = ({ theme, styles, numericalId, setNumericalId, hashId, setHashId, isElectric, setIsElectric, loading, handleSubmit, t }) => (
     <View style={styles.container}>
-        <Text style={styles.title}>Add a New Bike</Text>
+        <Text style={styles.title}>{t('add_new_bike')}</Text>
 
         <TextInput
-            placeholder="Numerical ID (e.g. 101)"
+            placeholder={t('numerical_id_placeholder')}
             placeholderTextColor={theme.colors.placeholder}
             style={styles.input}
             value={numericalId ? String(numericalId) : ''}
@@ -63,7 +65,7 @@ const CreateBikeContent = ({ theme, styles, numericalId, setNumericalId, hashId,
         />
 
         <TextInput
-            placeholder="Hash ID (e.g. frame-xyz)"
+            placeholder={t('hash_id_placeholder')}
             placeholderTextColor={theme.colors.placeholder}
             style={styles.input}
             value={hashId}
@@ -71,7 +73,7 @@ const CreateBikeContent = ({ theme, styles, numericalId, setNumericalId, hashId,
         />
 
         <View style={styles.switchContainer}>
-            <Text style={styles.text}>Electric Bike?</Text>
+            <Text style={styles.text}>{t('electric_bike')}</Text>
             <Switch
                 value={isElectric}
                 onValueChange={setIsElectric}
@@ -80,7 +82,7 @@ const CreateBikeContent = ({ theme, styles, numericalId, setNumericalId, hashId,
             />
         </View>
 
-        <Button title="Create Bike" onPress={handleSubmit} disabled={loading} color={theme.colors.primary} />
+        <Button title={t('create_bike_btn')} onPress={handleSubmit} disabled={loading} color={theme.colors.primary} />
     </View>
 );
 

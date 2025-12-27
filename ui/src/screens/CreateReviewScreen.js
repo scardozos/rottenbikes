@@ -3,6 +3,7 @@ import { View, Text, TextInput, Button, StyleSheet, Switch, Alert, ScrollView, T
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { ThemeContext } from '../context/ThemeContext';
+import { LanguageContext } from '../context/LanguageContext';
 
 const StarRating = ({ label, value, onValueChange, theme, styles }) => (
     <View style={styles.ratingRow}>
@@ -23,6 +24,7 @@ const CreateReviewScreen = ({ route, navigation }) => {
     const { bike } = route.params;
     const { showToast } = useToast();
     const { theme } = useContext(ThemeContext);
+    const { t } = useContext(LanguageContext);
 
     // Subcategories
     const [breaks, setBreaks] = useState(null);
@@ -53,7 +55,7 @@ const CreateReviewScreen = ({ route, navigation }) => {
         const hasRating = ratings.some(r => r > 0);
 
         if (!hasRating) {
-            showToast("Please rate at least one category", "error");
+            showToast(t('please_rate'), "error");
             return;
         }
 
@@ -73,7 +75,7 @@ const CreateReviewScreen = ({ route, navigation }) => {
 
             await api.post(`/bikes/${bike.numerical_id}/reviews`, payload);
 
-            showToast("Review submitted!", "success");
+            showToast(t('review_submitted'), "success");
 
             // Reset navigation stack and go to BikesList (Browse) tab
             navigation.reset({
@@ -87,7 +89,7 @@ const CreateReviewScreen = ({ route, navigation }) => {
             });
         } catch (e) {
             console.error(e);
-            const errMsg = e.response?.data?.error || "Failed to submit review.";
+            const errMsg = e.response?.data?.error || t('failed_submit_review');
             showToast(errMsg, "error");
         } finally {
             setLoading(false);
@@ -107,27 +109,27 @@ const CreateReviewScreen = ({ route, navigation }) => {
                 keyboardShouldPersistTaps="handled"
                 automaticallyAdjustKeyboardInsets={true}
             >
-                <Text style={styles.title}>Review Bike #{bike.numerical_id}</Text>
+                <Text style={styles.title}>{t('review_bike_title', { numerical_id: bike.numerical_id })}</Text>
 
                 <View style={styles.ratingsContainer}>
-                    <Text style={styles.subtitle}>Ratings</Text>
+                    <Text style={styles.subtitle}>{t('ratings')}</Text>
                     <View style={styles.divider} />
-                    <StarRating label="Breaks" value={breaks || 0} onValueChange={setBreaks} theme={theme} styles={styles} />
-                    <StarRating label="Seat" value={seat || 0} onValueChange={setSeat} theme={theme} styles={styles} />
-                    <StarRating label="Sturdiness" value={sturdiness || 0} onValueChange={setSturdiness} theme={theme} styles={styles} />
-                    <StarRating label="Power" value={power || 0} onValueChange={setPower} theme={theme} styles={styles} />
-                    <StarRating label="Pedals" value={pedals || 0} onValueChange={setPedals} theme={theme} styles={styles} />
+                    <StarRating label={t('breaks')} value={breaks || 0} onValueChange={setBreaks} theme={theme} styles={styles} />
+                    <StarRating label={t('seat')} value={seat || 0} onValueChange={setSeat} theme={theme} styles={styles} />
+                    <StarRating label={t('sturdiness')} value={sturdiness || 0} onValueChange={setSturdiness} theme={theme} styles={styles} />
+                    <StarRating label={t('power')} value={power || 0} onValueChange={setPower} theme={theme} styles={styles} />
+                    <StarRating label={t('pedals')} value={pedals || 0} onValueChange={setPedals} theme={theme} styles={styles} />
 
                     <View style={styles.overallRow}>
-                        <Text style={styles.overallLabel}>Overall Rating:</Text>
+                        <Text style={styles.overallLabel}>{t('overall_rating')}</Text>
                         {/* Display with 1 decimal place */}
                         <Text style={styles.overallValue}>{overall !== null ? overall.toFixed(1) : '-'} ⭐</Text>
                     </View>
                 </View>
 
-                <Text style={styles.label}>Comment</Text>
+                <Text style={styles.label}>{t('comment')}</Text>
                 <TextInput
-                    placeholder="Write your review..."
+                    placeholder={t('write_review_placeholder')}
                     placeholderTextColor={theme.colors.placeholder}
                     style={[styles.input, { height: 120 }]}
                     value={comment}
@@ -138,12 +140,11 @@ const CreateReviewScreen = ({ route, navigation }) => {
 
                 {/* Image Upload Placeholder */}
                 <View style={styles.placeholderContainer}>
-                    <Text style={{ color: theme.colors.subtext }}>Image Upload Placeholder</Text>
-                    <Button title="Select Image (Mock)" onPress={() => { }} disabled />
+                    <Text style={{ color: theme.colors.subtext }}>{t('image_upload_placeholder')}</Text>
+                    <Button title={t('select_image_mock')} onPress={() => { }} disabled />
                 </View>
 
-
-                <Button title="Submit Review" onPress={handleSubmit} disabled={loading} color={theme.colors.primary} />
+                <Button title={t('submit_review')} onPress={handleSubmit} disabled={loading} color={theme.colors.primary} />
             </ScrollView>
         </KeyboardAvoidingView>
     );

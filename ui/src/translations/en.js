@@ -1,0 +1,112 @@
+export default {
+    // Navigation
+    home: 'Home',
+    browse_bikes: 'Browse Bikes',
+    create_bike: 'Create Bike',
+    settings: 'Settings',
+    bike_details: 'Bike Details',
+    confirm_login_title: 'Confirming Login',
+    add_bike_title: 'Add Bike',
+
+    // Auth
+    login: 'Login',
+    register: 'Register',
+    logout: 'Logout',
+    email_or_username: 'Email or Username',
+    get_magic_link: 'Get Magic Link',
+    complete_challenge_login: 'Complete the challenge to login',
+    complete_challenge_register: 'Complete the challenge to register',
+    cancel: 'Cancel',
+    magic_link_requested: 'Magic link requested for {identifier}!',
+    check_email: 'Check your email for the link and click it to log in.',
+    back: 'Back',
+    registration_successful: 'Registration successful!',
+    magic_link_sent: 'We\'ve sent a magic link to {email}.',
+    username: 'Username',
+    email: 'Email',
+    please_fill_all: 'Please fill in all fields',
+    username_invalid: 'Username can only contain letters, numbers and dots',
+    email_invalid: 'Please enter a valid email address',
+
+    // General
+    loading: 'Loading...',
+    error: 'Error',
+    success: 'Success',
+
+    // HomeScreen
+    camera_permission: 'We need your permission to show the camera',
+    grant_permission: 'Grant Permission',
+    scan_qr: 'Scan QR Code',
+    enter_manual_id: 'Or enter Bike ID manually:',
+    bike_id_placeholder: 'Bike ID (e.g. 123)',
+    go: 'Go',
+
+    // Create Bike
+    add_new_bike: 'Add a New Bike',
+    numerical_id_placeholder: 'Numerical ID (e.g. 101)',
+    hash_id_placeholder: 'Hash ID (e.g. frame-xyz)',
+    electric_bike: 'Electric Bike?',
+    create_bike_btn: 'Create Bike',
+
+    // Settings
+    appearance: 'Appearance',
+    dark_mode: 'Dark Mode',
+    account: 'Account',
+
+    // Bike Details
+    bike_title: 'Bike #{numerical_id}',
+    hash_id_label: 'Hash ID: {hash_id}',
+    type_label: 'Type: {type}',
+    electric: 'Electric ⚡',
+    mechanical: 'Mechanical 🚲',
+    average_ratings: 'Average Ratings',
+    reviews: 'Reviews',
+    write_review: 'Write a Review',
+    no_reviews: 'No reviews yet.',
+    just_now: 'just now',
+    m_ago: '{minutes}m ago',
+    h_ago: '{hours}h ago',
+    d_ago: '{days}d ago',
+    w_ago: '{weeks}w ago',
+    mo_ago: '{months}mo ago',
+    y_ago: '{years}y ago',
+    anonymous: 'Anonymous',
+
+    // Bikes List
+    all_bikes: 'All Bikes',
+    search_list_placeholder: 'Search list...',
+    no_bikes_found: 'No bikes found for "{query}"',
+    no_bikes_available: 'No bikes available',
+
+    // Confirm Login
+    finish_login: 'Finish Logging In',
+    click_to_complete: 'Click below to complete your login request.',
+    confirm_login_btn: 'Confirm Login',
+    confirming_login: 'Confirming your login...',
+    back_to_login: 'Back to Login',
+    login_confirmed_success: 'Login Confirmed! Success!',
+    login_confirmed: 'Login Confirmed!',
+    mobile_auto_login: 'Your mobile app will log you in automatically. You can close this window.',
+    redirecting: 'Redirecting you to the app...',
+    continue_to_app: 'Continue to App',
+    invalid_token: 'Invalid or expired token',
+    no_token: 'No token provided',
+
+    // Create Review
+    review_bike_title: 'Review Bike #{numerical_id}',
+    ratings: 'Ratings',
+    overall_rating: 'Overall Rating:',
+    comment: 'Comment',
+    write_review_placeholder: 'Write your review...',
+    image_upload_placeholder: 'Image Upload Placeholder',
+    select_image_mock: 'Select Image (Mock)',
+    submit_review: 'Submit Review',
+    please_rate: 'Please rate at least one category',
+    review_submitted: 'Review submitted!',
+    failed_submit_review: 'Failed to submit review.',
+    breaks: 'Breaks',
+    seat: 'Seat',
+    sturdiness: 'Sturdiness',
+    power: 'Power',
+    pedals: 'Pedals',
+};

@@ -1,0 +1,112 @@
+export default {
+    // Navigation
+    home: 'Inicio',
+    browse_bikes: 'Explorar Bicicletas',
+    create_bike: 'Crear Bicicleta',
+    settings: 'Configuración',
+    bike_details: 'Detalles de la Bicicleta',
+    confirm_login_title: 'Confirmando Inicio de Sesión',
+    add_bike_title: 'Añadir Bicicleta',
+
+    // Auth
+    login: 'Iniciar Sesión',
+    register: 'Registrarse',
+    logout: 'Cerrar Sesión',
+    email_or_username: 'Correo o Nombre de usuario',
+    get_magic_link: 'Obtener Enlace Mágico',
+    complete_challenge_login: 'Completa el reto para iniciar sesión',
+    complete_challenge_register: 'Completa el reto para registrarte',
+    cancel: 'Cancelar',
+    magic_link_requested: '¡Enlace mágico solicitado para {identifier}!',
+    check_email: 'Comprueba tu correo por el enlace y haz clic para entrar.',
+    back: 'Volver',
+    registration_successful: '¡Registro completado!',
+    magic_link_sent: 'Hemos enviado un enlace mágico a {email}.',
+    username: 'Nombre de usuario',
+    email: 'Correo electrónico',
+    please_fill_all: 'Por favor rellena todos los campos',
+    username_invalid: 'El nombre de usuario solo puede contener letras, números y puntos',
+    email_invalid: 'Por favor introduce un correo válido',
+
+    // General
+    loading: 'Cargando...',
+    error: 'Error',
+    success: 'Éxito',
+
+    // HomeScreen
+    camera_permission: 'Necesitamos tu permiso para mostrar la cámara',
+    grant_permission: 'Dar Permiso',
+    scan_qr: 'Escanear código QR',
+    enter_manual_id: 'O introduce la ID manualmente:',
+    bike_id_placeholder: 'ID de la Bicicleta (ej. 123)',
+    go: 'Ir',
+
+    // Create Bike
+    add_new_bike: 'Añadir Nueva Bicicleta',
+    numerical_id_placeholder: 'ID Numérica (ej. 101)',
+    hash_id_placeholder: 'ID Hash (ej. frame-xyz)',
+    electric_bike: '¿Bicicleta Eléctrica?',
+    create_bike_btn: 'Crear Bicicleta',
+
+    // Settings
+    appearance: 'Apariencia',
+    dark_mode: 'Modo Oscuro',
+    account: 'Cuenta',
+
+    // Bike Details
+    bike_title: 'Bicicleta #{numerical_id}',
+    hash_id_label: 'ID Hash: {hash_id}',
+    type_label: 'Tipo: {type}',
+    electric: 'Eléctrica ⚡',
+    mechanical: 'Mecánica 🚲',
+    average_ratings: 'Promedio de Valoraciones',
+    reviews: 'Reseñas',
+    write_review: 'Escribir Reseña',
+    no_reviews: 'Aún no hay reseñas.',
+    just_now: 'ahora',
+    m_ago: 'hace {minutes}m',
+    h_ago: 'hace {hours}h',
+    d_ago: 'hace {days}d',
+    w_ago: 'hace {weeks}w',
+    mo_ago: 'hace {months}me',
+    y_ago: 'hace {years}a',
+    anonymous: 'Anónimo',
+
+    // Bikes List
+    all_bikes: 'Todas las Bicicletas',
+    search_list_placeholder: 'Buscar en la lista...',
+    no_bikes_found: 'No se encontraron bicicletas para "{query}"',
+    no_bikes_available: 'No hay bicicletas disponibles',
+
+    // Confirm Login
+    finish_login: 'Finalizar Inicio de Sesión',
+    click_to_complete: 'Haz clic abajo para completar tu solicitud.',
+    confirm_login_btn: 'Confirmar Inicio de Sesión',
+    confirming_login: 'Confirmando inicio de sesión...',
+    back_to_login: 'Volver a Iniciar Sesión',
+    login_confirmed_success: '¡Sesión Iniciada! ¡Éxito!',
+    login_confirmed: '¡Sesión Iniciada!',
+    mobile_auto_login: 'Tu app móvil iniciará sesión automáticamente. Puedes cerrar esta ventana.',
+    redirecting: 'Redirigiendo a la app...',
+    continue_to_app: 'Continuar a la App',
+    invalid_token: 'Token inválido o caducado',
+    no_token: 'No se ha proporcionado token',
+
+    // Create Review
+    review_bike_title: 'Reseñar Bicicleta #{numerical_id}',
+    ratings: 'Valoraciones',
+    overall_rating: 'Valoración General:',
+    comment: 'Comentario',
+    write_review_placeholder: 'Escribe tu reseña...',
+    image_upload_placeholder: 'Marcador de Subida de Imágenes',
+    select_image_mock: 'Seleccionar Imagen (Simulado)',
+    submit_review: 'Enviar Reseña',
+    please_rate: 'Por favor valora al menos una categoría',
+    review_submitted: '¡Reseña enviada!',
+    failed_submit_review: 'Error al enviar la reseña.',
+    breaks: 'Frenos',
+    seat: 'Asiento',
+    sturdiness: 'Robustez',
+    power: 'Potencia',
+    pedals: 'Pedales',
+};
