@@ -153,7 +153,7 @@ const BikeDetailsScreen = ({ route, navigation }) => {
                                 <Text style={styles.rating}>{'⭐'.repeat(item.ratings?.overall || 0)}</Text>
                                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                                     {item.poster_id === userId && (
-                                        <TouchableOpacity onPress={() => navigation.navigate('UpdateReview', { review: item, bikeId: bike.numerical_id })}>
+                                        <TouchableOpacity onPress={() => navigation.navigate('UpdateReview', { reviewId: item.review_id })}>
                                             <Text style={{ color: theme.colors.primary, marginRight: 10, fontWeight: 'bold' }}>{t('edit')}</Text>
                                         </TouchableOpacity>
                                     )}

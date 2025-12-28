@@ -26,21 +26,46 @@ const StarRating = ({ label, value, onValueChange, theme, styles, onInfoPress })
 );
 
 const UpdateReviewScreen = ({ route, navigation }) => {
-    const { review, bikeId } = route.params;
+    const { reviewId } = route.params;
     const { showToast } = useToast();
     const { theme } = useContext(ThemeContext);
     const { t } = useContext(LanguageContext);
 
     // Subcategories
-    const [breaks, setBreaks] = useState(review.ratings?.breaks || 0);
-    const [seat, setSeat] = useState(review.ratings?.seat || 0);
-    const [sturdiness, setSturdiness] = useState(review.ratings?.sturdiness || 0);
-    const [power, setPower] = useState(review.ratings?.power || 0);
-    const [pedals, setPedals] = useState(review.ratings?.pedals || 0);
+    const [breaks, setBreaks] = useState(0);
+    const [seat, setSeat] = useState(0);
+    const [sturdiness, setSturdiness] = useState(0);
+    const [power, setPower] = useState(0);
+    const [pedals, setPedals] = useState(0);
 
-    const [overall, setOverall] = useState(review.ratings?.overall || null);
-    const [comment, setComment] = useState(review.comment || '');
-    const [loading, setLoading] = useState(false);
+    const [overall, setOverall] = useState(null);
+    const [comment, setComment] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [review, setReview] = useState(null);
+
+    useEffect(() => {
+        const fetchReview = async () => {
+            try {
+                const res = await api.get(`/reviews/${reviewId}`);
+                const data = res.data;
+                setReview(data);
+                setBreaks(data.ratings?.breaks || 0);
+                setSeat(data.ratings?.seat || 0);
+                setSturdiness(data.ratings?.sturdiness || 0);
+                setPower(data.ratings?.power || 0);
+                setPedals(data.ratings?.pedals || 0);
+                setOverall(data.ratings?.overall || null);
+                setComment(data.comment || '');
+            } catch (e) {
+                console.error(e);
+                showToast(t('error_fetching_bike'), "error"); // Reuse error msg or add new one
+                navigation.goBack();
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchReview();
+    }, [reviewId]);
 
     // Modal State
     const [modalVisible, setModalVisible] = useState(false);
@@ -90,7 +115,7 @@ const UpdateReviewScreen = ({ route, navigation }) => {
             if (power > 0) payload.power = power;
             if (pedals > 0) payload.pedals = pedals;
 
-            await api.put(`/reviews/${review.review_id}`, payload);
+            await api.put(`/reviews/${reviewId}`, payload);
 
             showToast(t('review_updated_success'), "success"); // Add translation later or use generic success
 
