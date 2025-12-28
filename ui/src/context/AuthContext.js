@@ -10,8 +10,21 @@ export const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [userToken, setUserToken] = useState(null);
+    const [userId, setUserId] = useState(null);
     const { showToast } = useToast();
     const { t } = useContext(LanguageContext);
+
+    const fetchCurrentUser = async () => {
+        try {
+            const res = await api.get('/auth/verify');
+            if (res.data && res.data.poster_id) {
+                console.log('[AuthContext] Fetched current user ID:', res.data.poster_id);
+                setUserId(res.data.poster_id);
+            }
+        } catch (e) {
+            console.log('[AuthContext] Failed to fetch current user:', e);
+        }
+    };
 
     const register = async (username, email, captcha) => {
         try {
@@ -88,6 +101,7 @@ export const AuthProvider = ({ children }) => {
             showToast(t('login_confirmed_success'), 'success');
             setUserToken(api_token);
             await storage.setItem('userToken', api_token);
+            fetchCurrentUser();
         } catch (e) {
             console.log('completeLogin error', e);
             if (e.response && e.response.data && e.response.data.error) {
@@ -105,6 +119,7 @@ export const AuthProvider = ({ children }) => {
                 showToast(t('login_confirmed_success'), 'success');
                 setUserToken(api_token);
                 await storage.setItem('userToken', api_token);
+                fetchCurrentUser();
                 return true;
             }
         } catch (e) {
@@ -118,6 +133,7 @@ export const AuthProvider = ({ children }) => {
 
     const logout = async () => {
         setUserToken(null);
+        setUserId(null);
         await storage.deleteItem('userToken');
     };
 
@@ -126,6 +142,7 @@ export const AuthProvider = ({ children }) => {
             let token = await storage.getItem('userToken');
             if (token) {
                 setUserToken(token);
+                fetchCurrentUser();
             }
         } catch (e) {
             console.log(`isLoggedIn error ${e}`);
@@ -147,7 +164,8 @@ export const AuthProvider = ({ children }) => {
             checkLoginStatus,
             logout,
             isLoading,
-            userToken
+            userToken,
+            userId
         }}>
             {children}
         </AuthContext.Provider>

@@ -140,6 +140,10 @@ export default {
     captcha_expired: 'El Captcha ha caducat',
     captcha_failed: 'El Captcha ha fallat',
     registration_failed: 'El registre ha fallat. Siusplau, torna-ho a intentar.',
+    update_review_title: 'Actualitzar Ressenya',
+    update_review_button: 'Actualitzar Ressenya',
+    review_updated_success: 'Ressenya actualitzada correctament!',
+    failed_update_review: 'Error en actualitzar la ressenya.',
 
     // Subcategory Info
     breaks_desc: 'Si tots dos frens són totalment operatius i responen correctament.',
@@ -165,4 +169,5 @@ export default {
     // UI
     info_close: 'Tancar',
     info_title: 'Guia de Qualificació',
+    edit: 'Editar',
 };

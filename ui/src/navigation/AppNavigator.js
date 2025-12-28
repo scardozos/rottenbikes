@@ -13,6 +13,7 @@ import BikesListScreen from '../screens/BikesListScreen';
 import BikeDetailsScreen from '../screens/BikeDetailsScreen';
 import CreateBikeScreen from '../screens/CreateBikeScreen';
 import CreateReviewScreen from '../screens/CreateReviewScreen';
+import UpdateReviewScreen from '../screens/UpdateReviewScreen';
 import UpdateBikeScreen from '../screens/UpdateBikeScreen';
 import ConfigurationScreen from '../screens/ConfigurationScreen';
 
@@ -42,6 +43,7 @@ const linking = {
             ConfirmLogin: 'confirm/:token',
 
             CreateReview: 'bikes/:bikeId/createReview',
+            UpdateReview: 'reviews/:reviewId/edit',
         },
     },
 };
@@ -157,6 +159,7 @@ const AppNavigator = () => {
                         <Stack.Screen name="CreateBike" component={CreateBikeScreen} options={{ title: t('add_bike_title') }} />
                         <Stack.Screen name="UpdateBike" component={UpdateBikeScreen} options={{ title: t('update_bike_title') }} />
                         <Stack.Screen name="CreateReview" component={CreateReviewScreen} options={{ title: t('write_review') }} />
+                        <Stack.Screen name="UpdateReview" component={UpdateReviewScreen} options={{ title: t('update_review_title') }} />
 
                     </>
                 )}
