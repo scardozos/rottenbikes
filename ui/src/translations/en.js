@@ -140,6 +140,10 @@ export default {
     captcha_expired: 'Captcha expired',
     captcha_failed: 'Captcha failed',
     registration_failed: 'Registration failed. Please try again.',
+    update_review_title: 'Update Review',
+    update_review_button: 'Update Review',
+    review_updated_success: 'Review updated successfully!',
+    failed_update_review: 'Failed to update review.',
 
     // Subcategory Info
     breaks_desc: 'Whether both brakes are fully operational and responsive.',
@@ -165,4 +169,5 @@ export default {
     // UI
     info_close: 'Close',
     info_title: 'Rating Guide',
+    edit: 'Edit',
 };

@@ -140,6 +140,10 @@ export default {
     captcha_expired: 'El Captcha ha caducado',
     captcha_failed: 'El Captcha ha fallado',
     registration_failed: 'El registro ha fallado. Por favor, inténtalo de nuevo.',
+    update_review_title: 'Actualizar Reseña',
+    update_review_button: 'Actualizar Reseña',
+    review_updated_success: '¡Reseña actualizada con éxito!',
+    failed_update_review: 'Error al actualizar la reseña.',
 
     // Subcategory Info
     breaks_desc: 'Si ambos frenos son completamente operativos y responden bien.',
@@ -165,4 +169,5 @@ export default {
     // UI
     info_close: 'Cerrar',
     info_title: 'Guía de Calificación',
+    edit: 'Editar',
 };

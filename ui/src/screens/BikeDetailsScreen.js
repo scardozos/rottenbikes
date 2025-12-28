@@ -4,6 +4,7 @@ import React, { useState, useCallback, useContext } from 'react';
 import { View, Text, StyleSheet, FlatList, Button, TouchableOpacity } from 'react-native';
 
 import api from '../services/api';
+import { AuthContext } from '../context/AuthContext';
 import { ThemeContext } from '../context/ThemeContext';
 import { useSession } from '../context/SessionContext';
 import { LanguageContext } from '../context/LanguageContext';
@@ -40,6 +41,7 @@ const BikeDetailsScreen = ({ route, navigation }) => {
     const [sortBy, setSortBy] = useState('date'); // 'date' | 'rating'
     const [sortOrder, setSortOrder] = useState('desc'); // 'asc' | 'desc'
     const { theme } = useContext(ThemeContext);
+    const { userId } = useContext(AuthContext);
     const { validatedBikeId } = useSession();
     const { t } = useContext(LanguageContext);
 
@@ -149,7 +151,14 @@ const BikeDetailsScreen = ({ route, navigation }) => {
                         <View style={styles.reviewItem}>
                             <View style={styles.reviewHeader}>
                                 <Text style={styles.rating}>{'⭐'.repeat(item.ratings?.overall || 0)}</Text>
-                                <Text style={styles.timeText}>{getRelativeTime(item.created_at, t)}</Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                    {item.poster_id === userId && (
+                                        <TouchableOpacity onPress={() => navigation.navigate('UpdateReview', { review: item, bikeId: bike.numerical_id })}>
+                                            <Text style={{ color: theme.colors.primary, marginRight: 10, fontWeight: 'bold' }}>{t('edit')}</Text>
+                                        </TouchableOpacity>
+                                    )}
+                                    <Text style={styles.timeText}>{getRelativeTime(item.created_at, t)}</Text>
+                                </View>
                             </View>
                             <Text style={styles.commentText}>{item.comment}</Text>
                             <Text style={styles.user}>- {item.poster_username || t('anonymous')}</Text>
