@@ -117,7 +117,7 @@ export default {
 
     // Create Review
     review_bike_title: 'Ressenya Bicicleta #{numerical_id}',
-    ratings: 'Valoraciones',
+    ratings: 'Valoracions',
     overall_rating: 'Valoració General:',
     comment: 'Comentari',
     write_review_placeholder: 'Escriu la teva ressenya...',
