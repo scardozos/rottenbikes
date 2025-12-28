@@ -1,13 +1,18 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, Switch, Alert, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, Button, StyleSheet, Switch, Alert, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform, Modal } from 'react-native';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { ThemeContext } from '../context/ThemeContext';
 import { LanguageContext } from '../context/LanguageContext';
 
-const StarRating = ({ label, value, onValueChange, theme, styles }) => (
+const StarRating = ({ label, value, onValueChange, theme, styles, onInfoPress }) => (
     <View style={styles.ratingRow}>
-        <Text style={styles.ratingLabel}>{label}</Text>
+        <View style={styles.labelRow}>
+            <Text style={styles.ratingLabel}>{label}</Text>
+            <TouchableOpacity onPress={onInfoPress} style={styles.infoButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Text style={[styles.infoIcon, { color: theme.colors.primary }]}>ⓘ</Text>
+            </TouchableOpacity>
+        </View>
         <View style={styles.starsContainer}>
             {[1, 2, 3, 4, 5].map((star) => (
                 <TouchableOpacity key={star} onPress={() => onValueChange(star)}>
@@ -47,6 +52,15 @@ const CreateReviewScreen = ({ route, navigation }) => {
     const [overall, setOverall] = useState(null);
     const [comment, setComment] = useState('');
     const [loading, setLoading] = useState(false);
+
+    // Modal State
+    const [modalVisible, setModalVisible] = useState(false);
+    const [activeCategory, setActiveCategory] = useState(null);
+
+    const handleInfoPress = (category) => {
+        setActiveCategory(category);
+        setModalVisible(true);
+    };
 
     // Auto-calculate overall
     useEffect(() => {
@@ -125,11 +139,46 @@ const CreateReviewScreen = ({ route, navigation }) => {
                 <View style={styles.ratingsContainer}>
                     <Text style={styles.subtitle}>{t('ratings')}</Text>
                     <View style={styles.divider} />
-                    <StarRating label={t('breaks')} value={breaks || 0} onValueChange={setBreaks} theme={theme} styles={styles} />
-                    <StarRating label={t('seat')} value={seat || 0} onValueChange={setSeat} theme={theme} styles={styles} />
-                    <StarRating label={t('sturdiness')} value={sturdiness || 0} onValueChange={setSturdiness} theme={theme} styles={styles} />
-                    <StarRating label={t('power')} value={power || 0} onValueChange={setPower} theme={theme} styles={styles} />
-                    <StarRating label={t('pedals')} value={pedals || 0} onValueChange={setPedals} theme={theme} styles={styles} />
+                    <StarRating
+                        label={t('breaks')}
+                        value={breaks || 0}
+                        onValueChange={setBreaks}
+                        theme={theme}
+                        styles={styles}
+                        onInfoPress={() => handleInfoPress('breaks')}
+                    />
+                    <StarRating
+                        label={t('seat')}
+                        value={seat || 0}
+                        onValueChange={setSeat}
+                        theme={theme}
+                        styles={styles}
+                        onInfoPress={() => handleInfoPress('seat')}
+                    />
+                    <StarRating
+                        label={t('sturdiness')}
+                        value={sturdiness || 0}
+                        onValueChange={setSturdiness}
+                        theme={theme}
+                        styles={styles}
+                        onInfoPress={() => handleInfoPress('sturdiness')}
+                    />
+                    <StarRating
+                        label={t('power')}
+                        value={power || 0}
+                        onValueChange={setPower}
+                        theme={theme}
+                        styles={styles}
+                        onInfoPress={() => handleInfoPress('power')}
+                    />
+                    <StarRating
+                        label={t('pedals')}
+                        value={pedals || 0}
+                        onValueChange={setPedals}
+                        theme={theme}
+                        styles={styles}
+                        onInfoPress={() => handleInfoPress('pedals')}
+                    />
 
                     <View style={styles.overallRow}>
                         <Text style={styles.overallLabel}>{t('overall_rating')}</Text>
@@ -156,6 +205,41 @@ const CreateReviewScreen = ({ route, navigation }) => {
                 </View>
 
                 <Button title={t('submit_review')} onPress={handleSubmit} disabled={loading} color={theme.colors.primary} />
+
+                {/* Info Modal */}
+                <Modal
+                    animationType="fade"
+                    transparent={true}
+                    visible={modalVisible}
+                    onRequestClose={() => setModalVisible(false)}
+                >
+                    <View style={styles.centeredView}>
+                        <View style={styles.modalView}>
+                            {activeCategory && (
+                                <>
+                                    <Text style={styles.modalTitle}>{t(activeCategory) + ': ' + t('info_title')}</Text>
+                                    <Text style={styles.modalDescription}>{t(activeCategory + '_desc')}</Text>
+
+                                    <View style={styles.exampleContainer}>
+                                        <Text style={styles.exampleHeader}>5 ⭐</Text>
+                                        <Text style={styles.exampleText}>{t(activeCategory + '_5star')}</Text>
+                                    </View>
+
+                                    <View style={styles.exampleContainer}>
+                                        <Text style={styles.exampleHeader}>1 ⭐</Text>
+                                        <Text style={styles.exampleText}>{t(activeCategory + '_1star')}</Text>
+                                    </View>
+                                </>
+                            )}
+                            <TouchableOpacity
+                                style={[styles.button, styles.buttonClose]}
+                                onPress={() => setModalVisible(false)}
+                            >
+                                <Text style={styles.textStyle}>{t('info_close')}</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </Modal>
             </ScrollView>
         </KeyboardAvoidingView>
     );
@@ -168,7 +252,10 @@ const createStyles = (theme) => StyleSheet.create({
     divider: { height: 1, backgroundColor: theme.colors.border, marginBottom: 15 },
     ratingsContainer: { marginBottom: 20, padding: 15, backgroundColor: theme.colors.card, borderRadius: 8 },
     ratingRow: { marginBottom: 15 },
-    ratingLabel: { fontSize: 16, fontWeight: '600', marginBottom: 5, color: theme.colors.text },
+    labelRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 5 },
+    ratingLabel: { fontSize: 16, fontWeight: '600', color: theme.colors.text, marginRight: 8 },
+    infoButton: { padding: 2 },
+    infoIcon: { fontSize: 16 },
     starsContainer: { flexDirection: 'row' },
     star: { fontSize: 40, paddingHorizontal: 2 },
     ratingInput: { borderWidth: 1, borderColor: theme.colors.border, width: 50, textAlign: 'center', padding: 5, borderRadius: 4, backgroundColor: theme.colors.inputBackground },
@@ -196,6 +283,79 @@ const createStyles = (theme) => StyleSheet.create({
         marginBottom: 20,
         borderRadius: 8
     },
+    // Modal Styles
+    centeredView: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+        backgroundColor: 'rgba(0,0,0,0.5)'
+    },
+    modalView: {
+        width: '85%',
+        margin: 20,
+        backgroundColor: theme.colors.card,
+        borderRadius: 15,
+        padding: 25,
+        alignItems: "flex-start",
+        shadowColor: "#000",
+        shadowOffset: {
+            width: 0,
+            height: 2
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        elevation: 5
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        marginBottom: 10,
+        color: theme.colors.text,
+        alignSelf: 'center'
+    },
+    modalDescription: {
+        fontSize: 16,
+        marginBottom: 20,
+        color: theme.colors.text,
+        lineHeight: 22
+    },
+    exampleContainer: {
+        width: '100%',
+        marginBottom: 10,
+        padding: 10,
+        backgroundColor: theme.colors.background,
+        borderRadius: 8,
+        borderLeftWidth: 4,
+        borderLeftColor: theme.colors.primary
+    },
+    exampleHeader: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: theme.colors.text,
+        marginBottom: 4
+    },
+    exampleText: {
+        fontSize: 14,
+        color: theme.colors.text,
+        fontStyle: 'italic'
+    },
+    button: {
+        borderRadius: 10,
+        padding: 12,
+        elevation: 2,
+        marginTop: 15,
+        alignSelf: 'center',
+        width: '100%'
+    },
+    buttonClose: {
+        backgroundColor: theme.colors.primary,
+    },
+    textStyle: {
+        color: "white",
+        fontWeight: "bold",
+        textAlign: "center",
+        fontSize: 16
+    }
 });
 
 export default CreateReviewScreen;

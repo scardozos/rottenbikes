@@ -139,4 +139,29 @@ export default {
     captcha_expired: 'El Captcha ha caducat',
     captcha_failed: 'El Captcha ha fallat',
     registration_failed: 'El registre ha fallat. Siusplau, torna-ho a intentar.',
+
+    // Subcategory Info
+    breaks_desc: 'Si tots dos frens són totalment operatius i responen correctament.',
+    breaks_5star: 'Tots dos frens funcionen perfectament',
+    breaks_1star: 'Tots dos frens estan trencats, la bicicleta no es pot utilitzar',
+
+    seat_desc: 'El rang d\'ajust d\'alçada i l\'estabilitat del seient.',
+    seat_5star: 'Fàcilmente ajustable i es manté ferm al seu lloc',
+    seat_1star: 'No es pot ajustar o baixa mentre pedales',
+
+    sturdiness_desc: 'La integritat estructural general i qualitat de construcció.',
+    sturdiness_5star: 'Se sent sòlida, sense sorolls ni peces soltes',
+    sturdiness_1star: 'Se sent que es desmunta, perillosa per circular',
+
+    power_desc: 'Assistència del motor elèctric o eficiència de la cadena.',
+    power_5star: 'Assistència forta o transmissió suau',
+    power_1star: 'Sense assistència o la cadena salta',
+
+    pedals_desc: 'La condició i adherència dels pedals.',
+    pedals_5star: 'Rotació suau i bona adherència',
+    pedals_1star: 'Trencats, falten o extremadament rígids',
+
+    // UI
+    info_close: 'Tancar',
+    info_title: 'Guia de Qualificació',
 };
