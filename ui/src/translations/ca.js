@@ -146,7 +146,7 @@ export default {
     breaks_1star: 'Tots dos frens estan trencats, la bicicleta no es pot utilitzar',
 
     seat_desc: 'El rang d\'ajust d\'alçada i l\'estabilitat del seient.',
-    seat_5star: 'Fàcilmente ajustable i es manté ferm al seu lloc',
+    seat_5star: 'Fàcilment ajustable i es manté ferm al seu lloc',
     seat_1star: 'No es pot ajustar o baixa mentre pedales',
 
     sturdiness_desc: 'La integritat estructural general i qualitat de construcció.',
