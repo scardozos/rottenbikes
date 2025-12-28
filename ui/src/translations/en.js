@@ -131,6 +131,7 @@ export default {
     seat: 'Seat',
     sturdiness: 'Sturdiness',
     power: 'Power',
+    pedals: 'Pedals',
     // Toasts
     confirmation_successful: 'Confirmation Successful!',
     invalid_numerical_id: 'Please enter a valid numerical ID',

@@ -131,6 +131,7 @@ export default {
     seat: 'Asiento',
     sturdiness: 'Robustez',
     power: 'Potencia',
+    pedals: 'Pedales',
     // Toasts
     confirmation_successful: '¡Confirmación Exitosa!',
     invalid_numerical_id: 'Por favor, introduce una ID numérica válida',
