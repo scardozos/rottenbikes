@@ -139,4 +139,29 @@ export default {
     captcha_expired: 'Captcha expired',
     captcha_failed: 'Captcha failed',
     registration_failed: 'Registration failed. Please try again.',
+
+    // Subcategory Info
+    breaks_desc: 'Whether both brakes are fully operational and responsive.',
+    breaks_5star: 'Both brakes are in perfect working order',
+    breaks_1star: 'Both brakes are broken, the bike cannot be used',
+
+    seat_desc: 'The range of height adjustment and stability of the seat.',
+    seat_5star: 'Easily adjustable and stays firmly in place',
+    seat_1star: 'Cannot be adjusted or slides down while riding',
+
+    sturdiness_desc: 'The overall structural integrity and build quality.',
+    sturdiness_5star: 'Feels solid, no rattling or loose parts',
+    sturdiness_1star: 'Feels falling apart, dangerous to ride',
+
+    power_desc: 'Electric motor assistance or mechanical chain efficiency.',
+    power_5star: 'Strong assistance or smooth power transfer',
+    power_1star: 'No assistance or chain skips/slips',
+
+    pedals_desc: 'The condition and grip of the pedals.',
+    pedals_5star: 'Smooth rotation and good grip',
+    pedals_1star: 'Broken, missing, or extremely stiff',
+
+    // UI
+    info_close: 'Close',
+    info_title: 'Rating Guide',
 };

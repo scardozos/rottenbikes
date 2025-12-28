@@ -139,4 +139,29 @@ export default {
     captcha_expired: 'El Captcha ha caducado',
     captcha_failed: 'El Captcha ha fallado',
     registration_failed: 'El registro ha fallado. Por favor, inténtalo de nuevo.',
+
+    // Subcategory Info
+    breaks_desc: 'Si ambos frenos son completamente operativos y responden bien.',
+    breaks_5star: 'Ambos frenos funcionan perfectamente',
+    breaks_1star: 'Ambos frenos están rotos, la bici no se puede usar',
+
+    seat_desc: 'El rango de ajuste de altura y la estabilidad del asiento.',
+    seat_5star: 'Fácilmente ajustable y se mantiene firme en su lugar',
+    seat_1star: 'No se puede ajustar o se baja mientras montas',
+
+    sturdiness_desc: 'La integridad estructural general y calidad de construcción.',
+    sturdiness_5star: 'Se siente sólida, sin ruidos ni piezas sueltas',
+    sturdiness_1star: 'Se siente que se desmorona, peligrosa para montar',
+
+    power_desc: 'Asistencia del motor eléctrico o eficiencia de la cadena.',
+    power_5star: 'Asistencia fuerte o transmisión suave',
+    power_1star: 'Sin asistencia o la cadena salta',
+
+    pedals_desc: 'La condición y agarre de los pedales.',
+    pedals_5star: 'Rotación suave y buen agarre',
+    pedals_1star: 'Rotos, faltantes o extremadamente rígidos',
+
+    // UI
+    info_close: 'Cerrar',
+    info_title: 'Guía de Calificación',
 };
