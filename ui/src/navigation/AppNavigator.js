@@ -118,7 +118,21 @@ const AppNavigator = () => {
     }
 
     return (
-        <NavigationContainer linking={linking} theme={navTheme}>
+        <NavigationContainer
+            linking={{
+                ...linking,
+                config: {
+                    ...linking.config,
+                },
+                // Add the fallback title
+                fallback: <ActivityIndicator color={theme.colors.primary} size="large" />,
+            }}
+            documentTitle={{
+                formatter: (options, route) =>
+                    `RottenBikes: Rate City Bikes${options?.title ? ` - ${options.title}` : ''}`,
+            }}
+            theme={navTheme}
+        >
             <Stack.Navigator
                 initialRouteName={userToken == null ? "Login" : "Main"}
                 screenOptions={{
