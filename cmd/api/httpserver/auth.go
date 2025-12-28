@@ -71,7 +71,12 @@ func (s *HTTPServer) handleRegister(w http.ResponseWriter, r *http.Request) {
 	if uiPort == "" {
 		uiPort = "8081"
 	}
-	uiURL := fmt.Sprintf("http://%s:%s/confirm/%s", uiHost, uiPort, magicToken)
+
+	scheme := "http"
+	if uiHost != "localhost" {
+		scheme = "https"
+	}
+	uiURL := fmt.Sprintf("%s://%s:%s/confirm/%s", scheme, uiHost, uiPort, magicToken)
 	if req.Origin != "" {
 		uiURL = fmt.Sprintf("%s?origin=%s", uiURL, req.Origin)
 	}
@@ -145,7 +150,12 @@ func (s *HTTPServer) handleRequestMagicLink(w http.ResponseWriter, r *http.Reque
 	if uiPort == "" {
 		uiPort = "8081"
 	}
-	uiURL := fmt.Sprintf("http://%s:%s/confirm/%s", uiHost, uiPort, magicToken)
+
+	scheme := "http"
+	if uiHost != "localhost" {
+		scheme = "https"
+	}
+	uiURL := fmt.Sprintf("%s://%s:%s/confirm/%s", scheme, uiHost, uiPort, magicToken)
 	if req.Origin != "" {
 		uiURL = fmt.Sprintf("%s?origin=%s", uiURL, req.Origin)
 	}
