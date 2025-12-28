@@ -8,6 +8,10 @@ metadata:
 spec:
   gatewayClassName: eg # Envoy Gateway default name
   listeners:
+  - name: ui-http
+    hostname: dev.rottenbik.es
+    port: 80
+    protocol: HTTP
   - name: ui-https
     hostname: dev.rottenbik.es
     port: 443
