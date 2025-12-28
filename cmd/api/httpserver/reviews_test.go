@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -47,6 +48,39 @@ func TestHandleCreateBikeReview(t *testing.T) {
 			t.Errorf("expected status 201, got %d", w.Code)
 		}
 	})
+
+	t.Run("rate_limit_exceeded", func(t *testing.T) {
+		mockService.CreateReviewWithRatingsFunc = func(ctx context.Context, in domain.CreateReviewInput) (int64, error) {
+			return 0, domain.ErrTooFrequentReview
+		}
+
+		token := "valid_token"
+		reqBody, _ := json.Marshal(map[string]interface{}{
+			"comment": "great bike",
+		})
+		req := httptest.NewRequest(http.MethodPost, "/bikes/1/reviews", bytes.NewReader(reqBody))
+		req.Header.Set("Authorization", "Bearer "+token)
+		w := httptest.NewRecorder()
+
+		srv.server.Handler.ServeHTTP(w, req)
+
+		if w.Code != http.StatusTooManyRequests {
+			t.Errorf("expected status 429, got %d", w.Code)
+		}
+	})
+
+	t.Run("bad_request_invalid_json", func(t *testing.T) {
+		token := "valid_token"
+		req := httptest.NewRequest(http.MethodPost, "/bikes/1/reviews", bytes.NewReader([]byte("invalid")))
+		req.Header.Set("Authorization", "Bearer "+token)
+		w := httptest.NewRecorder()
+
+		srv.server.Handler.ServeHTTP(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected status 400, got %d", w.Code)
+		}
+	})
 }
 
 func TestHandleUpdateReview(t *testing.T) {
@@ -55,6 +89,12 @@ func TestHandleUpdateReview(t *testing.T) {
 			return &domain.AuthPoster{PosterID: 1}, nil
 		},
 		UpdateReviewWithRatingsFunc: func(ctx context.Context, in domain.UpdateReviewInput) error {
+			if in.ReviewID == 404 {
+				return sql.ErrNoRows
+			}
+			if in.ReviewID == 500 {
+				return errors.New("db error")
+			}
 			return nil
 		},
 	}
@@ -82,6 +122,34 @@ func TestHandleUpdateReview(t *testing.T) {
 			t.Errorf("expected status 204, got %d", w.Code)
 		}
 	})
+
+	t.Run("not_found", func(t *testing.T) {
+		token := "valid_token"
+		reqBody, _ := json.Marshal(map[string]interface{}{"comment": "update"})
+		req := httptest.NewRequest(http.MethodPut, "/reviews/404", bytes.NewReader(reqBody))
+		req.Header.Set("Authorization", "Bearer "+token)
+		w := httptest.NewRecorder()
+
+		srv.server.Handler.ServeHTTP(w, req)
+
+		if w.Code != http.StatusNotFound {
+			t.Errorf("expected status 404, got %d", w.Code)
+		}
+	})
+
+	t.Run("internal_error", func(t *testing.T) {
+		token := "valid_token"
+		reqBody, _ := json.Marshal(map[string]interface{}{"comment": "update"})
+		req := httptest.NewRequest(http.MethodPut, "/reviews/500", bytes.NewReader(reqBody))
+		req.Header.Set("Authorization", "Bearer "+token)
+		w := httptest.NewRecorder()
+
+		srv.server.Handler.ServeHTTP(w, req)
+
+		if w.Code != http.StatusInternalServerError {
+			t.Errorf("expected status 500, got %d", w.Code)
+		}
+	})
 }
 
 func TestHandleGetReview(t *testing.T) {
@@ -102,6 +170,8 @@ func TestHandleGetReview(t *testing.T) {
 					},
 					BikeImg: &bikeImg,
 				}, nil
+			} else if reviewID == 404 {
+				return nil, sql.ErrNoRows
 			}
 			return nil, sql.ErrNoRows
 		},
@@ -126,6 +196,18 @@ func TestHandleGetReview(t *testing.T) {
 			t.Errorf("expected status 200, got %d", w.Code)
 		}
 	})
+
+	t.Run("not_found", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/reviews/404", nil)
+		req.Header.Set("Authorization", "Bearer valid_token")
+		w := httptest.NewRecorder()
+
+		srv.server.Handler.ServeHTTP(w, req)
+
+		if w.Code != http.StatusNotFound {
+			t.Errorf("expected status 404, got %d", w.Code)
+		}
+	})
 }
 
 func TestHandleDeleteReview(t *testing.T) {
@@ -134,6 +216,12 @@ func TestHandleDeleteReview(t *testing.T) {
 			return &domain.AuthPoster{PosterID: 1}, nil
 		},
 		DeleteReviewFunc: func(ctx context.Context, reviewID int64, posterID int64) error {
+			if reviewID == 404 {
+				return sql.ErrNoRows
+			}
+			if reviewID == 500 {
+				return errors.New("db error")
+			}
 			return nil
 		},
 	}
@@ -154,6 +242,32 @@ func TestHandleDeleteReview(t *testing.T) {
 
 		if w.Code != http.StatusNoContent {
 			t.Errorf("expected status 204, got %d", w.Code)
+		}
+	})
+
+	t.Run("not_found", func(t *testing.T) {
+		token := "valid_token"
+		req := httptest.NewRequest(http.MethodDelete, "/reviews/404", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		w := httptest.NewRecorder()
+
+		srv.server.Handler.ServeHTTP(w, req)
+
+		if w.Code != http.StatusNotFound {
+			t.Errorf("expected status 404, got %d", w.Code)
+		}
+	})
+
+	t.Run("internal_error", func(t *testing.T) {
+		token := "valid_token"
+		req := httptest.NewRequest(http.MethodDelete, "/reviews/500", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		w := httptest.NewRecorder()
+
+		srv.server.Handler.ServeHTTP(w, req)
+
+		if w.Code != http.StatusInternalServerError {
+			t.Errorf("expected status 500, got %d", w.Code)
 		}
 	})
 }
