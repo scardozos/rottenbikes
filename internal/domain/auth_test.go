@@ -297,3 +297,114 @@ func TestGetPosterByAPIToken(t *testing.T) {
 		}
 	})
 }
+
+func TestDeletePoster(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer db.Close()
+
+	ctx := context.Background()
+	posterID := int64(1)
+
+	t.Run("success_delete_content", func(t *testing.T) {
+		mock.ExpectBegin()
+
+		// 1. List user reviews (returns 2 bikes)
+		mock.ExpectQuery("SELECT DISTINCT bike_numerical_id FROM reviews").
+			WithArgs(posterID).
+			WillReturnRows(sqlmock.NewRows([]string{"bike_numerical_id"}).AddRow(101).AddRow(102))
+
+		// 2. Delete ratings
+		mock.ExpectExec("DELETE FROM review_ratings").
+			WithArgs(posterID).
+			WillReturnResult(sqlmock.NewResult(0, 5))
+
+		// 3. Delete reviews
+		mock.ExpectExec("DELETE FROM reviews").
+			WithArgs(posterID).
+			WillReturnResult(sqlmock.NewResult(0, 2))
+
+		// 4. Recompute aggregates (for bike 101)
+		mock.ExpectExec("DELETE FROM rating_aggregates").
+			WithArgs(int64(101)).
+			WillReturnResult(sqlmock.NewResult(0, 1))
+		mock.ExpectExec("INSERT INTO rating_aggregates").
+			WithArgs(int64(101)).
+			WillReturnResult(sqlmock.NewResult(0, 1))
+
+		// 4. Recompute aggregates (for bike 102)
+		mock.ExpectExec("DELETE FROM rating_aggregates").
+			WithArgs(int64(102)).
+			WillReturnResult(sqlmock.NewResult(0, 1))
+		mock.ExpectExec("INSERT INTO rating_aggregates").
+			WithArgs(int64(102)).
+			WillReturnResult(sqlmock.NewResult(0, 1))
+
+		// 5. Delete user bikes
+		mock.ExpectExec("DELETE FROM bikes").
+			WithArgs(posterID).
+			WillReturnResult(sqlmock.NewResult(0, 1))
+
+		// 6. Delete magic links
+		mock.ExpectExec("DELETE FROM magic_links").
+			WithArgs(posterID).
+			WillReturnResult(sqlmock.NewResult(0, 1))
+
+		// 7. Delete poster
+		mock.ExpectExec("DELETE FROM posters").
+			WithArgs(posterID).
+			WillReturnResult(sqlmock.NewResult(0, 1))
+
+		mock.ExpectCommit()
+
+		store := NewStore(db)
+		// deleteContent = true
+		err := store.DeletePoster(ctx, posterID, true)
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+
+		if err := mock.ExpectationsWereMet(); err != nil {
+			t.Errorf("there were unfulfilled expectations: %s", err)
+		}
+	})
+
+	t.Run("success_orphan_content", func(t *testing.T) {
+		mock.ExpectBegin()
+
+		// 1. Orphan bikes
+		mock.ExpectExec("UPDATE bikes SET creator_id = NULL").
+			WithArgs(posterID).
+			WillReturnResult(sqlmock.NewResult(0, 1))
+
+		// 2. Orphan reviews
+		mock.ExpectExec("UPDATE reviews SET poster_id = NULL").
+			WithArgs(posterID).
+			WillReturnResult(sqlmock.NewResult(0, 2))
+
+		// 3. Delete magic links
+		mock.ExpectExec("DELETE FROM magic_links").
+			WithArgs(posterID).
+			WillReturnResult(sqlmock.NewResult(0, 1))
+
+		// 4. Delete poster
+		mock.ExpectExec("DELETE FROM posters").
+			WithArgs(posterID).
+			WillReturnResult(sqlmock.NewResult(0, 1))
+
+		mock.ExpectCommit()
+
+		store := NewStore(db)
+		// deleteContent = false
+		err := store.DeletePoster(ctx, posterID, false)
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+
+		if err := mock.ExpectationsWereMet(); err != nil {
+			t.Errorf("there were unfulfilled expectations: %s", err)
+		}
+	})
+}

@@ -289,7 +289,7 @@ func TestGetReviewWithRatingsByID(t *testing.T) {
 		}).
 			AddRow(reviewID, 1, "user1", 1, "comment", time.Now(), "overall", 5, "img.jpg")
 
-		mock.ExpectQuery("SELECT .* FROM reviews r JOIN posters p .* JOIN review_ratings rr .*").
+		mock.ExpectQuery("SELECT .* FROM reviews r LEFT JOIN posters p .* LEFT JOIN review_ratings rr .*").
 			WithArgs(reviewID).
 			WillReturnRows(rows)
 
@@ -297,6 +297,7 @@ func TestGetReviewWithRatingsByID(t *testing.T) {
 		review, err := store.GetReviewWithRatingsByID(ctx, reviewID)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
+			return
 		}
 		if review.ReviewID != reviewID {
 			t.Errorf("expected review id %d, got %d", reviewID, review.ReviewID)
@@ -304,7 +305,7 @@ func TestGetReviewWithRatingsByID(t *testing.T) {
 	})
 
 	t.Run("not_found", func(t *testing.T) {
-		mock.ExpectQuery("SELECT .* FROM reviews r JOIN posters p .* JOIN review_ratings rr .*").
+		mock.ExpectQuery("SELECT .* FROM reviews r LEFT JOIN posters p .* LEFT JOIN review_ratings rr .*").
 			WithArgs(reviewID).
 			WillReturnError(sql.ErrNoRows)
 

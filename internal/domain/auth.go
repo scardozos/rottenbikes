@@ -345,3 +345,109 @@ func (s *Store) CheckMagicLinkStatus(ctx context.Context, token string) (string,
 	}
 	return apiToken.String, nil
 }
+
+func (s *Store) DeletePoster(ctx context.Context, posterID int64, deleteContent bool) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	// 1. Identify bikes that will need aggregate recomputation
+	// (Only if we are deleting content OR if we want to be safe, but actually
+	// if we orphan reviews, aggregates don't strictly change unless we remove ratings.
+	// If deleteContent=false, we keep reviews/ratings but unset poster_id.
+	// Aggregates remain valid as they are sum of ratings.
+	// If deleteContent=true, we delete ratings, so we MUST recompute.
+	if deleteContent {
+		rows, err := tx.QueryContext(ctx, `
+			SELECT DISTINCT bike_numerical_id
+			FROM reviews
+			WHERE poster_id = $1
+		`, posterID)
+		if err != nil {
+			return fmt.Errorf("list user reviews: %w", err)
+		}
+		var bikeIDs []int64
+		for rows.Next() {
+			var bid int64
+			if err := rows.Scan(&bid); err != nil {
+				rows.Close()
+				return err
+			}
+			bikeIDs = append(bikeIDs, bid)
+		}
+		rows.Close()
+
+		// 2. Delete review ratings
+		if _, err := tx.ExecContext(ctx, `
+			DELETE FROM review_ratings
+			WHERE review_id IN (SELECT review_id FROM reviews WHERE poster_id = $1)
+		`, posterID); err != nil {
+			return fmt.Errorf("delete user ratings: %w", err)
+		}
+
+		// 3. Delete reviews
+		if _, err := tx.ExecContext(ctx, `
+			DELETE FROM reviews
+			WHERE poster_id = $1
+		`, posterID); err != nil {
+			return fmt.Errorf("delete user reviews: %w", err)
+		}
+
+		// 4. Recompute aggregates for affected bikes
+		for _, bid := range bikeIDs {
+			if err := RecomputeAggregatesForBike(ctx, tx, bid); err != nil {
+				return fmt.Errorf("recompute aggregates for bike %d: %w", bid, err)
+			}
+		}
+
+		// 5. Delete bikes created by user
+		if _, err := tx.ExecContext(ctx, `
+			DELETE FROM bikes
+			WHERE creator_id = $1
+		`, posterID); err != nil {
+			return fmt.Errorf("delete user bikes: %w", err)
+		}
+
+	} else {
+		// Orchid mode: set poster_id/creator_id to NULL
+		if _, err := tx.ExecContext(ctx, `
+			UPDATE bikes
+			SET creator_id = NULL
+			WHERE creator_id = $1
+		`, posterID); err != nil {
+			return fmt.Errorf("orphan bikes: %w", err)
+		}
+
+		if _, err := tx.ExecContext(ctx, `
+			UPDATE reviews
+			SET poster_id = NULL
+			WHERE poster_id = $1
+		`, posterID); err != nil {
+			return fmt.Errorf("orphan reviews: %w", err)
+		}
+	}
+
+	// Always delete magic links
+	if _, err := tx.ExecContext(ctx, `
+		DELETE FROM magic_links
+		WHERE poster_id = $1
+	`, posterID); err != nil {
+		return fmt.Errorf("delete magic links: %w", err)
+	}
+
+	// Always delete poster
+	if _, err := tx.ExecContext(ctx, `
+		DELETE FROM posters
+		WHERE poster_id = $1
+	`, posterID); err != nil {
+		return fmt.Errorf("delete poster: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit tx: %w", err)
+	}
+
+	return nil
+}

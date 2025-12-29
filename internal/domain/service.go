@@ -12,6 +12,7 @@ type Service interface {
 	ConfirmMagicLink(ctx context.Context, token string) (*ConfirmResult, error)
 	GetPosterByAPIToken(ctx context.Context, token string) (*AuthPoster, error)
 	CheckMagicLinkStatus(ctx context.Context, token string) (string, error)
+	DeletePoster(ctx context.Context, posterID int64, deleteContent bool) error
 
 	// Bike
 	ListBikes(ctx context.Context) ([]Bike, error)
