@@ -140,7 +140,7 @@ func (s *Store) CreateReviewWithRatings(ctx context.Context, in CreateReviewInpu
 		return 0, ErrHourlyRateLimitExceeded
 	}
 
-	// 2. Check per-bike frequency (existing logic)
+	// 2. Check per-bike frequency
 
 	var lastCreated time.Time
 	err := s.db.QueryRowContext(ctx, `
