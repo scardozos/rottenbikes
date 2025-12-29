@@ -16,6 +16,7 @@ import CreateReviewScreen from '../screens/CreateReviewScreen';
 import UpdateReviewScreen from '../screens/UpdateReviewScreen';
 import UpdateBikeScreen from '../screens/UpdateBikeScreen';
 import ConfigurationScreen from '../screens/ConfigurationScreen';
+import PrivacyScreen from '../screens/PrivacyScreen';
 
 
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -53,6 +54,7 @@ const linking = {
             Login: 'login',
             Register: 'register',
             ConfirmLogin: 'confirm/:token',
+            Privacy: 'privacy',
         },
     },
 };
@@ -229,6 +231,7 @@ const AppNavigator = () => {
                     </>
                 )}
                 <Stack.Screen name="ConfirmLogin" component={ConfirmLoginScreen} options={{ title: t('confirm_login_title') }} />
+                <Stack.Screen name="Privacy" component={PrivacyScreen} options={{ title: t('privacy_and_terms_title') }} />
             </Stack.Navigator>
         </NavigationContainer>
     );

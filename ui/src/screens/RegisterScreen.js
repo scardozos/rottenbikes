@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, Alert, Modal, Platform } from 'react-native';
+import { View, Text, TextInput, Button, StyleSheet, Alert, Modal, Platform, Switch, TouchableOpacity } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { AuthContext } from '../context/AuthContext';
 import { ThemeContext } from '../context/ThemeContext';
@@ -12,6 +12,7 @@ const RegisterScreen = ({ navigation }) => {
   const [usernameError, setUsernameError] = useState('');
   const [email, setEmail] = useState('');
   const [emailError, setEmailError] = useState('');
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [showCaptcha, setShowCaptcha] = useState(false);
   const [step, setStep] = useState(1); // 1: Form, 2: Waiting
   const [pendingMagicToken, setPendingMagicToken] = useState(null);
@@ -57,6 +58,11 @@ const RegisterScreen = ({ navigation }) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       setEmailError(t('email_invalid'));
+      return;
+    }
+
+    if (!acceptedTerms) {
+      showToast(t('must_accept_terms'), "error");
       return;
     }
     setShowCaptcha(true);
@@ -114,7 +120,31 @@ const RegisterScreen = ({ navigation }) => {
           />
           {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
 
-          <Button title={t('register')} onPress={handleRegister} color={theme.colors.primary} />
+          <View style={styles.checkboxContainer}>
+            <Switch
+              trackColor={{ false: "#767577", true: theme.colors.primary }}
+              thumbColor={acceptedTerms ? "#f4f3f4" : "#f4f3f4"}
+              ios_backgroundColor="#3e3e3e"
+              onValueChange={setAcceptedTerms}
+              value={acceptedTerms}
+            />
+            <View style={styles.checkboxTextContainer}>
+              <Text style={styles.checkboxLabel}>{t('i_agree_to')}{' '}</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Privacy')}>
+                <Text style={styles.linkText}>{t('privacy_and_terms_title')}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={[
+              styles.registerButton,
+              !acceptedTerms && styles.registerButtonDisabled
+            ]}
+            onPress={handleRegister}
+          >
+            <Text style={styles.registerButtonText}>{t('register')}</Text>
+          </TouchableOpacity>
 
           <Modal visible={showCaptcha} animationType="slide">
             <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingVertical: 50 }}>
@@ -174,6 +204,39 @@ const createStyles = (theme) => StyleSheet.create({
     fontSize: 12,
     marginBottom: 8,
     marginTop: -8,
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  checkboxTextContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    marginLeft: 8,
+  },
+  checkboxLabel: {
+    color: theme.colors.text,
+  },
+  linkText: {
+    color: theme.colors.primary,
+    textDecorationLine: 'underline',
+  },
+  registerButton: {
+    backgroundColor: theme.colors.primary,
+    padding: 12,
+    borderRadius: 4,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  registerButtonDisabled: {
+    opacity: 0.5,
+  },
+  registerButtonText: {
+    color: 'white', // Assuming primary button text is white; adjust if theme differs
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 
