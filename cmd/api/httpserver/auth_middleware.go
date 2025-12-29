@@ -10,6 +10,7 @@ import (
 type contextKey string
 
 const contextKeyPosterID contextKey = "poster_id"
+const contextKeyUsername contextKey = "username"
 
 func posterIDFromContext(ctx context.Context) (int64, bool) {
 	v := ctx.Value(contextKeyPosterID)
@@ -18,6 +19,15 @@ func posterIDFromContext(ctx context.Context) (int64, bool) {
 	}
 	id, ok := v.(int64)
 	return id, ok
+}
+
+func usernameFromContext(ctx context.Context) (string, bool) {
+	v := ctx.Value(contextKeyUsername)
+	if v == nil {
+		return "", false
+	}
+	u, ok := v.(string)
+	return u, ok
 }
 
 // middlewareAuth enforces a valid Bearer API token and injects poster_id into context.
@@ -50,6 +60,7 @@ func (s *HTTPServer) middlewareAuth(next http.Handler) http.Handler {
 		}
 
 		ctx = context.WithValue(ctx, contextKeyPosterID, poster.PosterID)
+		ctx = context.WithValue(ctx, contextKeyUsername, poster.Username)
 
 		if rw, ok := w.(*ResponseWriter); ok {
 			rw.Username = poster.Username

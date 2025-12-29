@@ -269,9 +269,12 @@ func (s *HTTPServer) handleVerifyToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	username, _ := usernameFromContext(r.Context())
+
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"poster_id": posterID,
+		"username":  username,
 		"status":    "ok",
 	})
 }
@@ -299,4 +302,40 @@ func (s *HTTPServer) handlePollMagicLink(w http.ResponseWriter, r *http.Request)
 	_ = json.NewEncoder(w).Encode(map[string]string{
 		"api_token": apiToken,
 	})
+}
+
+// DELETE /auth/user
+func (s *HTTPServer) handleDeletePoster(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete {
+		s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	posterID, ok := posterIDFromContext(r.Context())
+	if !ok {
+		s.sendError(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Optional: safety check if username provided matches context
+	// Leaving strictly context-based for now as token is proof of ownership.
+
+	// Parse optional delete config
+	var req struct {
+		DeletePosterSubresources bool `json:"delete_poster_subresources"`
+	}
+	// We allow empty body (defaults to false)
+	if r.Body != http.NoBody {
+		_ = json.NewDecoder(r.Body).Decode(&req)
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+	// Pass the parsed flag
+	if err := s.service.DeletePoster(ctx, posterID, req.DeletePosterSubresources); err != nil {
+		log.Printf("delete poster %d error: %v", posterID, err)
+		s.sendError(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }

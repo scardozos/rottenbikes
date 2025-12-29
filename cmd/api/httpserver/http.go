@@ -38,6 +38,7 @@ func New(service domain.Service, sender email.EmailSender, addr string) (*HTTPSe
 	mux.HandleFunc("/auth/poll", s.handlePollMagicLink)
 	mux.HandleFunc("/auth/register", s.handleRegister)
 	mux.HandleFunc("/auth/verify", s.middlewareAuth(http.HandlerFunc(s.handleVerifyToken)).ServeHTTP)
+	mux.HandleFunc("/auth/user", s.middlewareAuth(http.HandlerFunc(s.handleDeletePoster)).ServeHTTP)
 
 	// /bikes → list and create (Auth required for everything)
 	// /bikes → list and create

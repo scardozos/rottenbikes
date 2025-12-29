@@ -21,7 +21,7 @@ type ReviewWithRatings struct {
 
 type reviewRatingRow struct {
 	ReviewID        int64
-	PosterID        int64
+	PosterID        sql.NullInt64
 	PosterUsername  string
 	BikeNumericalID int64
 	Comment         *string
@@ -39,7 +39,7 @@ func (s *Store) ListReviewsWithRatingsByBike(ctx context.Context, bikeID int64) 
 		SELECT
 			r.review_id,
 			r.poster_id,
-			p.username,
+			COALESCE(p.username, ''),
 			r.bike_numerical_id,
 			r.comment,
 			r.created_ts,
@@ -47,7 +47,7 @@ func (s *Store) ListReviewsWithRatingsByBike(ctx context.Context, bikeID int64) 
 			rr.score,
 			r.bike_img
 		FROM reviews r
-		JOIN posters p       ON p.poster_id = r.poster_id
+		LEFT JOIN posters p       ON p.poster_id = r.poster_id
 		JOIN review_ratings rr ON rr.review_id = r.review_id
 		WHERE r.bike_numerical_id = $1
 		ORDER BY r.review_id, rr.subcategory
@@ -83,7 +83,7 @@ func buildReviewWithRatingsFromRows(rows *sql.Rows) ([]ReviewWithRatings, error)
 		if !ok {
 			r = &ReviewWithRatings{
 				ReviewID:        row.ReviewID,
-				PosterID:        row.PosterID,
+				PosterID:        row.PosterID.Int64, // Corrected based on instruction interpretation
 				PosterUsername:  row.PosterUsername,
 				BikeNumericalID: row.BikeNumericalID,
 				Comment:         row.Comment,
@@ -315,7 +315,7 @@ func (s *Store) GetReviewWithRatingsByID(ctx context.Context, reviewID int64) (*
 		SELECT
 			r.review_id,
 			r.poster_id,
-			p.username,
+			COALESCE(p.username, ''),
 			r.bike_numerical_id,
 			r.comment,
 			r.created_ts,
@@ -323,7 +323,7 @@ func (s *Store) GetReviewWithRatingsByID(ctx context.Context, reviewID int64) (*
 			rr.score,
 			r.bike_img
 		FROM reviews r
-		JOIN posters p       ON p.poster_id = r.poster_id
+		LEFT JOIN posters p       ON p.poster_id = r.poster_id
 		LEFT JOIN review_ratings rr ON rr.review_id = r.review_id
 		WHERE r.review_id = $1
 		ORDER BY rr.subcategory

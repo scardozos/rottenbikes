@@ -11,6 +11,7 @@ export const AuthProvider = ({ children }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [userToken, setUserToken] = useState(null);
     const [userId, setUserId] = useState(null);
+    const [username, setUsername] = useState(null);
     const { showToast } = useToast();
     const { t } = useContext(LanguageContext);
 
@@ -18,8 +19,9 @@ export const AuthProvider = ({ children }) => {
         try {
             const res = await api.get('/auth/verify');
             if (res.data && res.data.poster_id) {
-                console.log('[AuthContext] Fetched current user ID:', res.data.poster_id);
+                console.log('[AuthContext] Fetched current user:', res.data);
                 setUserId(res.data.poster_id);
+                setUsername(res.data.username);
             }
         } catch (e) {
             console.log('[AuthContext] Failed to fetch current user:', e);
@@ -134,6 +136,7 @@ export const AuthProvider = ({ children }) => {
     const logout = async () => {
         setUserToken(null);
         setUserId(null);
+        setUsername(null);
         await storage.deleteItem('userToken');
     };
 
@@ -165,7 +168,9 @@ export const AuthProvider = ({ children }) => {
             logout,
             isLoading,
             userToken,
-            userId
+            userToken,
+            userId,
+            username
         }}>
             {children}
         </AuthContext.Provider>
