@@ -22,6 +22,8 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { LanguageContext } from '../context/LanguageContext';
 
 const Stack = createNativeStackNavigator();
+const HomeStack = createNativeStackNavigator();
+const BikesListStack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 const linking = {
@@ -30,22 +32,66 @@ const linking = {
         screens: {
             Main: {
                 screens: {
-                    Home: 'home',
-                    BikesList: 'bikes',
+                    Home: {
+                        screens: {
+                            ScanBike: 'home',
+                        }
+                    },
+                    BikesList: {
+                        screens: {
+                            BikesCatalog: 'bikes',
+                            BikeDetails: 'bikes/:bikeId',
+                            CreateBike: 'bikes/create',
+                            UpdateBike: 'bikes/:bikeId/update',
+                            CreateReview: 'bikes/:bikeId/createReview',
+                            UpdateReview: 'reviews/:reviewId/edit',
+                        }
+                    },
                     Configuration: 'config',
                 }
             },
             Login: 'login',
             Register: 'register',
-            CreateBike: 'create-bike',
-            BikeDetails: 'bike/:bikeId',
-            UpdateBike: 'bikes/:bikeId/update',
             ConfirmLogin: 'confirm/:token',
-
-            CreateReview: 'bikes/:bikeId/createReview',
-            UpdateReview: 'reviews/:reviewId/edit',
         },
     },
+};
+
+const HomeStackNavigator = () => {
+    const { theme } = useContext(ThemeContext);
+    const { t } = useContext(LanguageContext);
+    return (
+        <HomeStack.Navigator
+            screenOptions={{
+                headerTitleStyle: { color: theme.colors.text },
+                headerTintColor: theme.colors.primary,
+                headerStyle: { backgroundColor: theme.colors.card },
+            }}
+        >
+            <HomeStack.Screen name="ScanBike" component={HomeScreen} options={{ title: t('home') }} />
+        </HomeStack.Navigator>
+    );
+};
+
+const BikesListStackNavigator = () => {
+    const { theme } = useContext(ThemeContext);
+    const { t } = useContext(LanguageContext);
+    return (
+        <BikesListStack.Navigator
+            screenOptions={{
+                headerTitleStyle: { color: theme.colors.text },
+                headerTintColor: theme.colors.primary,
+                headerStyle: { backgroundColor: theme.colors.card },
+            }}
+        >
+            <BikesListStack.Screen name="BikesCatalog" component={BikesListScreen} options={{ title: t('browse_bikes') }} />
+            <BikesListStack.Screen name="BikeDetails" component={BikeDetailsScreen} options={{ title: t('bike_details') }} />
+            <BikesListStack.Screen name="CreateBike" component={CreateBikeScreen} options={{ title: t('add_bike_title') }} />
+            <BikesListStack.Screen name="UpdateBike" component={UpdateBikeScreen} options={{ title: t('update_bike_title') }} />
+            <BikesListStack.Screen name="CreateReview" component={CreateReviewScreen} options={{ title: t('write_review') }} />
+            <BikesListStack.Screen name="UpdateReview" component={UpdateReviewScreen} options={{ title: t('update_review_title') }} />
+        </BikesListStack.Navigator>
+    );
 };
 
 const MainTabs = () => {
@@ -70,6 +116,39 @@ const MainTabs = () => {
                 },
                 tabBarActiveTintColor: theme.colors.primary,
                 tabBarInactiveTintColor: 'gray',
+                headerShown: false,
+                tabBarStyle: {
+                    backgroundColor: theme.colors.card,
+                    borderTopColor: theme.colors.border,
+                }
+            })}
+        >
+            <Tab.Screen name="Home" component={HomeStackNavigator} options={{ title: t('home') }} />
+            <Tab.Screen
+                name="BikesList"
+                component={BikesListStackNavigator}
+                options={{
+                    title: t('browse_bikes'),
+                }}
+                listeners={({ navigation }) => ({
+                    tabPress: (e) => {
+                        const state = navigation.getState();
+                        if (state) {
+                            const currentTabRoute = state.routes[state.index];
+                            // If the user taps the tab AND is already on it
+                            if (currentTabRoute.name === 'BikesList') {
+                                e.preventDefault(); // Prevent default action (which might be doing nothing)
+                                // Navigate explicitly to the root screen of the stack
+                                navigation.navigate('BikesList', {
+                                    screen: 'BikesCatalog',
+                                });
+                            }
+                        }
+                    },
+                })}
+            />
+            <Tab.Screen name="Configuration" component={ConfigurationScreen} options={{
+                title: t('settings'),
                 headerShown: true,
                 headerTitleStyle: { color: theme.colors.text },
                 headerTintColor: theme.colors.primary,
@@ -77,16 +156,8 @@ const MainTabs = () => {
                     backgroundColor: theme.colors.card,
                     borderBottomWidth: 1,
                     borderBottomColor: theme.colors.border
-                },
-                tabBarStyle: {
-                    backgroundColor: theme.colors.card,
-                    borderTopColor: theme.colors.border,
                 }
-            })}
-        >
-            <Tab.Screen name="Home" component={HomeScreen} options={{ title: t('home') }} />
-            <Tab.Screen name="BikesList" component={BikesListScreen} options={{ title: t('browse_bikes') }} />
-            <Tab.Screen name="Configuration" component={ConfigurationScreen} options={{ title: t('settings') }} />
+            }} />
         </Tab.Navigator>
     );
 };
@@ -155,12 +226,6 @@ const AppNavigator = () => {
                     // App Stack
                     <>
                         <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
-                        <Stack.Screen name="BikeDetails" component={BikeDetailsScreen} options={{ title: t('bike_details') }} />
-                        <Stack.Screen name="CreateBike" component={CreateBikeScreen} options={{ title: t('add_bike_title') }} />
-                        <Stack.Screen name="UpdateBike" component={UpdateBikeScreen} options={{ title: t('update_bike_title') }} />
-                        <Stack.Screen name="CreateReview" component={CreateReviewScreen} options={{ title: t('write_review') }} />
-                        <Stack.Screen name="UpdateReview" component={UpdateReviewScreen} options={{ title: t('update_review_title') }} />
-
                     </>
                 )}
                 <Stack.Screen name="ConfirmLogin" component={ConfirmLoginScreen} options={{ title: t('confirm_login_title') }} />

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useContext } from 'react';
-import { Text, View, StyleSheet, Button, ActivityIndicator, Platform, Alert, TextInput, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { Text, View, StyleSheet, Button, ActivityIndicator, Platform, Alert, TextInput, KeyboardAvoidingView, Pressable, Keyboard } from 'react-native';
 // Only import CameraView/Permissions for Native. Web uses html5-qrcode dynamically.
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import api from '../services/api';
@@ -68,7 +68,7 @@ const HomeScreen = ({ navigation }) => {
             await api.get(`/bikes/${bikeId}/details`);
             console.log('[HomeScreen] Manual Submit & Verified:', bikeId);
             validateBike(bikeId);
-            navigation.navigate('BikeDetails', { bikeId });
+            navigation.navigate('BikesList', { screen: 'BikeDetails', params: { bikeId } });
             setManualId('');
         } catch (e) {
             console.log('[HomeScreen] Bike not found:', bikeId);
@@ -76,7 +76,7 @@ const HomeScreen = ({ navigation }) => {
             if (Platform.OS === 'web') {
                 const create = window.confirm(`Bike #${bikeId} not found. Would you like to create it?`);
                 if (create) {
-                    navigation.navigate('CreateBike', { initialNumericalId: bikeId });
+                    navigation.navigate('BikesList', { screen: 'CreateBike', params: { initialNumericalId: bikeId } });
                 }
             } else {
                 Alert.alert(
@@ -86,7 +86,7 @@ const HomeScreen = ({ navigation }) => {
                         { text: "Cancel", style: "cancel" },
                         {
                             text: "Create",
-                            onPress: () => navigation.navigate('CreateBike', { initialNumericalId: bikeId })
+                            onPress: () => navigation.navigate('BikesList', { screen: 'CreateBike', params: { initialNumericalId: bikeId } })
                         }
                     ]
                 );
@@ -96,22 +96,30 @@ const HomeScreen = ({ navigation }) => {
 
     const stylesInternal = createStyles(theme);
 
+    // Naive check for mobile browser agent
+    const isMobileWeb = Platform.OS === 'web' && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const showCamera = Platform.OS !== 'web' || isMobileWeb;
+
     const content = (
         <KeyboardAvoidingView
             style={stylesInternal.container}
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
         >
-            {/* Camera Area - Top 70% */}
-            <View style={stylesInternal.cameraContainer}>
-                {Platform.OS === 'web' ? (
-                    <ErrorBoundary>
-                        <WebScannerLocal navigation={navigation} theme={theme} validateBike={validateBike} t={t} />
-                    </ErrorBoundary>
-                ) : (
-                    <NativeScannerLocal navigation={navigation} theme={theme} validateBike={validateBike} t={t} />
-                )}
-            </View>
+            {/* Camera Area - Top 70% (Only on Mobile App or Mobile Web) */}
+            {showCamera ? (
+                <View style={stylesInternal.cameraContainer}>
+                    {Platform.OS === 'web' ? (
+                        <ErrorBoundary>
+                            <WebScannerLocal navigation={navigation} theme={theme} validateBike={validateBike} t={t} />
+                        </ErrorBoundary>
+                    ) : (
+                        <NativeScannerLocal navigation={navigation} theme={theme} validateBike={validateBike} t={t} />
+                    )}
+                </View>
+            ) : (
+                <View style={{ flex: 1, backgroundColor: theme.colors.background }} />
+            )}
 
             {/* Manual Input Area - Bottom 30% */}
             <View style={stylesInternal.inputContainer}>
@@ -138,9 +146,9 @@ const HomeScreen = ({ navigation }) => {
     }
 
     return (
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <Pressable onPress={Keyboard.dismiss} style={{ flex: 1 }}>
             {content}
-        </TouchableWithoutFeedback>
+        </Pressable>
     );
 };
 
@@ -166,11 +174,11 @@ const WebScannerLocal = ({ navigation, theme, validateBike, t }) => {
                     showToast(t('found_bike', { id: bike.numerical_id }), "success");
                     isScanning.current = false;
                     validateBike(bike.numerical_id);
-                    navigation.navigate('BikeDetails', { bikeId: bike.numerical_id });
+                    navigation.navigate('BikesList', { screen: 'BikeDetails', params: { bikeId: bike.numerical_id } });
                 } else {
                     const create = window.confirm(`No bike found with Hash ID: ${data}. Create it?`);
                     if (create) {
-                        navigation.navigate('CreateBike', { initialHashId: data });
+                        navigation.navigate('BikesList', { screen: 'CreateBike', params: { initialHashId: data } });
                     } else {
                         isScanning.current = false;
                     }
@@ -269,7 +277,7 @@ const NativeScannerLocal = ({ navigation, theme, validateBike, t }) => {
                 showToast(t('found_bike', { id: bike.numerical_id }), "success");
                 isScanning.current = false;
                 validateBike(bike.numerical_id);
-                navigation.navigate('BikeDetails', { bikeId: bike.numerical_id });
+                navigation.navigate('BikesList', { screen: 'BikeDetails', params: { bikeId: bike.numerical_id } });
             } else {
                 Alert.alert(
                     "Not Found",
@@ -286,7 +294,7 @@ const NativeScannerLocal = ({ navigation, theme, validateBike, t }) => {
                         {
                             text: "Create",
                             onPress: () => {
-                                navigation.replace('CreateBike', { initialHashId: data });
+                                navigation.replace('BikesList', { screen: 'CreateBike', params: { initialHashId: data } });
                             }
                         }
                     ]
@@ -350,6 +358,10 @@ const createStyles = (theme) => StyleSheet.create({
         justifyContent: 'center',
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
+        // On desktop web without camera, let it center or fill nicely?
+        // Current layout: Camera (flex 2) + Input (flex 1).
+        // If Camera is hidden (replaced by empty view), Input stays at bottom.
+        // It's acceptable for now to keep consistent layout.
         ...Platform.select({
             ios: {
                 shadowColor: '#000',
