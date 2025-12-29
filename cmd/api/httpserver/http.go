@@ -40,30 +40,31 @@ func New(service domain.Service, sender email.EmailSender, addr string) (*HTTPSe
 	mux.HandleFunc("/auth/verify", s.middlewareAuth(http.HandlerFunc(s.handleVerifyToken)).ServeHTTP)
 
 	// /bikes → list and create (Auth required for everything)
+	// /bikes → list and create
+	// GET /bikes is public
+	// POST /bikes is authenticated
 	mux.HandleFunc("/bikes", func(w http.ResponseWriter, r *http.Request) {
-		s.middlewareAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			switch r.Method {
-			case http.MethodGet:
-				s.handleListBikes(w, r)
-			case http.MethodPost:
-				s.handleCreateBike(w, r)
-			default:
-				s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
-			}
-		})).ServeHTTP(w, r)
+		switch r.Method {
+		case http.MethodGet:
+			s.handleListBikes(w, r)
+		case http.MethodPost:
+			s.middlewareAuth(http.HandlerFunc(s.handleCreateBike)).ServeHTTP(w, r)
+		default:
+			s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
 	})
 
 	// /bikes/{id}, /bikes/{id}/reviews, /bikes/{id}/ratings
 	// Auth required for everything
-	mux.HandleFunc("/bikes/", func(w http.ResponseWriter, r *http.Request) {
-		s.middlewareAuth(http.HandlerFunc(s.handleBikeSubroutes)).ServeHTTP(w, r)
-	})
+	// /bikes/{id}, /bikes/{id}/reviews, /bikes/{id}/details
+	// GET operations public, everything else authenticated
+	mux.HandleFunc("/bikes/", s.handleBikeSubroutes)
 
 	// /reviews/{id}
 	// Auth required for everything
-	mux.HandleFunc("/reviews/", func(w http.ResponseWriter, r *http.Request) {
-		s.middlewareAuth(http.HandlerFunc(s.handleReviewSubroutes)).ServeHTTP(w, r)
-	})
+	// /reviews/{id}
+	// GET operations public, everything else authenticated
+	mux.HandleFunc("/reviews/", s.handleReviewSubroutes)
 
 	s.server = &http.Server{
 		Addr:    addr,
@@ -90,9 +91,13 @@ func (s *HTTPServer) handleBikeSubroutes(w http.ResponseWriter, r *http.Request)
 		case http.MethodGet:
 			s.handleGetBike(w, r, bikeID)
 		case http.MethodPut:
-			s.handleUpdateBike(w, r, bikeID)
+			s.middlewareAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				s.handleUpdateBike(w, r, bikeID)
+			})).ServeHTTP(w, r)
 		case http.MethodDelete:
-			s.handleDeleteBike(w, r, bikeID)
+			s.middlewareAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				s.handleDeleteBike(w, r, bikeID)
+			})).ServeHTTP(w, r)
 		default:
 			s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
 		}
@@ -110,7 +115,9 @@ func (s *HTTPServer) handleBikeSubroutes(w http.ResponseWriter, r *http.Request)
 		switch sub {
 		case "reviews":
 			if r.Method == http.MethodPost {
-				s.handleCreateBikeReview(w, r, bikeID)
+				s.middlewareAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					s.handleCreateBikeReview(w, r, bikeID)
+				})).ServeHTTP(w, r)
 				return
 			}
 			s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -147,9 +154,13 @@ func (s *HTTPServer) handleReviewSubroutes(w http.ResponseWriter, r *http.Reques
 	case http.MethodGet:
 		s.handleGetReview(w, r, reviewID)
 	case http.MethodPut:
-		s.handleUpdateReview(w, r, reviewID)
+		s.middlewareAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			s.handleUpdateReview(w, r, reviewID)
+		})).ServeHTTP(w, r)
 	case http.MethodDelete:
-		s.handleDeleteReview(w, r, reviewID)
+		s.middlewareAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			s.handleDeleteReview(w, r, reviewID)
+		})).ServeHTTP(w, r)
 	default:
 		s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
