@@ -107,6 +107,7 @@ func buildReviewWithRatingsFromRows(rows *sql.Rows) ([]ReviewWithRatings, error)
 }
 
 var ErrTooFrequentReview = errors.New("review too frequent")
+var ErrHourlyRateLimitExceeded = errors.New("hourly review limit exceeded")
 
 type CreateReviewInput struct {
 	PosterID int64
@@ -124,6 +125,22 @@ type CreateReviewInput struct {
 
 func (s *Store) CreateReviewWithRatings(ctx context.Context, in CreateReviewInput) (int64, error) {
 	const minInterval = 10 * time.Minute
+	const maxHourlyReviews = 5
+
+	// 1. Check global hourly limit
+	var hourlyCount int
+	if err := s.db.QueryRowContext(ctx, `
+		SELECT COUNT(*)
+		FROM reviews
+		WHERE poster_id = $1 AND created_ts > NOW() - INTERVAL '1 hour'
+	`, in.PosterID).Scan(&hourlyCount); err != nil {
+		return 0, fmt.Errorf("check hourly limit: %w", err)
+	}
+	if hourlyCount >= maxHourlyReviews {
+		return 0, ErrHourlyRateLimitExceeded
+	}
+
+	// 2. Check per-bike frequency (existing logic)
 
 	var lastCreated time.Time
 	err := s.db.QueryRowContext(ctx, `

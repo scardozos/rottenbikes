@@ -64,6 +64,10 @@ func (s *HTTPServer) handleCreateBikeReview(w http.ResponseWriter, r *http.Reque
 			s.sendError(w, "you can only review this bike every 10 minutes", http.StatusTooManyRequests)
 			return
 		}
+		if errors.Is(err, domain.ErrHourlyRateLimitExceeded) {
+			s.sendError(w, "you have reached the hourly limit of 5 reviews", http.StatusTooManyRequests)
+			return
+		}
 
 		log.Printf("create review error: %v", err)
 		s.sendError(w, "internal server error", http.StatusInternalServerError)
