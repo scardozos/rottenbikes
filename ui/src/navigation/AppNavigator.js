@@ -34,17 +34,17 @@ const linking = {
                 screens: {
                     Home: {
                         screens: {
-                            Home: 'home',
-                            BikeDetails: 'bike/:bikeId',
-                            CreateBike: 'create-bike',
-                            UpdateBike: 'bikes/:bikeId/update',
-                            CreateReview: 'bikes/:bikeId/createReview',
-                            UpdateReview: 'reviews/:reviewId/edit',
+                            ScanBike: 'home',
                         }
                     },
                     BikesList: {
                         screens: {
-                            BikesList: 'bikes',
+                            BikesCatalog: 'bikes',
+                            BikeDetails: 'bikes/:bikeId',
+                            CreateBike: 'bikes/create',
+                            UpdateBike: 'bikes/:bikeId/update',
+                            CreateReview: 'bikes/:bikeId/createReview',
+                            UpdateReview: 'reviews/:reviewId/edit',
                         }
                     },
                     Configuration: 'config',
@@ -68,12 +68,7 @@ const HomeStackNavigator = () => {
                 headerStyle: { backgroundColor: theme.colors.card },
             }}
         >
-            <HomeStack.Screen name="Home" component={HomeScreen} options={{ title: t('home') }} />
-            <HomeStack.Screen name="BikeDetails" component={BikeDetailsScreen} options={{ title: t('bike_details') }} />
-            <HomeStack.Screen name="CreateBike" component={CreateBikeScreen} options={{ title: t('add_bike_title') }} />
-            <HomeStack.Screen name="UpdateBike" component={UpdateBikeScreen} options={{ title: t('update_bike_title') }} />
-            <HomeStack.Screen name="CreateReview" component={CreateReviewScreen} options={{ title: t('write_review') }} />
-            <HomeStack.Screen name="UpdateReview" component={UpdateReviewScreen} options={{ title: t('update_review_title') }} />
+            <HomeStack.Screen name="ScanBike" component={HomeScreen} options={{ title: t('home') }} />
         </HomeStack.Navigator>
     );
 };
@@ -89,7 +84,7 @@ const BikesListStackNavigator = () => {
                 headerStyle: { backgroundColor: theme.colors.card },
             }}
         >
-            <BikesListStack.Screen name="BikesList" component={BikesListScreen} options={{ title: t('browse_bikes') }} />
+            <BikesListStack.Screen name="BikesCatalog" component={BikesListScreen} options={{ title: t('browse_bikes') }} />
             <BikesListStack.Screen name="BikeDetails" component={BikeDetailsScreen} options={{ title: t('bike_details') }} />
             <BikesListStack.Screen name="CreateBike" component={CreateBikeScreen} options={{ title: t('add_bike_title') }} />
             <BikesListStack.Screen name="UpdateBike" component={UpdateBikeScreen} options={{ title: t('update_bike_title') }} />
@@ -129,7 +124,29 @@ const MainTabs = () => {
             })}
         >
             <Tab.Screen name="Home" component={HomeStackNavigator} options={{ title: t('home') }} />
-            <Tab.Screen name="BikesList" component={BikesListStackNavigator} options={{ title: t('browse_bikes') }} />
+            <Tab.Screen
+                name="BikesList"
+                component={BikesListStackNavigator}
+                options={{
+                    title: t('browse_bikes'),
+                }}
+                listeners={({ navigation }) => ({
+                    tabPress: (e) => {
+                        const state = navigation.getState();
+                        if (state) {
+                            const currentTabRoute = state.routes[state.index];
+                            // If the user taps the tab AND is already on it
+                            if (currentTabRoute.name === 'BikesList') {
+                                e.preventDefault(); // Prevent default action (which might be doing nothing)
+                                // Navigate explicitly to the root screen of the stack
+                                navigation.navigate('BikesList', {
+                                    screen: 'BikesCatalog',
+                                });
+                            }
+                        }
+                    },
+                })}
+            />
             <Tab.Screen name="Configuration" component={ConfigurationScreen} options={{
                 title: t('settings'),
                 headerShown: true,

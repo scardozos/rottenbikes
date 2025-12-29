@@ -1,7 +1,7 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useState, useCallback, useContext } from 'react';
 
-import { View, Text, StyleSheet, FlatList, Button, TouchableOpacity, TouchableWithoutFeedback } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Button, TouchableOpacity, Pressable } from 'react-native';
 
 import api from '../services/api';
 import { AuthContext } from '../context/AuthContext';
@@ -63,16 +63,20 @@ const BikeDetailsScreen = ({ route, navigation }) => {
 
 
     // Determine if review is allowed based on session context
-    // Determine if review is allowed based on session context
     // Using loose equality or number conversion to handle potential string/number mismatches
     console.log('[BikeDetails] ValidatedID:', validatedBikeId, 'CurrentBikeID:', bike.numerical_id);
     const isReviewAllowed = validatedBikeId != null && Number(validatedBikeId) === Number(bike.numerical_id);
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async (currentId) => {
         setLoading(true);
         try {
-            const res = await api.get(`/bikes/${bike.numerical_id}/details`);
+            // Ensure we use the ID from params if available, otherwise fallback to state
+            const targetId = currentId || bike.numerical_id;
+            console.log('[BikeDetails] Fetching details for:', targetId);
+
+            const res = await api.get(`/bikes/${targetId}/details`);
             const details = res.data;
+
             setBike(prev => ({ ...prev, ...details }));
             setReviews(details.reviews || []);
             setAggregates(details.ratings || []);
@@ -81,12 +85,23 @@ const BikeDetailsScreen = ({ route, navigation }) => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [bike.numerical_id]);
 
     useFocusEffect(
         useCallback(() => {
-            fetchData();
-        }, [])
+            // When screen focuses, check if params have changed
+            const params = route.params || {};
+            const newId = params.bikeId || (params.bike ? params.bike.numerical_id : null);
+
+            // Use Number() to avoid "1" !== 1 infinite loop
+            if (newId && Number(newId) !== Number(bike.numerical_id)) {
+                console.log('[BikeDetails] Params changed, updating bike ID:', newId);
+                setBike(prev => ({ ...prev, numerical_id: Number(newId) }));
+                fetchData(Number(newId));
+            } else {
+                fetchData();
+            }
+        }, [route.params, bike.numerical_id, fetchData])
     );
 
     const styles = createStyles(theme);
@@ -215,9 +230,9 @@ const BikeDetailsScreen = ({ route, navigation }) => {
             {/* Custom Modal for All Reviews (Absolute Positioned View) */}
             {modalVisible && (
                 <View style={styles.customModalOverlay}>
-                    <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
+                    <Pressable onPress={() => setModalVisible(false)} style={StyleSheet.absoluteFill}>
                         <View style={styles.customModalBackdrop} />
-                    </TouchableWithoutFeedback>
+                    </Pressable>
 
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
