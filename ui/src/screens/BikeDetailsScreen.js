@@ -214,15 +214,15 @@ const BikeDetailsScreen = ({ route, navigation }) => {
                 keyExtractor={item => item.review_id ? item.review_id.toString() : Math.random().toString()}
                 renderItem={(props) => renderReviewItem(props, 'preview')}
                 ListFooterComponent={
-                    reviews.length > 0 ? (
+                    reviews.length === 0 ? (
+                        <Text style={styles.emptyText}>{t('no_reviews')}</Text>
+                    ) : reviews.length > 3 ? (
                         <TouchableOpacity style={styles.seeAllButton} onPress={() => setModalVisible(true)}>
                             <Text style={styles.seeAllText}>
                                 {t('see_all_reviews', { count: reviews.length })}
                             </Text>
                         </TouchableOpacity>
-                    ) : (
-                        <Text style={styles.emptyText}>{t('no_reviews')}</Text>
-                    )
+                    ) : null
                 }
                 contentContainerStyle={{ paddingBottom: 20 }}
             />
