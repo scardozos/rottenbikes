@@ -1,7 +1,7 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useState, useCallback, useContext } from 'react';
 
-import { View, Text, StyleSheet, FlatList, Button, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Button, TouchableOpacity, TouchableWithoutFeedback } from 'react-native';
 
 import api from '../services/api';
 import { AuthContext } from '../context/AuthContext';
@@ -40,7 +40,22 @@ const BikeDetailsScreen = ({ route, navigation }) => {
     const [loading, setLoading] = useState(true);
     const [sortBy, setSortBy] = useState('date'); // 'date' | 'rating'
     const [sortOrder, setSortOrder] = useState('desc'); // 'asc' | 'desc'
+    const [modalVisible, setModalVisible] = useState(false);
+    const [expandedReviews, setExpandedReviews] = useState(new Set());
     const { theme } = useContext(ThemeContext);
+
+    const toggleReview = (reviewId, context) => {
+        const key = `${reviewId}-${context}`;
+        setExpandedReviews(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(key)) {
+                newSet.delete(key);
+            } else {
+                newSet.add(key);
+            }
+            return newSet;
+        });
+    };
     const { userId } = useContext(AuthContext);
     const { validatedBikeId } = useSession();
     const { t } = useContext(LanguageContext);
@@ -76,8 +91,8 @@ const BikeDetailsScreen = ({ route, navigation }) => {
 
     const styles = createStyles(theme);
 
-    return (
-        <View style={styles.container}>
+    const renderHeader = () => (
+        <View>
             <Text style={styles.title}>{t('bike_title', { numerical_id: bike.numerical_id })}</Text>
             {isReviewAllowed && (
                 <Text
@@ -108,75 +123,152 @@ const BikeDetailsScreen = ({ route, navigation }) => {
                 </View>
             )}
 
-            <View style={styles.reviewsSection}>
-                <View style={styles.reviewsHeader}>
-                    <Text style={styles.subtitle}>{t('reviews')}</Text>
+            <Text style={styles.subtitle}>{t('reviews')}</Text>
+        </View>
+    );
 
-                    {/* Compact Sorting Controls */}
-                    <View style={styles.sortContainer}>
-                        <TouchableOpacity
-                            style={styles.sortButton}
-                            onPress={() => setSortBy(prev => prev === 'date' ? 'rating' : 'date')}
-                        >
-                            <Text style={styles.sortButtonText}>
-                                {t('sort_by_label')}: {sortBy === 'date' ? t('sort_date') : t('sort_rating')}
-                            </Text>
-                        </TouchableOpacity>
+    const renderReviewItem = ({ item }, context) => {
+        const key = `${item.review_id}-${context}`;
+        const isExpanded = expandedReviews.has(key);
+        const subRatings = item.ratings ? Object.entries(item.ratings).filter(([key]) => key !== 'overall') : [];
 
-                        <TouchableOpacity
-                            style={styles.sortButton}
-                            onPress={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
-                        >
-                            <Text style={styles.sortButtonText}>
-                                {sortOrder === 'asc' ? '↑' : '↓'}
-                            </Text>
-                        </TouchableOpacity>
+        return (
+            <TouchableOpacity
+                style={styles.reviewItem}
+                onPress={() => toggleReview(item.review_id, context)}
+                activeOpacity={0.7}
+            >
+                <View style={styles.reviewHeader}>
+                    <Text style={styles.rating}>{'⭐'.repeat(item.ratings?.overall || 0)}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        {item.poster_id === userId && (
+                            <TouchableOpacity onPress={() => {
+                                setModalVisible(false); // Close modal if navigating
+                                navigation.navigate('UpdateReview', { reviewId: item.review_id });
+                            }}>
+                                <Text style={{ color: theme.colors.primary, marginRight: 10, fontWeight: 'bold' }}>{t('edit')}</Text>
+                            </TouchableOpacity>
+                        )}
+                        <Text style={styles.timeText}>{getRelativeTime(item.created_at, t)}</Text>
+                        <View style={styles.dropdownButton}>
+                            <Text style={styles.dropdownArrow}>{isExpanded ? '▲' : '▼'}</Text>
+                        </View>
                     </View>
                 </View>
 
-
-                <FlatList
-                    data={[...reviews].sort((a, b) => {
-                        let diff = 0;
-                        if (sortBy === 'date') {
-                            diff = new Date(a.created_at) - new Date(b.created_at);
-                        } else {
-                            diff = (a.ratings?.overall || 0) - (b.ratings?.overall || 0);
-                        }
-                        return sortOrder === 'asc' ? diff : -diff;
-                    })}
-                    keyExtractor={item => item.review_id ? item.review_id.toString() : Math.random().toString()}
-
-                    renderItem={({ item }) => (
-                        <View style={styles.reviewItem}>
-                            <View style={styles.reviewHeader}>
-                                <Text style={styles.rating}>{'⭐'.repeat(item.ratings?.overall || 0)}</Text>
-                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                    {item.poster_id === userId && (
-                                        <TouchableOpacity onPress={() => navigation.navigate('UpdateReview', { reviewId: item.review_id })}>
-                                            <Text style={{ color: theme.colors.primary, marginRight: 10, fontWeight: 'bold' }}>{t('edit')}</Text>
-                                        </TouchableOpacity>
-                                    )}
-                                    <Text style={styles.timeText}>{getRelativeTime(item.created_at, t)}</Text>
-                                </View>
+                {isExpanded && subRatings.length > 0 && (
+                    <View style={styles.subRatingsContainer}>
+                        {subRatings.map(([key, score]) => (
+                            <View key={key} style={styles.subRatingItem}>
+                                <Text style={styles.subRatingText}>
+                                    {t(key)}: <Text style={{ fontWeight: 'bold' }}>{score}⭐</Text>
+                                </Text>
                             </View>
-                            <Text style={styles.commentText}>{item.comment}</Text>
-                            <Text style={styles.user}>- {item.poster_username || t('anonymous')}</Text>
+                        ))}
+                    </View>
+                )}
+
+                <Text style={styles.commentText}>{item.comment}</Text>
+                <Text style={styles.user}>- {item.poster_username || t('anonymous')}</Text>
+            </TouchableOpacity>
+        );
+    };
+
+    const getSortedReviews = () => {
+        return [...reviews].sort((a, b) => {
+            let diff = 0;
+            if (sortBy === 'date') {
+                diff = new Date(a.created_at) - new Date(b.created_at);
+            } else {
+                diff = (a.ratings?.overall || 0) - (b.ratings?.overall || 0);
+            }
+            return sortOrder === 'asc' ? diff : -diff;
+        });
+    }
+
+    // Default view shows only top 3, always sorted by date (newest)
+    const previewReviews = [...reviews]
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .slice(0, 3);
+
+    return (
+        <View style={styles.container}>
+            <FlatList
+                ListHeaderComponent={renderHeader}
+                data={previewReviews}
+                keyExtractor={item => item.review_id ? item.review_id.toString() : Math.random().toString()}
+                renderItem={(props) => renderReviewItem(props, 'preview')}
+                ListFooterComponent={
+                    reviews.length > 0 ? (
+                        <TouchableOpacity style={styles.seeAllButton} onPress={() => setModalVisible(true)}>
+                            <Text style={styles.seeAllText}>
+                                {t('see_all_reviews', { count: reviews.length })}
+                            </Text>
+                        </TouchableOpacity>
+                    ) : (
+                        <Text style={styles.emptyText}>{t('no_reviews')}</Text>
+                    )
+                }
+                contentContainerStyle={{ paddingBottom: 20 }}
+            />
+
+            {/* Custom Modal for All Reviews (Absolute Positioned View) */}
+            {modalVisible && (
+                <View style={styles.customModalOverlay}>
+                    <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
+                        <View style={styles.customModalBackdrop} />
+                    </TouchableWithoutFeedback>
+
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.subtitle}>{t('all_reviews')}</Text>
+                            <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeButton}>
+                                <Text style={styles.closeButtonText}>✕</Text>
+                            </TouchableOpacity>
                         </View>
-                    )}
-                    ListEmptyComponent={<Text style={styles.emptyText}>{t('no_reviews')}</Text>}
-                />
-            </View>
-            {/* Only show "Write a Review" if validated in current session */}
-            {isReviewAllowed && (
-                <Button
-                    title={t('write_review')}
-                    onPress={() => navigation.navigate('CreateReview', { bikeId: bike.numerical_id })}
-                    color={theme.colors.primary}
-                />
+
+                        {/* Sorting Controls Inside Modal */}
+                        <View style={{ flexDirection: 'row', marginBottom: 15, justifyContent: 'flex-start', gap: 10 }}>
+                            <TouchableOpacity
+                                style={styles.sortButton}
+                                onPress={() => setSortBy(prev => prev === 'date' ? 'rating' : 'date')}
+                            >
+                                <Text style={styles.sortButtonText}>
+                                    {t('sort_by_label')}: {sortBy === 'date' ? t('sort_date') : t('sort_rating')}
+                                </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={styles.sortButton}
+                                onPress={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                            >
+                                <Text style={styles.sortButtonText}>
+                                    {sortOrder === 'asc' ? '↑' : '↓'}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <FlatList
+                            data={getSortedReviews()}
+                            keyExtractor={item => item.review_id ? 'modal-' + item.review_id.toString() : Math.random().toString()}
+                            renderItem={(props) => renderReviewItem(props, 'modal')}
+                            contentContainerStyle={{ paddingBottom: 40 }}
+                        />
+                    </View>
+                </View>
             )}
 
 
+            {/* Only show "Write a Review" if validated in current session */}
+            {isReviewAllowed && (
+                <View style={styles.footerButton}>
+                    <Button
+                        title={t('write_review')}
+                        onPress={() => navigation.navigate('CreateReview', { bikeId: bike.numerical_id })}
+                        color={theme.colors.primary}
+                    />
+                </View>
+            )}
         </View>
     );
 };
@@ -185,8 +277,8 @@ const createStyles = (theme) => StyleSheet.create({
     container: { flex: 1, padding: 20, backgroundColor: theme.colors.background },
     title: { fontSize: 24, fontWeight: 'bold', marginBottom: 10, color: theme.colors.text },
     detail: { fontSize: 16, marginBottom: 5, color: theme.colors.text },
-    reviewsSection: { flex: 1, marginTop: 20 },
-    aggregatesSection: { marginTop: 20, backgroundColor: theme.colors.card, padding: 15, borderRadius: 10 },
+    // reviewsSection: { flex: 1, marginTop: 20 }, // Removed as now part of FlatList custom header
+    aggregatesSection: { marginTop: 20, backgroundColor: theme.colors.card, padding: 15, borderRadius: 10, marginBottom: 20 },
     aggregatesGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
     aggItem: { width: '48%', backgroundColor: theme.colors.inputBackground, padding: 10, borderRadius: 8, marginBottom: 10, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 },
     aggLabel: { fontSize: 14, color: theme.colors.subtext, marginBottom: 2 },
@@ -205,12 +297,7 @@ const createStyles = (theme) => StyleSheet.create({
         marginBottom: 10,
         textDecorationLine: 'underline'
     },
-    reviewsHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 10
-    },
+    // reviewsHeader removed as unused
     sortContainer: {
         flexDirection: 'row',
         gap: 8
@@ -227,11 +314,102 @@ const createStyles = (theme) => StyleSheet.create({
         fontSize: 14,
         color: theme.colors.text,
         fontWeight: '500'
+    },
+    footerButton: {
+        marginTop: 10,
+        paddingTop: 10,
+        borderTopWidth: 1,
+        borderTopColor: theme.colors.border
+    },
+    seeAllButton: {
+        padding: 15,
+        backgroundColor: theme.colors.card,
+        borderRadius: 8,
+        alignItems: 'center',
+        marginTop: 10,
+        marginBottom: 20,
+        borderWidth: 1,
+        borderColor: theme.colors.border
+    },
+    seeAllText: {
+        color: theme.colors.primary,
+        fontWeight: 'bold',
+        fontSize: 16
+    },
+    // New / Updated styles for Custom Modal
+    customModalOverlay: {
+        position: 'absolute',
+        top: 0,
+        bottom: 0,
+        left: 0,
+        right: 0,
+        zIndex: 1000,
+        justifyContent: 'flex-end',
+        // Elevation for Android
+        elevation: 20,
+    },
+    customModalBackdrop: {
+        position: 'absolute',
+        top: 0,
+        bottom: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+    },
+    modalContent: {
+        backgroundColor: theme.colors.background,
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        height: '80%', // Bottom sheet taking 80% screen height
+        padding: 20,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.border,
+        paddingBottom: 15
+    },
+    closeButton: {
+        padding: 5
+    },
+    closeButtonText: {
+        fontSize: 24,
+        color: theme.colors.text,
+        fontWeight: 'bold'
+    },
+    dropdownButton: {
+        padding: 5,
+        marginLeft: 10,
+    },
+    dropdownArrow: {
+        fontSize: 14,
+        color: theme.colors.subtext,
+    },
+    subRatingsContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        marginTop: 5,
+        marginBottom: 10,
+        backgroundColor: theme.colors.inputBackground,
+        padding: 8,
+        borderRadius: 5
+    },
+    subRatingItem: {
+        width: '50%',
+        paddingVertical: 2
+    },
+    subRatingText: {
+        fontSize: 12,
+        color: theme.colors.subtext
     }
 });
-
-
-
-
 
 export default BikeDetailsScreen;

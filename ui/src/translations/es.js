@@ -94,6 +94,8 @@ export default {
     mo_ago: 'hace {months} meses',
     y_ago: 'hace {years} años',
     anonymous: 'Anónimo',
+    see_all_reviews: 'Ver las {count} reseñas',
+    all_reviews: 'Todas las Reseñas',
 
     // Bikes List
     all_bikes: 'Todas las Bicicletas',
