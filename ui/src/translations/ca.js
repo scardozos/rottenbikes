@@ -97,6 +97,7 @@ export default {
     delete: "Eliminar",
     cancel: "Cancel·lar",
     bike_description: "Una bicicleta {type} per explorar.",
+    no_reviews: 'Encara no hi ha ressenyes.',
     just_now: 'ara mateix',
     m_ago: 'fa {minutes}m',
     h_ago: 'fa {hours}h',
