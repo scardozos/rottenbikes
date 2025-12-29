@@ -32,6 +32,11 @@ func TestCreateReviewWithRatings(t *testing.T) {
 	}
 
 	t.Run("success", func(t *testing.T) {
+		// New: Check global hourly limit
+		mock.ExpectQuery("SELECT COUNT\\(\\*\\) FROM reviews").
+			WithArgs(posterID).
+			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
+
 		// Check last review time
 		mock.ExpectQuery("SELECT created_ts FROM reviews").
 			WithArgs(posterID, bikeID).
@@ -69,8 +74,26 @@ func TestCreateReviewWithRatings(t *testing.T) {
 		}
 	})
 
-	t.Run("rate_limit", func(t *testing.T) {
-		// Last review was recent
+	t.Run("hourly_limit_exceeded", func(t *testing.T) {
+		// Expect count >= 5
+		mock.ExpectQuery("SELECT COUNT\\(\\*\\) FROM reviews").
+			WithArgs(posterID).
+			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(5))
+
+		store := NewStore(db)
+		_, err := store.CreateReviewWithRatings(ctx, in)
+		if err != ErrHourlyRateLimitExceeded {
+			t.Errorf("expected error %v, got %v", ErrHourlyRateLimitExceeded, err)
+		}
+	})
+
+	t.Run("rate_limit_per_bike", func(t *testing.T) {
+		// Hourly limit is fine
+		mock.ExpectQuery("SELECT COUNT\\(\\*\\) FROM reviews").
+			WithArgs(posterID).
+			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
+
+		// Last review was recent (per bike)
 		mock.ExpectQuery("SELECT created_ts FROM reviews").
 			WithArgs(posterID, bikeID).
 			WillReturnRows(sqlmock.NewRows([]string{"created_ts"}).AddRow(time.Now()))
@@ -83,6 +106,11 @@ func TestCreateReviewWithRatings(t *testing.T) {
 	})
 
 	t.Run("invalid_rating", func(t *testing.T) {
+		// Hourly limit is fine
+		mock.ExpectQuery("SELECT COUNT\\(\\*\\) FROM reviews").
+			WithArgs(posterID).
+			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
+
 		// Last review was long ago
 		mock.ExpectQuery("SELECT created_ts FROM reviews").
 			WithArgs(posterID, bikeID).
