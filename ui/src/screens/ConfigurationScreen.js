@@ -6,7 +6,7 @@ import { LanguageContext } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
 import api from '../services/api';
 
-const ConfigurationScreen = () => {
+const ConfigurationScreen = ({ navigation }) => {
     const { theme, isDark, toggleTheme } = useContext(ThemeContext);
     const { logout, username } = useContext(AuthContext);
     const { t, language, changeLanguage } = useContext(LanguageContext);
@@ -80,6 +80,9 @@ const ConfigurationScreen = () => {
 
             <View style={styles.section}>
                 <Text style={styles.sectionTitle}>{t('account')}</Text>
+                <TouchableOpacity style={styles.infoButton} onPress={() => navigation.navigate('Privacy')}>
+                    <Text style={styles.infoButtonText}>{t('privacy_and_terms_title')}</Text>
+                </TouchableOpacity>
                 <TouchableOpacity style={styles.logoutButton} onPress={logout}>
                     <Text style={styles.logoutText}>{t('logout')}</Text>
                 </TouchableOpacity>
@@ -247,6 +250,20 @@ const createStyles = (theme) => StyleSheet.create({
         padding: 15,
         borderRadius: 8,
         alignItems: 'center',
+    },
+    infoButton: {
+        backgroundColor: theme.colors.inputBackground,
+        padding: 15,
+        borderRadius: 8,
+        alignItems: 'center',
+        marginBottom: 10,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+    },
+    infoButtonText: {
+        color: theme.colors.text,
+        fontSize: 16,
+        fontWeight: 'bold',
     },
     logoutText: {
         color: 'white',
