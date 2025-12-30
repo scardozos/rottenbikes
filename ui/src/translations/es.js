@@ -59,6 +59,8 @@ export default {
     update_confirm_checkbox: 'Confirmo que la información es veraz. Si es falsa, mi cuenta podría ser baneada.',
     cancel: 'Cancelar',
     error_fetching_bike: 'Error al obtener detalles de la bicicleta',
+    login_to_review_toast: 'Por favor, inicie sesión en la pantalla de Inicio para enviar una reseña.',
+    scan_to_review_toast: 'Por favor, escanee la bicicleta o introduzca su ID en la pantalla de Inicio para enviar una reseña.',
     sort_by_label: 'Ordenar por',
     sort_date: 'Fecha',
     sort_rating: 'Valoración',

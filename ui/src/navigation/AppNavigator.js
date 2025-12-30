@@ -25,10 +25,13 @@ import { LanguageContext } from '../context/LanguageContext';
 const Stack = createNativeStackNavigator();
 const HomeStack = createNativeStackNavigator();
 const BikesListStack = createNativeStackNavigator();
+const PublicHomeStack = createNativeStackNavigator(); // New stack for public home
 const Tab = createBottomTabNavigator();
 
-const linking = {
-    prefixes: ['http://localhost:8081', 'rottenbikes://'],
+const linkingPrefixes = ['http://localhost:8081', 'rottenbikes://'];
+
+const mainLinking = {
+    prefixes: linkingPrefixes,
     config: {
         screens: {
             Main: {
@@ -51,12 +54,38 @@ const linking = {
                     Configuration: 'config',
                 }
             },
-            Login: 'login',
-            Register: 'register',
+            // Shared screens accessible when logged in
             ConfirmLogin: 'confirm/:token',
             Privacy: 'privacy',
-        },
-    },
+        }
+    }
+};
+
+const publicLinking = {
+    prefixes: linkingPrefixes,
+    config: {
+        screens: {
+            Public: {
+                screens: {
+                    Home: {
+                        screens: {
+                            Login: 'login',
+                            Register: 'register',
+                        }
+                    },
+                    BikesList: {
+                        screens: {
+                            BikesCatalog: 'bikes',
+                            BikeDetails: 'bikes/:bikeId',
+                        }
+                    }
+                }
+            },
+            // Shared screens accessible when public
+            ConfirmLogin: 'confirm/:token',
+            Privacy: 'privacy',
+        }
+    }
 };
 
 const HomeStackNavigator = () => {
@@ -96,67 +125,106 @@ const BikesListStackNavigator = () => {
     );
 };
 
+// Public Home Stack: Login -> Register
+const PublicHomeStackNavigator = () => {
+    const { theme } = useContext(ThemeContext);
+    const { t } = useContext(LanguageContext);
+    return (
+        <PublicHomeStack.Navigator
+            screenOptions={{
+                headerTitleStyle: { color: theme.colors.text },
+                headerTintColor: theme.colors.primary,
+                headerStyle: { backgroundColor: theme.colors.card },
+            }}
+        >
+            <PublicHomeStack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+            <PublicHomeStack.Screen name="Register" component={RegisterScreen} options={{ title: t('register') }} />
+        </PublicHomeStack.Navigator>
+    );
+};
+
+// Reusable tab bar icon logic
+const getTabBarIcon = (route, focused, color, size) => {
+    let iconName;
+    if (route.name === 'Home') {
+        iconName = '🏠';
+    } else if (route.name === 'BikesList') {
+        iconName = '🚲';
+    } else if (route.name === 'Configuration') {
+        iconName = '⚙️';
+    }
+    return <Text style={{ fontSize: size, color: color }}>{iconName}</Text>;
+};
+
+// Reusable tab bar options
+const getTabScreenOptions = (theme) => ({ route }) => ({
+    tabBarIcon: ({ focused, color, size }) => getTabBarIcon(route, focused, color, size),
+    tabBarActiveTintColor: theme.colors.primary,
+    tabBarInactiveTintColor: 'gray',
+    headerShown: false,
+    tabBarStyle: {
+        backgroundColor: theme.colors.card,
+        borderTopColor: theme.colors.border,
+    }
+});
+
+// Listener to reset BikesList stack
+const getBikesListListeners = () => ({ navigation }) => ({
+    tabPress: (e) => {
+        const state = navigation.getState();
+        if (state) {
+            const currentTabRoute = state.routes[state.index];
+            if (currentTabRoute.name === 'BikesList') {
+                const targetKey = currentTabRoute.state?.key;
+                if (targetKey) {
+                    navigation.dispatch({
+                        ...CommonActions.reset({
+                            index: 0,
+                            routes: [{ name: 'BikesCatalog' }],
+                        }),
+                        target: targetKey,
+                    });
+                } else {
+                    navigation.navigate('BikesCatalog');
+                }
+            }
+        }
+    },
+});
+
+const PublicTabs = () => {
+    const { theme } = useContext(ThemeContext);
+    const { t } = useContext(LanguageContext);
+
+    return (
+        <Tab.Navigator screenOptions={getTabScreenOptions(theme)}>
+            <Tab.Screen
+                name="Home"
+                component={PublicHomeStackNavigator}
+                options={{ title: t('home') }}
+            />
+            <Tab.Screen
+                name="BikesList"
+                component={BikesListStackNavigator}
+                options={{ title: t('browse_bikes') }}
+                listeners={getBikesListListeners()}
+            />
+        </Tab.Navigator>
+    );
+};
+
 const MainTabs = () => {
     const { theme } = useContext(ThemeContext);
     const { t } = useContext(LanguageContext);
 
     return (
-        <Tab.Navigator
-            screenOptions={({ route }) => ({
-                tabBarIcon: ({ focused, color, size }) => {
-                    let iconName;
-
-                    if (route.name === 'Home') {
-                        iconName = '📷';
-                    } else if (route.name === 'BikesList') {
-                        iconName = '🚲';
-                    } else if (route.name === 'Configuration') {
-                        iconName = '⚙️';
-                    }
-
-                    return <Text style={{ fontSize: size, color: color }}>{iconName}</Text>;
-                },
-                tabBarActiveTintColor: theme.colors.primary,
-                tabBarInactiveTintColor: 'gray',
-                headerShown: false,
-                tabBarStyle: {
-                    backgroundColor: theme.colors.card,
-                    borderTopColor: theme.colors.border,
-                }
-            })}
-        >
-            <Tab.Screen name="Home" component={HomeStackNavigator} options={{ title: t('home') }} />
+        <Tab.Navigator screenOptions={getTabScreenOptions(theme)}>
+            <Tab.Screen name="Home" component={HomeStackNavigator} options={{ title: t('home'), tabBarIcon: ({ color, size }) => <Text style={{ fontSize: size, color: color }}>📷</Text> }} />
             <Tab.Screen
                 name="BikesList"
                 component={BikesListStackNavigator}
-                options={{
-                    title: t('browse_bikes'),
-                }}
-                listeners={({ navigation }) => ({
-                    tabPress: (e) => {
-                        const state = navigation.getState();
-                        if (state) {
-                            const currentTabRoute = state.routes[state.index];
-                            // If the user taps the tab AND is already on it
-                            if (currentTabRoute.name === 'BikesList') {
-                                e.preventDefault(); // Prevent default action (which might be doing nothing)
-                                // Navigate explicitly to the root screen of the stack
-                                const targetKey = currentTabRoute.state?.key;
-                                if (targetKey) {
-                                    navigation.dispatch({
-                                        ...CommonActions.reset({
-                                            index: 0,
-                                            routes: [{ name: 'BikesCatalog' }],
-                                        }),
-                                        target: targetKey,
-                                    });
-                                } else {
-                                    navigation.navigate('BikesCatalog');
-                                }
-                            }
-                        }
-                    },
-                })}
+                options={{ title: t('browse_bikes') }}
+                listeners={getBikesListListeners()}
             />
             <Tab.Screen name="Configuration" component={ConfigurationScreen} options={{
                 title: t('settings'),
@@ -201,14 +269,12 @@ const AppNavigator = () => {
         );
     }
 
+    const currentLinking = userToken == null ? publicLinking : mainLinking;
+
     return (
         <NavigationContainer
             linking={{
-                ...linking,
-                config: {
-                    ...linking.config,
-                },
-                // Add the fallback title
+                ...currentLinking,
                 fallback: <ActivityIndicator color={theme.colors.primary} size="large" />,
             }}
             documentTitle={{
@@ -218,7 +284,7 @@ const AppNavigator = () => {
             theme={navTheme}
         >
             <Stack.Navigator
-                initialRouteName={userToken == null ? "Login" : "Main"}
+                initialRouteName={userToken == null ? "Public" : "Main"}
                 screenOptions={{
                     headerTitleStyle: { color: theme.colors.text },
                     headerTintColor: theme.colors.primary,
@@ -228,10 +294,9 @@ const AppNavigator = () => {
                 }}
             >
                 {userToken == null ? (
-                    // Auth Stack
+                    // Public Stack
                     <>
-                        <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-                        <Stack.Screen name="Register" component={RegisterScreen} options={{ title: t('register') }} />
+                        <Stack.Screen name="Public" component={PublicTabs} options={{ headerShown: false }} />
                     </>
                 ) : (
                     // App Stack

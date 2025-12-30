@@ -8,6 +8,7 @@ import { AuthContext } from '../context/AuthContext';
 import { ThemeContext } from '../context/ThemeContext';
 import { useSession } from '../context/SessionContext';
 import { LanguageContext } from '../context/LanguageContext';
+import { useToast } from '../context/ToastContext';
 
 const getRelativeTime = (dateString, t) => {
     if (!dateString) return '';
@@ -56,9 +57,11 @@ const BikeDetailsScreen = ({ route, navigation }) => {
             return newSet;
         });
     };
-    const { userId } = useContext(AuthContext);
+
+    const { userId, userToken } = useContext(AuthContext);
     const { validatedBikeId } = useSession();
     const { t } = useContext(LanguageContext);
+    const { showToast } = useToast();
 
 
 
@@ -275,15 +278,33 @@ const BikeDetailsScreen = ({ route, navigation }) => {
 
 
             {/* Only show "Write a Review" if validated in current session */}
-            {isReviewAllowed && (
-                <View style={styles.footerButton}>
-                    <Button
-                        title={t('write_review')}
-                        onPress={() => navigation.navigate('CreateReview', { bikeId: bike.numerical_id })}
-                        color={theme.colors.primary}
-                    />
-                </View>
-            )}
+            {/* Show "Write a Review" for everyone, but redirect if not allowed */}
+            <View style={styles.footerButton}>
+                <TouchableOpacity
+                    style={[
+                        styles.actionButton,
+                        (!isReviewAllowed) && styles.disabledActionButton
+                    ]}
+                    onPress={() => {
+                        if (!userToken) {
+                            showToast(t('login_to_review_toast'), 'info');
+                            navigation.navigate('Home');
+                            return;
+                        }
+                        if (!isReviewAllowed) {
+                            showToast(t('scan_to_review_toast'), 'info');
+                            navigation.navigate('Home');
+                            return;
+                        }
+                        navigation.navigate('CreateReview', { bikeId: bike.numerical_id });
+                    }}
+                    activeOpacity={0.8}
+                >
+                    <Text style={[styles.actionButtonText, (!isReviewAllowed) && styles.disabledActionButtonText]}>
+                        {t('write_review')}
+                    </Text>
+                </TouchableOpacity>
+            </View>
         </View>
     );
 };
@@ -424,6 +445,26 @@ const createStyles = (theme) => StyleSheet.create({
     subRatingText: {
         fontSize: 12,
         color: theme.colors.subtext
+    },
+    actionButton: {
+        backgroundColor: theme.colors.primary,
+        paddingVertical: 12,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center'
+    },
+    disabledActionButton: {
+        backgroundColor: theme.colors.primary, // Keep color but reduce opacity
+        opacity: 0.5
+    },
+    actionButtonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: 'bold'
+    },
+    disabledActionButtonText: {
+        color: '#FFFFFF', // Can mimic disabled text color
+        opacity: 0.8
     }
 });
 
