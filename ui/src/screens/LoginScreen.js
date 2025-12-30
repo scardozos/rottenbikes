@@ -16,9 +16,17 @@ const LoginScreen = ({ navigation }) => {
     const { t } = useContext(LanguageContext);
     const [loading, setLoading] = useState(false);
     const [showCaptcha, setShowCaptcha] = useState(false);
+    const { lastUsername } = useContext(AuthContext);
 
     // Replace with your real sitekey
     const HCAPTCHA_SITEKEY = window.EXPO_PUBLIC_HCAPTCHA_SITEKEY || process.env.EXPO_PUBLIC_HCAPTCHA_SITEKEY || "10000000-ffff-ffff-ffff-000000000001";
+
+    useEffect(() => {
+        // Pre-fill username if session expired and standard identifier is empty
+        if (lastUsername && !identifier) {
+            setIdentifier(lastUsername);
+        }
+    }, [lastUsername, identifier]);
 
     useEffect(() => {
         let interval;

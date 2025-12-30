@@ -160,6 +160,7 @@ export default {
     update_review_button: 'Actualitzar Ressenya',
     review_updated_success: 'Ressenya actualitzada correctament!',
     failed_update_review: 'Error en actualitzar la ressenya.',
+    session_expired: 'La teva sessió ha caducat. Si us plau, inicia sessió de nou.',
 
     // Subcategory Info
     breaks_desc: 'Si tots dos frens són totalment operatius i responen correctament.',

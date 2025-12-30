@@ -12,6 +12,7 @@ export const AuthProvider = ({ children }) => {
     const [userToken, setUserToken] = useState(null);
     const [userId, setUserId] = useState(null);
     const [username, setUsername] = useState(null);
+    const [lastUsername, setLastUsername] = useState(null);
     const { showToast } = useToast();
     const { t } = useContext(LanguageContext);
 
@@ -25,6 +26,12 @@ export const AuthProvider = ({ children }) => {
             }
         } catch (e) {
             console.log('[AuthContext] Failed to fetch current user:', e);
+            if (e.response && e.response.status === 401) {
+                console.log('[AuthContext] Session expired (401). Logging out.');
+                setLastUsername(username); // Store current username before clearing
+                logout();
+                showToast(t('session_expired'), 'info');
+            }
         }
     };
 
@@ -168,9 +175,9 @@ export const AuthProvider = ({ children }) => {
             logout,
             isLoading,
             userToken,
-            userToken,
             userId,
-            username
+            username,
+            lastUsername
         }}>
             {children}
         </AuthContext.Provider>

@@ -159,6 +159,7 @@ export default {
     update_review_button: 'Update Review',
     review_updated_success: 'Review updated successfully!',
     failed_update_review: 'Failed to update review.',
+    session_expired: 'Your session has expired. Please log in again.',
 
     // Subcategory Info
     breaks_desc: 'Whether both brakes are fully operational and responsive.',
