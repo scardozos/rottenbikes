@@ -1,5 +1,5 @@
 import React, { useContext } from 'react';
-import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme, CommonActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ActivityIndicator, View, Button, TouchableOpacity, Text } from 'react-native';
 
@@ -141,9 +141,18 @@ const MainTabs = () => {
                             if (currentTabRoute.name === 'BikesList') {
                                 e.preventDefault(); // Prevent default action (which might be doing nothing)
                                 // Navigate explicitly to the root screen of the stack
-                                navigation.navigate('BikesList', {
-                                    screen: 'BikesCatalog',
-                                });
+                                const targetKey = currentTabRoute.state?.key;
+                                if (targetKey) {
+                                    navigation.dispatch({
+                                        ...CommonActions.reset({
+                                            index: 0,
+                                            routes: [{ name: 'BikesCatalog' }],
+                                        }),
+                                        target: targetKey,
+                                    });
+                                } else {
+                                    navigation.navigate('BikesCatalog');
+                                }
                             }
                         }
                     },
