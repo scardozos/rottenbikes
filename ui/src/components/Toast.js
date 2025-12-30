@@ -9,13 +9,14 @@ const Toast = ({ message, type = 'success', onClose, duration = 4000 }) => {
             Animated.timing(opacity, {
                 toValue: 1,
                 duration: 300,
-                useNativeDriver: true,
+                // Native driver is not supported on web for some properties or requires config
+                useNativeDriver: Platform.OS !== 'web',
             }),
             Animated.delay(duration),
             Animated.timing(opacity, {
                 toValue: 0,
                 duration: 300,
-                useNativeDriver: true,
+                useNativeDriver: Platform.OS !== 'web',
             }),
         ]).start(() => {
             if (onClose) onClose();

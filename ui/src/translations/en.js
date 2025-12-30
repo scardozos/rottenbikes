@@ -59,6 +59,8 @@ export default {
     update_confirm_checkbox: 'I confirm that the info provided is true and accurate. If false, my account may be banned.',
     cancel: 'Cancel',
     error_fetching_bike: 'Error fetching bike details',
+    login_to_review_toast: 'Please log in on the Home screen to submit a review.',
+    scan_to_review_toast: 'Please scan the bike or enter its ID on the Home screen to submit a review.',
     sort_by_label: 'Sort By',
     sort_date: 'Date',
     sort_rating: 'Rating',

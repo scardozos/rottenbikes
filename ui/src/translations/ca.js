@@ -59,6 +59,8 @@ export default {
     update_confirm_checkbox: 'Confirmo que la informació és veraç. Si és falsa, el meu compte podria ser bloquejat.',
     cancel: 'Cancel·lar',
     error_fetching_bike: 'Error en obtenir detalls de la bicicleta',
+    login_to_review_toast: 'Si us plau, inicieu sessió a la pantalla d\'Inici per enviar una ressenya.',
+    scan_to_review_toast: 'Si us plau, escanegeu la bicicleta o introduïu el seu ID a la pantalla d\'Inici per enviar una ressenya.',
     sort_by_label: 'Ordenar per',
     sort_date: 'Data',
     sort_rating: 'Valoració',
