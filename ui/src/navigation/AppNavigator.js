@@ -175,17 +175,29 @@ const getBikesListListeners = () => ({ navigation }) => ({
         if (state) {
             const currentTabRoute = state.routes[state.index];
             if (currentTabRoute.name === 'BikesList') {
-                const targetKey = currentTabRoute.state?.key;
-                if (targetKey) {
-                    navigation.dispatch({
-                        ...CommonActions.reset({
-                            index: 0,
-                            routes: [{ name: 'BikesCatalog' }],
-                        }),
-                        target: targetKey,
-                    });
-                } else {
-                    navigation.navigate('BikesCatalog');
+                // Reset if we are NOT on the BikesCatalog screen
+                const nestedState = currentTabRoute.state;
+                if (nestedState && nestedState.routes && nestedState.routes.length > 0) {
+                    // Safety check: index might be missing in some deep link partial states
+                    const routeIndex = nestedState.index ?? (nestedState.routes.length - 1);
+                    const currentRoute = nestedState.routes[routeIndex];
+
+                    // If we are not on BikesCatalog (e.g., BikeDetails), reset.
+                    if (currentRoute && currentRoute.name !== 'BikesCatalog') {
+                        e.preventDefault(); // Prevent default behavior (popToTop which might toggle)
+
+                        // Hard reset the stack by replacing the Tab route state
+                        navigation.dispatch({
+                            ...CommonActions.reset({
+                                index: state.index,
+                                routes: state.routes.map(r =>
+                                    r.name === 'BikesList'
+                                        ? { name: 'BikesList', state: { index: 0, routes: [{ name: 'BikesCatalog' }] } }
+                                        : r
+                                ),
+                            }),
+                        });
+                    }
                 }
             }
         }
