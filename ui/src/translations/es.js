@@ -160,6 +160,7 @@ export default {
     update_review_button: 'Actualizar Reseña',
     review_updated_success: '¡Reseña actualizada con éxito!',
     failed_update_review: 'Error al actualizar la reseña.',
+    session_expired: 'Tu sesión ha caducado. Por favor, inicia sesión de nuevo.',
 
     // Subcategory Info
     breaks_desc: 'Si ambos frenos son completamente operativos y responden bien.',
