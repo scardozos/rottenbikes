@@ -35,12 +35,24 @@ const PrivacyScreen = ({ navigation }) => {
                 </View>
 
                 <Text style={styles.subTitle}>{t('third_party_title')}</Text>
+
+                <Text style={styles.subTitle}>{t('mailtrap_title')}</Text>
                 <Text style={styles.paragraph}>
                     {t('mailtrap_text')}
                 </Text>
                 <TouchableOpacity onPress={() => handleLinkPress('https://docs.mailtrap.io/account-and-organization/privacy-and-security/gdpr-compliance')}>
                     <Text style={styles.link}>
                         {t('mailtrap_link_text')}
+                    </Text>
+                </TouchableOpacity>
+
+                <Text style={styles.subTitle}>{t('hcaptcha_title')}</Text>
+                <Text style={styles.paragraph}>
+                    {t('hcaptcha_text')}
+                </Text>
+                <TouchableOpacity onPress={() => handleLinkPress('https://www.hcaptcha.com/privacy')}>
+                    <Text style={styles.link}>
+                        {t('hcaptcha_link_text')}
                     </Text>
                 </TouchableOpacity>
             </View>
