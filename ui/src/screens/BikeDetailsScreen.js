@@ -31,6 +31,13 @@ const getRelativeTime = (dateString, t) => {
     return t('y_ago', { years });
 };
 
+const getBorderColor = (rating) => {
+    if (rating == null) return 'transparent';
+    if (rating > 4) return '#2ecc71'; // Green
+    if (rating >= 3) return '#f1c40f'; // Yellow
+    return '#e74c3c'; // Red
+};
+
 const BikeDetailsScreen = ({ route, navigation }) => {
     const params = route.params || {};
     // Handle both object navigation and deep linking ID
@@ -159,6 +166,15 @@ const BikeDetailsScreen = ({ route, navigation }) => {
 
                     <View style={styles.aggregatesGrid}>
                         {aggregates
+                            .filter(agg => agg.subcategory === 'overall' && agg.window === timeWindow)
+                            .map(agg => (
+                                <View key="overall" style={[styles.aggItem, styles.overallItem]}>
+                                    <Text style={[styles.aggLabel, styles.overallLabel]}>{t('overall_rating')}</Text>
+                                    <Text style={[styles.aggValue, styles.overallValue]}>{agg.average_rating.toFixed(1)} ⭐</Text>
+                                </View>
+                            ))
+                        }
+                        {aggregates
                             .filter(agg => agg.subcategory !== 'overall' && agg.window === timeWindow)
                             .map(agg => (
                                 <View key={agg.subcategory} style={styles.aggItem}>
@@ -166,7 +182,7 @@ const BikeDetailsScreen = ({ route, navigation }) => {
                                     <Text style={styles.aggValue}>{agg.average_rating.toFixed(1)} ⭐</Text>
                                 </View>
                             ))}
-                        {aggregates.filter(agg => agg.subcategory !== 'overall' && agg.window === timeWindow).length === 0 && (
+                        {aggregates.filter(agg => agg.window === timeWindow).length === 0 && (
                             <Text style={styles.noRatingsText}>{t('no_reviews')}</Text>
                         )}
                     </View>
@@ -241,8 +257,15 @@ const BikeDetailsScreen = ({ route, navigation }) => {
         .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
         .slice(0, 3);
 
+    const activeAgg = aggregates.find(a => a.subcategory === 'overall' && a.window === timeWindow);
+    const activeRating = activeAgg ? activeAgg.average_rating : null;
+    const dynamicBorderColor = getBorderColor(activeRating);
+
     return (
-        <View style={styles.container}>
+        <View style={[
+            styles.container,
+            activeRating != null && { borderWidth: 2, borderColor: dynamicBorderColor, borderRadius: 12, margin: 12 }
+        ]}>
             <FlatList
                 ListHeaderComponent={renderHeader}
                 data={previewReviews}
@@ -527,6 +550,25 @@ const createStyles = (theme) => StyleSheet.create({
         color: theme.colors.subtext,
         fontStyle: 'italic',
         marginTop: 10
+    },
+    overallItem: {
+        width: '100%',
+        marginBottom: 10,
+        backgroundColor: theme.colors.card,
+        borderWidth: 2,
+        borderColor: theme.colors.primary,
+        shadowColor: theme.colors.primary,
+        shadowOpacity: 0.2,
+        elevation: 4
+    },
+    overallLabel: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: theme.colors.text
+    },
+    overallValue: {
+        fontSize: 24,
+        marginTop: 5
     }
 });
 
