@@ -33,7 +33,7 @@ const getRelativeTime = (dateString, t) => {
 
 const getBorderColor = (rating) => {
     if (rating == null) return 'transparent';
-    if (rating > 4) return '#2ecc71'; // Green
+    if (rating >= 4) return '#2ecc71'; // Green
     if (rating >= 3) return '#f1c40f'; // Yellow
     return '#e74c3c'; // Red
 };
@@ -73,14 +73,7 @@ const BikeDetailsScreen = ({ route, navigation }) => {
         });
     };
 
-    const cycleTimeWindow = () => {
-        // Order: 2w -> overall -> 1w -> 2w
-        setTimeWindow(prev => {
-            if (prev === '2w') return 'overall';
-            if (prev === 'overall') return '1w';
-            return '2w';
-        });
-    };
+
 
     const { userId, userToken } = useContext(AuthContext);
     const { validatedBikeId } = useSession();
@@ -162,9 +155,27 @@ const BikeDetailsScreen = ({ route, navigation }) => {
                 <View style={styles.aggregatesSection}>
                     <View style={styles.aggregatesHeader}>
                         <Text style={styles.subtitle}>{t('average_ratings')}</Text>
-                        <TouchableOpacity style={styles.timeWindowButton} onPress={cycleTimeWindow}>
-                            <Text style={styles.timeWindowButtonText}>{t(`window_${timeWindow}`)} ▾</Text>
-                        </TouchableOpacity>
+                    </View>
+
+                    {/* Tabular Selector for Time Window */}
+                    <View style={styles.tabContainer}>
+                        {['overall', '2w', '1w'].map((window) => (
+                            <TouchableOpacity
+                                key={window}
+                                style={[
+                                    styles.tabButton,
+                                    timeWindow === window && styles.activeTabButton
+                                ]}
+                                onPress={() => setTimeWindow(window)}
+                            >
+                                <Text style={[
+                                    styles.tabText,
+                                    timeWindow === window && styles.activeTabText
+                                ]}>
+                                    {t(`window_${window}`)}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
                     </View>
 
                     <View style={styles.aggregatesGrid}>
@@ -441,7 +452,6 @@ const createStyles = (theme) => StyleSheet.create({
         right: 0,
         zIndex: 1000,
         justifyContent: 'flex-end',
-        // Elevation for Android
         elevation: 20,
     },
     customModalBackdrop: {
@@ -514,7 +524,7 @@ const createStyles = (theme) => StyleSheet.create({
         justifyContent: 'center'
     },
     disabledActionButton: {
-        backgroundColor: theme.colors.primary, // Keep color but reduce opacity
+        backgroundColor: theme.colors.primary,
         opacity: 0.5
     },
     actionButtonText: {
@@ -523,11 +533,7 @@ const createStyles = (theme) => StyleSheet.create({
         fontWeight: 'bold'
     },
     disabledActionButtonText: {
-        color: '#FFFFFF', // Can mimic disabled text color
-        opacity: 0.8
-    },
-    disabledActionButtonText: {
-        color: '#FFFFFF', // Can mimic disabled text color
+        color: '#FFFFFF',
         opacity: 0.8
     },
     aggregatesHeader: {
@@ -536,17 +542,35 @@ const createStyles = (theme) => StyleSheet.create({
         alignItems: 'center',
         marginBottom: 10
     },
-    timeWindowButton: {
-        backgroundColor: theme.colors.background,
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 20,
-        borderWidth: 1,
-        borderColor: theme.colors.border
+    // New tab styles
+    tabContainer: {
+        flexDirection: 'row',
+        backgroundColor: theme.colors.inputBackground,
+        borderRadius: 8,
+        padding: 2,
+        marginBottom: 15
     },
-    timeWindowButtonText: {
-        color: theme.colors.primary,
+    tabButton: {
+        flex: 1,
+        paddingVertical: 8,
+        alignItems: 'center',
+        borderRadius: 6
+    },
+    activeTabButton: {
+        backgroundColor: theme.colors.card,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 1,
+        elevation: 1
+    },
+    tabText: {
         fontSize: 14,
+        color: theme.colors.subtext,
+        fontWeight: '500'
+    },
+    activeTabText: {
+        color: theme.colors.primary,
         fontWeight: 'bold'
     },
     noRatingsText: {
