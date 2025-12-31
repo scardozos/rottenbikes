@@ -114,6 +114,7 @@ export default {
     window_1w: '1 Semana',
     window_2w: '2 Semanas',
     window_overall: 'Histórico',
+    edit: 'Editar',
 
     // Bikes List
     all_bikes: 'Todas las Bicicletas',

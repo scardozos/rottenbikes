@@ -113,6 +113,7 @@ export default {
     window_1w: '1 Week',
     window_2w: '2 Weeks',
     window_overall: 'All Time',
+    edit: 'Edit',
 
     // Bikes List
     all_bikes: 'All Bikes',
