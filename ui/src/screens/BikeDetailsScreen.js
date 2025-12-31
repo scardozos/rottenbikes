@@ -41,7 +41,10 @@ const getBorderColor = (rating) => {
 const BikeDetailsScreen = ({ route, navigation }) => {
     const params = route.params || {};
     // Handle both object navigation and deep linking ID
-    const initialBike = params.bike || { numerical_id: params.bikeId };
+    const initialBike = params.bike || { numerical_id: Number(params.bikeId) };
+    if (initialBike.numerical_id) {
+        initialBike.numerical_id = Number(initialBike.numerical_id);
+    }
     const [bike, setBike] = useState(initialBike);
     const [reviews, setReviews] = useState([]);
     const [aggregates, setAggregates] = useState([]);

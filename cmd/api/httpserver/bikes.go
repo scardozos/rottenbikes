@@ -5,12 +5,12 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/lib/pq"
+	"github.com/rs/zerolog"
 )
 
 // GET /bikes → list (now includes average_rating)
@@ -25,14 +25,14 @@ func (s *HTTPServer) handleListBikes(w http.ResponseWriter, r *http.Request) {
 
 	bikes, err := s.service.ListBikes(ctx)
 	if err != nil {
-		log.Printf("list bikes error: %v", err)
+		zerolog.Ctx(r.Context()).Error().Err(err).Msg("list bikes error")
 		s.sendError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(bikes); err != nil {
-		log.Printf("encode bikes error: %v", err)
+		zerolog.Ctx(r.Context()).Error().Err(err).Msg("encode bikes error")
 	}
 }
 
@@ -103,7 +103,7 @@ func (s *HTTPServer) handleCreateBike(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		log.Printf("create bike error: %v", err)
+		zerolog.Ctx(r.Context()).Error().Err(err).Msg("create bike error")
 		s.sendError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -146,7 +146,7 @@ func (s *HTTPServer) handleUpdateBike(w http.ResponseWriter, r *http.Request, bi
 	defer cancel()
 
 	if err := s.service.UpdateBike(ctx, bikeID, req.HashID, req.IsElectric); err != nil {
-		log.Printf("update bike %d error: %v", bikeID, err)
+		zerolog.Ctx(r.Context()).Error().Err(err).Int64("bike_id", bikeID).Msg("update bike error")
 		s.sendError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -170,7 +170,7 @@ func (s *HTTPServer) handleGetBike(w http.ResponseWriter, r *http.Request, bikeI
 			s.sendError(w, "bike not found", http.StatusNotFound)
 			return
 		}
-		log.Printf("get bike %d error: %v", bikeID, err)
+		zerolog.Ctx(r.Context()).Error().Err(err).Int64("bike_id", bikeID).Msg("get bike error")
 		s.sendError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -190,7 +190,7 @@ func (s *HTTPServer) handleDeleteBike(w http.ResponseWriter, r *http.Request, bi
 	defer cancel()
 
 	if err := s.service.DeleteBike(ctx, bikeID); err != nil {
-		log.Printf("delete bike %d error: %v", bikeID, err)
+		zerolog.Ctx(r.Context()).Error().Err(err).Int64("bike_id", bikeID).Msg("delete bike error")
 		s.sendError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -214,7 +214,7 @@ func (s *HTTPServer) handleGetBikeDetails(w http.ResponseWriter, r *http.Request
 			s.sendError(w, "bike not found", http.StatusNotFound)
 			return
 		}
-		log.Printf("get bike details %d error: %v", bikeID, err)
+		zerolog.Ctx(r.Context()).Error().Err(err).Int64("bike_id", bikeID).Msg("get bike details error")
 		s.sendError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}

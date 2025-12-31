@@ -5,9 +5,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"log"
 	"net/http"
 	"time"
+
+	"github.com/rs/zerolog"
 
 	"github.com/scardozos/rottenbikes/internal/domain"
 )
@@ -69,7 +70,7 @@ func (s *HTTPServer) handleCreateBikeReview(w http.ResponseWriter, r *http.Reque
 			return
 		}
 
-		log.Printf("create review error: %v", err)
+		zerolog.Ctx(r.Context()).Error().Err(err).Int64("bike_id", bikeID).Msg("create review error")
 		s.sendError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -119,7 +120,7 @@ func (s *HTTPServer) handleUpdateReview(w http.ResponseWriter, r *http.Request, 
 			s.sendError(w, "review not found", http.StatusNotFound)
 			return
 		}
-		log.Printf("update review %d error: %v", reviewID, err)
+		zerolog.Ctx(r.Context()).Error().Err(err).Int64("review_id", reviewID).Msg("update review error")
 		s.sendError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -143,14 +144,14 @@ func (s *HTTPServer) handleGetReview(w http.ResponseWriter, r *http.Request, rev
 			s.sendError(w, "review not found", http.StatusNotFound)
 			return
 		}
-		log.Printf("get review %d error: %v", reviewID, err)
+		zerolog.Ctx(r.Context()).Error().Err(err).Int64("review_id", reviewID).Msg("get review error")
 		s.sendError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(review); err != nil {
-		log.Printf("encode review %d error: %v", reviewID, err)
+		zerolog.Ctx(r.Context()).Error().Err(err).Int64("review_id", reviewID).Msg("encode review error")
 	}
 }
 
@@ -183,7 +184,7 @@ func (s *HTTPServer) handleDeleteReview(w http.ResponseWriter, r *http.Request, 
 			s.sendError(w, "review not found", http.StatusNotFound)
 			return
 		}
-		log.Printf("delete review %d error: %v", reviewID, err)
+		zerolog.Ctx(r.Context()).Error().Err(err).Int64("review_id", reviewID).Msg("delete review error")
 		s.sendError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}

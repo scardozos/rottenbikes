@@ -5,12 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/rs/zerolog"
 
 	"github.com/scardozos/rottenbikes/internal/domain"
 )
@@ -48,7 +49,7 @@ func (s *HTTPServer) handleRegister(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Verify hCaptcha
-	if err := s.verifyCaptcha(req.Captcha, req.Email); err != nil {
+	if err := s.verifyCaptcha(r.Context(), req.Captcha, req.Email); err != nil {
 		s.sendError(w, "invalid captcha", http.StatusForbidden)
 		return
 	}
@@ -80,13 +81,16 @@ func (s *HTTPServer) handleRegister(w http.ResponseWriter, r *http.Request) {
 	if req.Origin != "" {
 		uiURL = fmt.Sprintf("%s?origin=%s", uiURL, req.Origin)
 	}
-	log.Printf("UI confirmation link for %s: %s", req.Email, uiURL)
+	if req.Origin != "" {
+		uiURL = fmt.Sprintf("%s?origin=%s", uiURL, req.Origin)
+	}
+	zerolog.Ctx(r.Context()).Info().Str("email", req.Email).Str("url", uiURL).Msg("sending UI confirmation link")
 
 	subject := "Welcome to RottenBikes!"
 	body := fmt.Sprintf("Hello %s,\n\nPlease confirm your registration by clicking the following link:\n\n%s\n\nIf you did not request this, please ignore this email.", req.Username, uiURL)
 
 	if err := s.emailSender.SendEmail(req.Email, subject, body); err != nil {
-		log.Printf("ERROR: failed to send registration email to %s: %v", req.Email, err)
+		zerolog.Ctx(r.Context()).Error().Err(err).Str("email", req.Email).Msg("failed to send registration email")
 		s.sendError(w, "failed to send confirmation email", http.StatusInternalServerError)
 		return
 	}
@@ -123,7 +127,7 @@ func (s *HTTPServer) handleRequestMagicLink(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Verify hCaptcha
-	if err := s.verifyCaptcha(req.Captcha, identifier); err != nil {
+	if err := s.verifyCaptcha(r.Context(), req.Captcha, identifier); err != nil {
 		s.sendError(w, "invalid captcha", http.StatusForbidden)
 		return
 	}
@@ -159,13 +163,16 @@ func (s *HTTPServer) handleRequestMagicLink(w http.ResponseWriter, r *http.Reque
 	if req.Origin != "" {
 		uiURL = fmt.Sprintf("%s?origin=%s", uiURL, req.Origin)
 	}
-	log.Printf("UI confirmation link for %s: %s", targetEmail, uiURL)
+	if req.Origin != "" {
+		uiURL = fmt.Sprintf("%s?origin=%s", uiURL, req.Origin)
+	}
+	zerolog.Ctx(r.Context()).Info().Str("email", targetEmail).Str("url", uiURL).Msg("sending magic link")
 
 	subject := "Your RottenBikes Magic Link"
 	body := fmt.Sprintf("Hello,\n\nYou requested a magic link to log in to RottenBikes. Click the following link to continue:\n\n%s\n\nIf you did not request this, please ignore this email.", uiURL)
 
 	if err := s.emailSender.SendEmail(targetEmail, subject, body); err != nil {
-		log.Printf("ERROR: failed to send magic link email to %s: %v", targetEmail, err)
+		zerolog.Ctx(r.Context()).Error().Err(err).Str("email", targetEmail).Msg("failed to send magic link email")
 		s.sendError(w, "failed to send magic link email", http.StatusInternalServerError)
 		return
 	}
@@ -178,7 +185,7 @@ func (s *HTTPServer) handleRequestMagicLink(w http.ResponseWriter, r *http.Reque
 	})
 }
 
-func (s *HTTPServer) verifyCaptcha(token, email string) error {
+func (s *HTTPServer) verifyCaptcha(ctx context.Context, token, email string) error {
 	secret := strings.TrimSpace(os.Getenv("HCAPTCHA_SECRET"))
 
 	if secret != "" {
@@ -187,7 +194,7 @@ func (s *HTTPServer) verifyCaptcha(token, email string) error {
 			"response": {token},
 		})
 		if err != nil {
-			log.Printf("hCaptcha request error for %s: %v", email, err)
+			zerolog.Ctx(ctx).Error().Err(err).Str("email", email).Msg("hCaptcha request error")
 			return err
 		}
 		defer vreq.Body.Close()
@@ -199,17 +206,17 @@ func (s *HTTPServer) verifyCaptcha(token, email string) error {
 			ChallengeTS string   `json:"challenge_ts"`
 		}
 		if err := json.NewDecoder(vreq.Body).Decode(&vres); err != nil {
-			log.Printf("hCaptcha decode error: %v", err)
+			zerolog.Ctx(ctx).Error().Err(err).Msg("hCaptcha decode error")
 			return err
 		}
 
 		if !vres.Success {
-			log.Printf("hCaptcha verification FAILED for %s. Errors: %v", email, vres.ErrorCodes)
+			zerolog.Ctx(ctx).Warn().Str("email", email).Strs("errors", vres.ErrorCodes).Msg("hCaptcha verification FAILED")
 			return fmt.Errorf("invalid captcha")
 		}
-		log.Printf("hCaptcha verification SUCCESS for %s", email)
+		zerolog.Ctx(ctx).Info().Str("email", email).Msg("hCaptcha verification SUCCESS")
 	} else {
-		log.Println("WARNING: HCAPTCHA_SECRET not set, skipping verification (DEV mode?)")
+		zerolog.Ctx(ctx).Warn().Msg("HCAPTCHA_SECRET not set, skipping verification request (DEV mode?)")
 	}
 	return nil
 }
@@ -246,7 +253,7 @@ func (s *HTTPServer) handleConfirmMagicLink(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	log.Printf("Magic link confirmed for %s", res.Email)
+	zerolog.Ctx(r.Context()).Info().Str("email", res.Email).Msg("magic link confirmed")
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(confirmResponse{
@@ -333,7 +340,7 @@ func (s *HTTPServer) handleDeletePoster(w http.ResponseWriter, r *http.Request) 
 	defer cancel()
 	// Pass the parsed flag
 	if err := s.service.DeletePoster(ctx, posterID, req.DeletePosterSubresources); err != nil {
-		log.Printf("delete poster %d error: %v", posterID, err)
+		zerolog.Ctx(r.Context()).Error().Err(err).Int64("poster_id", posterID).Msg("delete poster error")
 		s.sendError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
