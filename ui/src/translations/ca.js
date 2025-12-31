@@ -110,6 +110,10 @@ export default {
     anonymous: 'Anònim',
     see_all_reviews: 'Veure les {count} ressenyes',
     all_reviews: 'Totes les Ressenyes',
+    time_window_label: 'Període',
+    window_1w: '1 Setmana',
+    window_2w: '2 Setmanes',
+    window_overall: 'Històric',
 
     // Bikes List
     all_bikes: 'Totes les Bicicletes',

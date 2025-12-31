@@ -1,5 +1,5 @@
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useState, useCallback, useContext } from 'react';
+import React, { useState, useCallback, useContext, useRef } from 'react';
 
 import { View, Text, StyleSheet, FlatList, Button, TouchableOpacity, Pressable } from 'react-native';
 
@@ -41,8 +41,13 @@ const BikeDetailsScreen = ({ route, navigation }) => {
     const [loading, setLoading] = useState(true);
     const [sortBy, setSortBy] = useState('date'); // 'date' | 'rating'
     const [sortOrder, setSortOrder] = useState('desc'); // 'asc' | 'desc'
+    const [timeWindow, setTimeWindow] = useState('2w'); // '1w', '2w', 'overall'
     const [modalVisible, setModalVisible] = useState(false);
     const [expandedReviews, setExpandedReviews] = useState(new Set());
+
+    // Ref to track if we need to set the default window (first load or bike switch)
+    const isFirstLoad = useRef(true);
+
     const { theme } = useContext(ThemeContext);
 
     const toggleReview = (reviewId, context) => {
@@ -55,6 +60,15 @@ const BikeDetailsScreen = ({ route, navigation }) => {
                 newSet.add(key);
             }
             return newSet;
+        });
+    };
+
+    const cycleTimeWindow = () => {
+        // Order: 2w -> overall -> 1w -> 2w
+        setTimeWindow(prev => {
+            if (prev === '2w') return 'overall';
+            if (prev === 'overall') return '1w';
+            return '2w';
         });
     };
 
@@ -82,7 +96,15 @@ const BikeDetailsScreen = ({ route, navigation }) => {
 
             setBike(prev => ({ ...prev, ...details }));
             setReviews(details.reviews || []);
-            setAggregates(details.ratings || []);
+            const ratings = details.ratings || [];
+            setAggregates(ratings);
+
+            // Smart Default Logic
+            if (isFirstLoad.current) {
+                const has2w = ratings.some(r => r.window === '2w');
+                setTimeWindow(has2w ? '2w' : 'overall');
+                isFirstLoad.current = false;
+            }
         } catch (e) {
             console.log("Failed to fetch bike details", e);
         } finally {
@@ -99,6 +121,7 @@ const BikeDetailsScreen = ({ route, navigation }) => {
             // Use Number() to avoid "1" !== 1 infinite loop
             if (newId && Number(newId) !== Number(bike.numerical_id)) {
                 console.log('[BikeDetails] Params changed, updating bike ID:', newId);
+                isFirstLoad.current = true; // Reset for new bike
                 setBike(prev => ({ ...prev, numerical_id: Number(newId) }));
                 fetchData(Number(newId));
             } else {
@@ -127,16 +150,25 @@ const BikeDetailsScreen = ({ route, navigation }) => {
 
             {aggregates.length > 0 && (
                 <View style={styles.aggregatesSection}>
-                    <Text style={styles.subtitle}>{t('average_ratings')}</Text>
+                    <View style={styles.aggregatesHeader}>
+                        <Text style={styles.subtitle}>{t('average_ratings')}</Text>
+                        <TouchableOpacity style={styles.timeWindowButton} onPress={cycleTimeWindow}>
+                            <Text style={styles.timeWindowButtonText}>{t(`window_${timeWindow}`)} ▾</Text>
+                        </TouchableOpacity>
+                    </View>
+
                     <View style={styles.aggregatesGrid}>
                         {aggregates
-                            .filter(agg => agg.subcategory !== 'overall')
+                            .filter(agg => agg.subcategory !== 'overall' && agg.window === timeWindow)
                             .map(agg => (
                                 <View key={agg.subcategory} style={styles.aggItem}>
                                     <Text style={styles.aggLabel}>{t(agg.subcategory) || agg.subcategory.charAt(0).toUpperCase() + agg.subcategory.slice(1)}</Text>
                                     <Text style={styles.aggValue}>{agg.average_rating.toFixed(1)} ⭐</Text>
                                 </View>
                             ))}
+                        {aggregates.filter(agg => agg.subcategory !== 'overall' && agg.window === timeWindow).length === 0 && (
+                            <Text style={styles.noRatingsText}>{t('no_reviews')}</Text>
+                        )}
                     </View>
                 </View>
             )}
@@ -465,6 +497,36 @@ const createStyles = (theme) => StyleSheet.create({
     disabledActionButtonText: {
         color: '#FFFFFF', // Can mimic disabled text color
         opacity: 0.8
+    },
+    disabledActionButtonText: {
+        color: '#FFFFFF', // Can mimic disabled text color
+        opacity: 0.8
+    },
+    aggregatesHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 10
+    },
+    timeWindowButton: {
+        backgroundColor: theme.colors.background,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: theme.colors.border
+    },
+    timeWindowButtonText: {
+        color: theme.colors.primary,
+        fontSize: 14,
+        fontWeight: 'bold'
+    },
+    noRatingsText: {
+        width: '100%',
+        textAlign: 'center',
+        color: theme.colors.subtext,
+        fontStyle: 'italic',
+        marginTop: 10
     }
 });
 

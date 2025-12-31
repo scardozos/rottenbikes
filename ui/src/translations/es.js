@@ -110,6 +110,10 @@ export default {
     anonymous: 'Anónimo',
     see_all_reviews: 'Ver las {count} reseñas',
     all_reviews: 'Todas las Reseñas',
+    time_window_label: 'Periodo',
+    window_1w: '1 Semana',
+    window_2w: '2 Semanas',
+    window_overall: 'Histórico',
 
     // Bikes List
     all_bikes: 'Todas las Bicicletas',
