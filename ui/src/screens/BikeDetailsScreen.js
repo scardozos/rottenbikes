@@ -265,28 +265,59 @@ const BikeDetailsScreen = ({ route, navigation }) => {
     const dynamicBorderColor = getBorderColor(activeRating);
 
     return (
-        <View style={[
-            styles.container,
-            activeRating != null && { borderWidth: 2, borderColor: dynamicBorderColor, borderRadius: 12, margin: 12 }
-        ]}>
-            <FlatList
-                ListHeaderComponent={renderHeader}
-                data={previewReviews}
-                keyExtractor={item => item.review_id ? item.review_id.toString() : Math.random().toString()}
-                renderItem={(props) => renderReviewItem(props, 'preview')}
-                ListFooterComponent={
-                    reviews.length === 0 ? (
-                        <Text style={styles.emptyText}>{t('no_reviews')}</Text>
-                    ) : reviews.length > 3 ? (
-                        <TouchableOpacity style={styles.seeAllButton} onPress={() => setModalVisible(true)}>
-                            <Text style={styles.seeAllText}>
-                                {t('see_all_reviews', { count: reviews.length })}
-                            </Text>
-                        </TouchableOpacity>
-                    ) : null
-                }
-                contentContainerStyle={{ paddingBottom: 20 }}
-            />
+        <View style={styles.container}>
+            <View style={[
+                styles.contentWrapper,
+                activeRating != null && { borderWidth: 2, borderColor: dynamicBorderColor, borderRadius: 12, margin: 12 }
+            ]}>
+                <FlatList
+                    ListHeaderComponent={renderHeader}
+                    data={previewReviews}
+                    keyExtractor={item => item.review_id ? item.review_id.toString() : Math.random().toString()}
+                    renderItem={(props) => renderReviewItem(props, 'preview')}
+                    ListFooterComponent={
+                        reviews.length === 0 ? (
+                            <Text style={styles.emptyText}>{t('no_reviews')}</Text>
+                        ) : reviews.length > 3 ? (
+                            <TouchableOpacity style={styles.seeAllButton} onPress={() => setModalVisible(true)}>
+                                <Text style={styles.seeAllText}>
+                                    {t('see_all_reviews', { count: reviews.length })}
+                                </Text>
+                            </TouchableOpacity>
+                        ) : null
+                    }
+                    contentContainerStyle={{ paddingBottom: 20 }}
+                />
+
+                {/* Only show "Write a Review" if validated in current session */}
+                {/* Show "Write a Review" for everyone, but redirect if not allowed */}
+                <View style={styles.footerButton}>
+                    <TouchableOpacity
+                        style={[
+                            styles.actionButton,
+                            (!isReviewAllowed) && styles.disabledActionButton
+                        ]}
+                        onPress={() => {
+                            if (!userToken) {
+                                showToast(t('login_to_review_toast'), 'info');
+                                navigation.navigate('Home');
+                                return;
+                            }
+                            if (!isReviewAllowed) {
+                                showToast(t('scan_to_review_toast'), 'info');
+                                navigation.navigate('Home');
+                                return;
+                            }
+                            navigation.navigate('CreateReview', { bikeId: bike.numerical_id });
+                        }}
+                        activeOpacity={0.8}
+                    >
+                        <Text style={[styles.actionButtonText, (!isReviewAllowed) && styles.disabledActionButtonText]}>
+                            {t('write_review')}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
 
             {/* Custom Modal for All Reviews (Absolute Positioned View) */}
             {modalVisible && (
@@ -333,42 +364,13 @@ const BikeDetailsScreen = ({ route, navigation }) => {
                     </View>
                 </View>
             )}
-
-
-            {/* Only show "Write a Review" if validated in current session */}
-            {/* Show "Write a Review" for everyone, but redirect if not allowed */}
-            <View style={styles.footerButton}>
-                <TouchableOpacity
-                    style={[
-                        styles.actionButton,
-                        (!isReviewAllowed) && styles.disabledActionButton
-                    ]}
-                    onPress={() => {
-                        if (!userToken) {
-                            showToast(t('login_to_review_toast'), 'info');
-                            navigation.navigate('Home');
-                            return;
-                        }
-                        if (!isReviewAllowed) {
-                            showToast(t('scan_to_review_toast'), 'info');
-                            navigation.navigate('Home');
-                            return;
-                        }
-                        navigation.navigate('CreateReview', { bikeId: bike.numerical_id });
-                    }}
-                    activeOpacity={0.8}
-                >
-                    <Text style={[styles.actionButtonText, (!isReviewAllowed) && styles.disabledActionButtonText]}>
-                        {t('write_review')}
-                    </Text>
-                </TouchableOpacity>
-            </View>
         </View>
     );
 };
 
 const createStyles = (theme) => StyleSheet.create({
-    container: { flex: 1, padding: 20, backgroundColor: theme.colors.background },
+    container: { flex: 1, backgroundColor: theme.colors.background }, // Removed padding
+    contentWrapper: { flex: 1, padding: 20 }, // Added content wrapper with padding
     title: { fontSize: 24, fontWeight: 'bold', marginBottom: 10, color: theme.colors.text },
     detail: { fontSize: 16, marginBottom: 5, color: theme.colors.text },
     // reviewsSection: { flex: 1, marginTop: 20 }, // Removed as now part of FlatList custom header
