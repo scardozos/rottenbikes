@@ -58,9 +58,17 @@ const UpdateBikeScreen = ({ route, navigation }) => {
 
     const handleSubmit = async () => {
         setSubmitting(true);
+
+        const hId = hashId.trim();
+        if (hId !== '' && !/^[a-zA-Z0-9]+$/.test(hId)) {
+            showToast(t('invalid_hash_id'), "error");
+            setSubmitting(false);
+            return;
+        }
+
         try {
             await api.put(`/bikes/${bikeId}`, {
-                hash_id: hashId.trim() === '' ? null : hashId,
+                hash_id: hId === '' ? null : hId,
                 is_electric: isElectric
             });
             showToast(t('update_success'), "success");
