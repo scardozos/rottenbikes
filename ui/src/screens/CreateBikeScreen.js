@@ -27,10 +27,25 @@ const CreateBikeScreen = ({ route, navigation }) => {
 
     const handleSubmit = async () => {
         setLoading(true);
+
+        const numId = String(numericalId).trim();
+        if (!/^\d{4,5}$/.test(numId)) {
+            showToast(t('invalid_numerical_id'), "error");
+            setLoading(false);
+            return;
+        }
+
+        const hId = hashId.trim();
+        if (hId !== '' && !/^[a-zA-Z0-9]+$/.test(hId)) {
+            showToast(t('invalid_hash_id'), "error");
+            setLoading(false);
+            return;
+        }
+
         try {
             const response = await api.post('/bikes', {
-                numerical_id: parseInt(numericalId),
-                hash_id: hashId.trim() === '' ? null : hashId,
+                numerical_id: numId,
+                hash_id: hId === '' ? null : hId,
                 is_electric: isElectric
             });
             showToast(t('success'), "success");

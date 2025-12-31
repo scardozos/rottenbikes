@@ -77,12 +77,13 @@ func TestHandleCreateBike(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		token := "valid_token"
-		numericalID := int64(123)
-		hashID := "hash_123"
+		// numericalID := int64(123)
+		numericalIDStr := "0123"
+		hashID := "hash123"
 		isElectric := true
 
 		reqBody, _ := json.Marshal(map[string]interface{}{
-			"numerical_id": numericalID,
+			"numerical_id": numericalIDStr,
 			"hash_id":      hashID,
 			"is_electric":  isElectric,
 		})
@@ -134,7 +135,7 @@ func TestHandleCreateBike(t *testing.T) {
 
 		token := "valid_token"
 		reqBody, _ := json.Marshal(map[string]interface{}{
-			"numerical_id": 123,
+			"numerical_id": "0123",
 		})
 		req := httptest.NewRequest(http.MethodPost, "/bikes", bytes.NewReader(reqBody))
 		req.Header.Set("Authorization", "Bearer "+token)
@@ -154,7 +155,7 @@ func TestHandleCreateBike(t *testing.T) {
 
 		token := "valid_token"
 		reqBody, _ := json.Marshal(map[string]interface{}{
-			"numerical_id": 123,
+			"numerical_id": "0123",
 		})
 		req := httptest.NewRequest(http.MethodPost, "/bikes", bytes.NewReader(reqBody))
 		req.Header.Set("Authorization", "Bearer "+token)
@@ -164,6 +165,53 @@ func TestHandleCreateBike(t *testing.T) {
 
 		if w.Code != http.StatusInternalServerError {
 			t.Errorf("expected status 500, got %d", w.Code)
+		}
+	})
+
+	t.Run("bad_request_invalid_id_range", func(t *testing.T) {
+		token := "valid_token"
+		// ID len < 4
+		reqBody, _ := json.Marshal(map[string]interface{}{
+			"numerical_id": "123",
+		})
+		req := httptest.NewRequest(http.MethodPost, "/bikes", bytes.NewReader(reqBody))
+		req.Header.Set("Authorization", "Bearer "+token)
+		w := httptest.NewRecorder()
+
+		srv.server.Handler.ServeHTTP(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected status 400, got %d", w.Code)
+		}
+
+		// ID len > 6
+		reqBody2, _ := json.Marshal(map[string]interface{}{
+			"numerical_id": "123456",
+		})
+		req2 := httptest.NewRequest(http.MethodPost, "/bikes", bytes.NewReader(reqBody2))
+		req2.Header.Set("Authorization", "Bearer "+token)
+		w2 := httptest.NewRecorder()
+		srv.server.Handler.ServeHTTP(w2, req2)
+		if w2.Code != http.StatusBadRequest {
+			t.Errorf("expected status 400, got %d", w2.Code)
+		}
+	})
+
+	t.Run("bad_request_invalid_hash", func(t *testing.T) {
+		token := "valid_token"
+		// Non-alphanumeric hash
+		reqBody, _ := json.Marshal(map[string]interface{}{
+			"numerical_id": "12345",
+			"hash_id":      "hash!",
+		})
+		req := httptest.NewRequest(http.MethodPost, "/bikes", bytes.NewReader(reqBody))
+		req.Header.Set("Authorization", "Bearer "+token)
+		w := httptest.NewRecorder()
+
+		srv.server.Handler.ServeHTTP(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected status 400, got %d", w.Code)
 		}
 	})
 }
@@ -216,7 +264,7 @@ func TestHandleUpdateBike(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		token := "valid_token"
-		hashID := "new_hash"
+		hashID := "newhash"
 		reqBody, _ := json.Marshal(map[string]interface{}{
 			"hash_id": hashID,
 		})
@@ -236,6 +284,23 @@ func TestHandleUpdateBike(t *testing.T) {
 		token := "valid_token"
 		reqBody, _ := json.Marshal(map[string]interface{}{
 			"numerical_id": 123,
+		})
+
+		req := httptest.NewRequest(http.MethodPut, "/bikes/1", bytes.NewReader(reqBody))
+		req.Header.Set("Authorization", "Bearer "+token)
+		w := httptest.NewRecorder()
+
+		srv.server.Handler.ServeHTTP(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected status 400, got %d", w.Code)
+		}
+	})
+
+	t.Run("bad_request_invalid_hash", func(t *testing.T) {
+		token := "valid_token"
+		reqBody, _ := json.Marshal(map[string]interface{}{
+			"hash_id": "inv@lid",
 		})
 
 		req := httptest.NewRequest(http.MethodPut, "/bikes/1", bytes.NewReader(reqBody))

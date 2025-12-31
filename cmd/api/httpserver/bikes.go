@@ -7,6 +7,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/lib/pq"
@@ -36,7 +37,7 @@ func (s *HTTPServer) handleListBikes(w http.ResponseWriter, r *http.Request) {
 }
 
 type createBikeRequest struct {
-	NumericalID int64   `json:"numerical_id"`
+	NumericalID string  `json:"numerical_id"`
 	HashID      *string `json:"hash_id"`
 	IsElectric  bool    `json:"is_electric"`
 }
@@ -60,8 +61,14 @@ func (s *HTTPServer) handleCreateBike(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.NumericalID == 0 {
-		s.sendError(w, "numerical_id is required", http.StatusBadRequest)
+	if len(req.NumericalID) < 4 || len(req.NumericalID) > 5 {
+		s.sendError(w, "numerical_id must be between 4 and 5 digits", http.StatusBadRequest)
+		return
+	}
+
+	numericalID, err := strconv.ParseInt(req.NumericalID, 10, 64)
+	if err != nil || numericalID < 0 {
+		s.sendError(w, "numerical_id must be a valid number", http.StatusBadRequest)
 		return
 	}
 
@@ -70,10 +77,15 @@ func (s *HTTPServer) handleCreateBike(w http.ResponseWriter, r *http.Request) {
 		req.HashID = nil
 	}
 
+	if req.HashID != nil && !isAlphanumeric(*req.HashID) {
+		s.sendError(w, "hash_id must be alphanumeric", http.StatusBadRequest)
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
 
-	bike, err := s.service.CreateBike(ctx, req.NumericalID, req.HashID, req.IsElectric, creatorID)
+	bike, err := s.service.CreateBike(ctx, numericalID, req.HashID, req.IsElectric, creatorID)
 	if err != nil {
 		var pqErr *pq.Error
 		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
@@ -122,6 +134,11 @@ func (s *HTTPServer) handleUpdateBike(w http.ResponseWriter, r *http.Request, bi
 
 	if req.NumericalID != nil {
 		s.sendError(w, "numerical_id cannot be updated", http.StatusBadRequest)
+		return
+	}
+
+	if req.HashID != nil && *req.HashID != "" && !isAlphanumeric(*req.HashID) {
+		s.sendError(w, "hash_id must be alphanumeric", http.StatusBadRequest)
 		return
 	}
 
@@ -204,4 +221,13 @@ func (s *HTTPServer) handleGetBikeDetails(w http.ResponseWriter, r *http.Request
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(details)
+}
+
+func isAlphanumeric(s string) bool {
+	for _, r := range s {
+		if (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') && (r < '0' || r > '9') {
+			return false
+		}
+	}
+	return true
 }
