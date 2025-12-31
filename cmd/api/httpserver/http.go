@@ -3,10 +3,11 @@ package httpserver
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/scardozos/rottenbikes/cmd/api/email"
 	"github.com/scardozos/rottenbikes/internal/domain"
@@ -174,12 +175,12 @@ func (s *HTTPServer) sendError(w http.ResponseWriter, message string, status int
 }
 
 func (s *HTTPServer) Start() error {
-	log.Printf("HTTP server listening on %s", s.server.Addr)
+	log.Info().Msgf("HTTP server listening on %s", s.server.Addr)
 	return s.server.ListenAndServe()
 }
 
 func (s *HTTPServer) Shutdown(ctx context.Context) error {
-	log.Printf("Shutting down HTTP server on %s", s.server.Addr)
+	log.Info().Msgf("Shutting down HTTP server on %s", s.server.Addr)
 	return s.server.Shutdown(ctx)
 }
 
