@@ -109,6 +109,10 @@ export default {
     anonymous: 'Anonymous',
     see_all_reviews: 'See all {count} reviews',
     all_reviews: 'All Reviews',
+    time_window_label: 'Time Period',
+    window_1w: '1 Week',
+    window_2w: '2 Weeks',
+    window_overall: 'All Time',
 
     // Bikes List
     all_bikes: 'All Bikes',

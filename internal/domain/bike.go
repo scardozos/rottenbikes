@@ -108,7 +108,7 @@ func (s *Store) GetBikeDetails(ctx context.Context, id int64) (*BikeDetails, err
 		return nil, err
 	}
 
-	ratings, err := s.ListRatingAggregatesByBike(ctx, id)
+	ratings, err := s.ListWindowedRatingAggregatesByBike(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch ratings: %w", err)
 	}

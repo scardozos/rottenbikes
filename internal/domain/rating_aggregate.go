@@ -9,6 +9,7 @@ type RatingAggregate struct {
 	BikeNumericalID int64             `db:"bike_numerical_id" json:"bike_numerical_id"`
 	Subcategory     RatingSubcategory `db:"subcategory"        json:"subcategory"`
 	AverageRating   float32           `db:"average_rating"     json:"average_rating"`
+	Window          string            `json:"window,omitempty"` // "1w", "2w", "overall"
 }
 
 func (s *Store) ListRatingAggregatesByBike(ctx context.Context, bikeID int64) ([]RatingAggregate, error) {
@@ -29,8 +30,56 @@ func (s *Store) ListRatingAggregatesByBike(ctx context.Context, bikeID int64) ([
 		if err := rows.Scan(&a.BikeNumericalID, &a.Subcategory, &a.AverageRating); err != nil {
 			return nil, err
 		}
+		a.Window = "overall" // Default to overall for backward compatibility/precomputed
 		aggs = append(aggs, a)
 	}
+	return aggs, rows.Err()
+}
+
+func (s *Store) ListWindowedRatingAggregatesByBike(ctx context.Context, bikeID int64) ([]RatingAggregate, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT
+			rr.subcategory,
+			ROUND(AVG(CASE WHEN r.created_ts >= NOW() - INTERVAL '1 week' THEN rr.score END)::numeric, 2) as avg_1w,
+			ROUND(AVG(CASE WHEN r.created_ts >= NOW() - INTERVAL '2 weeks' THEN rr.score END)::numeric, 2) as avg_2w,
+			ROUND(AVG(rr.score)::numeric, 2) as avg_overall
+		FROM review_ratings rr
+		JOIN reviews r ON rr.review_id = r.review_id
+		WHERE r.bike_numerical_id = $1
+		GROUP BY rr.subcategory
+		ORDER BY rr.subcategory
+	`, bikeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var aggs []RatingAggregate
+	for rows.Next() {
+		var sub RatingSubcategory
+		var avg1w, avg2w, avgOverall sql.NullFloat64
+
+		if err := rows.Scan(&sub, &avg1w, &avg2w, &avgOverall); err != nil {
+			return nil, err
+		}
+
+		// Helper to append if valid
+		appendAgg := func(window string, val sql.NullFloat64) {
+			if val.Valid {
+				aggs = append(aggs, RatingAggregate{
+					BikeNumericalID: bikeID,
+					Subcategory:     sub,
+					AverageRating:   float32(val.Float64),
+					Window:          window,
+				})
+			}
+		}
+
+		appendAgg("1w", avg1w)
+		appendAgg("2w", avg2w)
+		appendAgg("overall", avgOverall)
+	}
+
 	return aggs, rows.Err()
 }
 
