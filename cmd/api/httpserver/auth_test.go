@@ -219,3 +219,29 @@ func TestHandleVerifyToken(t *testing.T) {
 		}
 	})
 }
+
+func TestIsPrivateIP(t *testing.T) {
+	tests := []struct {
+		host     string
+		expected bool
+	}{
+		{"localhost", true},
+		{"127.0.0.1", true},
+		{"192.168.1.1", true},
+		{"10.0.0.5", true},
+		{"172.16.0.1", true},
+		{"172.31.255.255", true},
+		{"example.com", false},
+		{"8.8.8.8", false},
+		{"1.1.1.1", false},
+		{"invalid", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.host, func(t *testing.T) {
+			if got := isPrivateIP(tt.host); got != tt.expected {
+				t.Errorf("isPrivateIP(%q) = %v; want %v", tt.host, got, tt.expected)
+			}
+		})
+	}
+}

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -74,7 +75,7 @@ func (s *HTTPServer) handleRegister(w http.ResponseWriter, r *http.Request) {
 	}
 
 	scheme := "http"
-	if uiHost != "localhost" {
+	if !isPrivateIP(uiHost) {
 		scheme = "https"
 	}
 	uiURL := fmt.Sprintf("%s://%s:%s/confirm/%s", scheme, uiHost, uiPort, magicToken)
@@ -156,7 +157,7 @@ func (s *HTTPServer) handleRequestMagicLink(w http.ResponseWriter, r *http.Reque
 	}
 
 	scheme := "http"
-	if uiHost != "localhost" {
+	if !isPrivateIP(uiHost) {
 		scheme = "https"
 	}
 	uiURL := fmt.Sprintf("%s://%s:%s/confirm/%s", scheme, uiHost, uiPort, magicToken)
@@ -345,4 +346,27 @@ func (s *HTTPServer) handleDeletePoster(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func isPrivateIP(host string) bool {
+	if host == "localhost" {
+		return true
+	}
+	// Check for private IPv4 ranges
+	// 10.0.0.0/8
+	// 172.16.0.0/12
+	// 192.168.0.0/16
+	// 127.0.0.0/8
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return false // It's a domain name or invalid IP, assume public/HTTPS unless specifically localhost
+	}
+
+	if ip.IsLoopback() {
+		return true
+	}
+	if ip.IsPrivate() {
+		return true
+	}
+	return false
 }
