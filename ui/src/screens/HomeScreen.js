@@ -61,7 +61,7 @@ const HomeScreen = ({ navigation }) => {
             return;
         }
 
-        const bikeId = parseInt(manualId, 10);
+        const bikeId = manualId;
 
         try {
             // Verify bike exists before validating session
