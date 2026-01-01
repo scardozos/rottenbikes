@@ -41,7 +41,13 @@ db-reset:
 	migrate -path $(MIGRATIONS_DIR) -database "$(DB_DSN)" drop -f
 	migrate -path $(MIGRATIONS_DIR) -database "$(DB_DSN)" up
 
-run: db-up db-migrate-up
+
+db-seed:
+	@echo "Seeding database..."
+	@psql "$(DB_DSN)" -f internal/db/seeds/dev_seeds.sql
+
+run: db-up db-migrate-up db-seed
 	@echo "Starting API and Expo..."
 	@(cd ui && npx expo start &)
 	go run ./cmd/api
+

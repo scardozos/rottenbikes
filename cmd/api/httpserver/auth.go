@@ -61,7 +61,7 @@ func (s *HTTPServer) handleRegister(w http.ResponseWriter, r *http.Request) {
 			s.sendError(w, err.Error(), http.StatusConflict)
 			return
 		}
-		s.sendError(w, "internal server error", http.StatusInternalServerError)
+		s.sendInternalServerError(w, r, err)
 		return
 	}
 
@@ -143,7 +143,7 @@ func (s *HTTPServer) handleRequestMagicLink(w http.ResponseWriter, r *http.Reque
 			s.sendError(w, "daily magic link limit reached", http.StatusTooManyRequests)
 			return
 		}
-		s.sendError(w, "internal server error", http.StatusInternalServerError)
+		s.sendInternalServerError(w, r, err)
 		return
 	}
 
@@ -341,8 +341,7 @@ func (s *HTTPServer) handleDeletePoster(w http.ResponseWriter, r *http.Request) 
 	defer cancel()
 	// Pass the parsed flag
 	if err := s.service.DeletePoster(ctx, posterID, req.DeletePosterSubresources); err != nil {
-		zerolog.Ctx(r.Context()).Error().Err(err).Int64("poster_id", posterID).Msg("delete poster error")
-		s.sendError(w, "internal server error", http.StatusInternalServerError)
+		s.sendInternalServerError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

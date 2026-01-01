@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
 	"github.com/scardozos/rottenbikes/cmd/api/email"
@@ -172,6 +173,11 @@ func (s *HTTPServer) sendError(w http.ResponseWriter, message string, status int
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(map[string]string{"error": message})
+}
+
+func (s *HTTPServer) sendInternalServerError(w http.ResponseWriter, r *http.Request, err error) {
+	zerolog.Ctx(r.Context()).Error().Err(err).Msg("internal server error")
+	s.sendError(w, "internal server error", http.StatusInternalServerError)
 }
 
 func (s *HTTPServer) Start() error {
