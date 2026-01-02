@@ -49,6 +49,27 @@ func TestHandleListBikes(t *testing.T) {
 			t.Errorf("expected status 200, got %d", w.Code)
 		}
 	})
+
+	t.Run("empty_list", func(t *testing.T) {
+		mockService.ListBikesFunc = func(ctx context.Context) ([]domain.Bike, error) {
+			return nil, nil // Simulate empty DB returning nil
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/bikes", nil)
+		req.Header.Set("Authorization", "Bearer valid_token")
+		w := httptest.NewRecorder()
+
+		srv.server.Handler.ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("expected status 200, got %d", w.Code)
+		}
+
+		// Verify response body is []
+		if w.Body.String() != "[]\n" {
+			t.Errorf("expected body [], got %q", w.Body.String())
+		}
+	})
 }
 
 func TestHandleCreateBike(t *testing.T) {

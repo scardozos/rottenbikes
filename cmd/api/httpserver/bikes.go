@@ -11,6 +11,7 @@ import (
 
 	"github.com/lib/pq"
 	"github.com/rs/zerolog"
+	"github.com/scardozos/rottenbikes/internal/domain"
 )
 
 // GET /bikes → list (now includes average_rating)
@@ -28,6 +29,10 @@ func (s *HTTPServer) handleListBikes(w http.ResponseWriter, r *http.Request) {
 		zerolog.Ctx(r.Context()).Error().Err(err).Msg("list bikes error")
 		s.sendError(w, "internal server error", http.StatusInternalServerError)
 		return
+	}
+
+	if bikes == nil {
+		bikes = []domain.Bike{}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
