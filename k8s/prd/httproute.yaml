@@ -5,17 +5,17 @@ metadata:
   namespace: rottenbikes
 spec:
   parentRefs:
-  - name: rottenbikes
+  - name: rottenbikes-prd
     sectionName: ui-https
   hostnames:
-  - dev.rottenbik.es
+  - rottenbik.es
   rules:
   - matches:
     - path:
         type: PathPrefix
         value: /
     backendRefs:
-    - name: ui
+    - name: ui-prd
       port: 8080
 ---
 apiVersion: gateway.networking.k8s.io/v1
@@ -25,17 +25,17 @@ metadata:
   namespace: rottenbikes
 spec:
   parentRefs:
-  - name: rottenbikes
+  - name: rottenbikes-prd
     sectionName: api-https
   hostnames:
-  - api-dev.rottenbik.es
+  - api.rottenbik.es
   rules:
   - matches:
     - path:
         type: PathPrefix
         value: /
     backendRefs:
-    - name: api
+    - name: api-prd
       port: 8080
 ---
 apiVersion: gateway.networking.k8s.io/v1
@@ -45,10 +45,10 @@ metadata:
   namespace: rottenbikes
 spec:
   parentRefs:
-  - name: rottenbikes
+  - name: rottenbikes-prd
     sectionName: ui-http
   hostnames:
-  - dev.rottenbik.es
+  - rottenbik.es
   rules:
   - filters:
     - type: RequestRedirect

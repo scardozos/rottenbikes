@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: api
-        image: monorailisland/rottenbikes:api-latest
+        image: api
         ports:
         - containerPort: 8080
         - containerPort: 9091
