@@ -5,7 +5,7 @@ metadata:
   namespace: rottenbikes
 spec:
   parentRefs:
-  - name: rottenbikes
+  - name: rottenbikes-dev
     sectionName: ui-https
   hostnames:
   - dev.rottenbik.es
@@ -15,7 +15,7 @@ spec:
         type: PathPrefix
         value: /
     backendRefs:
-    - name: ui
+    - name: ui-dev
       port: 8080
 ---
 apiVersion: gateway.networking.k8s.io/v1
@@ -25,7 +25,7 @@ metadata:
   namespace: rottenbikes
 spec:
   parentRefs:
-  - name: rottenbikes
+  - name: rottenbikes-dev
     sectionName: api-https
   hostnames:
   - api-dev.rottenbik.es
@@ -35,7 +35,7 @@ spec:
         type: PathPrefix
         value: /
     backendRefs:
-    - name: api
+    - name: api-dev
       port: 8080
 ---
 apiVersion: gateway.networking.k8s.io/v1
@@ -45,7 +45,7 @@ metadata:
   namespace: rottenbikes
 spec:
   parentRefs:
-  - name: rottenbikes
+  - name: rottenbikes-dev
     sectionName: ui-http
   hostnames:
   - dev.rottenbik.es

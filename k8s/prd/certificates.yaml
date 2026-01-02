@@ -4,7 +4,7 @@ metadata:
   name: ui-cert
   namespace: rottenbikes
 spec:
-  secretName: ui-cert
+  secretName: ui-cert-prd
   issuerRef:
     name: issuer
     kind: Issuer
@@ -18,7 +18,7 @@ metadata:
   name: api-cert
   namespace: rottenbikes
 spec:
-  secretName: api-cert
+  secretName: api-cert-prd
   issuerRef:
     name: issuer
     kind: Issuer

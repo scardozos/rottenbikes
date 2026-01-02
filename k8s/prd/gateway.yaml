@@ -19,7 +19,7 @@ spec:
     tls:
       mode: Terminate
       certificateRefs:
-      - name: ui-cert
+      - name: ui-cert-prd
   - name: api-https
     hostname: api.rottenbik.es
     port: 443
@@ -27,4 +27,4 @@ spec:
     tls:
       mode: Terminate
       certificateRefs:
-      - name: api-cert
+      - name: api-cert-prd
