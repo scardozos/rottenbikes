@@ -17,8 +17,8 @@ const BikesListScreen = ({ navigation }) => {
     const fetchBikes = async () => {
         try {
             const bikesRes = await api.get('/bikes');
-            setBikes(bikesRes.data);
-            setFilteredBikes(bikesRes.data);
+            setBikes(bikesRes.data || []);
+            setFilteredBikes(bikesRes.data || []);
         } catch (e) {
             console.error('Fetch bikes error:', e);
         } finally {
