@@ -1,0 +1,46 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+nameSuffix: -prd
+namespace: rottenbikes
+
+resources:
+  - ../base
+  - gateway.yaml
+  - httproute.yaml
+  - certificates.yaml
+
+configMapGenerator:
+  - name: rottenbikes-config
+    behavior: merge
+    literals:
+      - DB_HOST=172.233.115.22
+      - DB_PORT=5433
+      - DB_NAME=rottenbikes
+      - EXPO_PUBLIC_API_URL=https://api.rottenbik.es
+      - EXPO_PUBLIC_HCAPTCHA_SITEKEY=59f8d596-0090-449c-ab7c-a8967718a2c0
+      - UI_HOST=rottenbik.es
+      - UI_PORT=443
+
+
+patches:
+  - patch: |
+      $patch: delete
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: rottenbikes-secrets
+  - patch: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: api
+      spec:
+        template:
+          spec:
+            containers:
+              - name: api
+                envFrom:
+                  - secretRef:
+                      name: rottenbikes-secrets-prd
+                  - configMapRef:
+                      name: rottenbikes-config

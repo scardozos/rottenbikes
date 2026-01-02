@@ -1,0 +1,30 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: rottenbikes
+  namespace: rottenbikes
+  annotations:
+    cert-manager.io/issuer: issuer
+spec:
+  gatewayClassName: eg # Envoy Gateway default name
+  listeners:
+  - name: ui-http
+    hostname: rottenbik.es
+    port: 80
+    protocol: HTTP
+  - name: ui-https
+    hostname: rottenbik.es
+    port: 443
+    protocol: HTTPS
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: ui-cert
+  - name: api-https
+    hostname: api.rottenbik.es
+    port: 443
+    protocol: HTTPS
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: api-cert
