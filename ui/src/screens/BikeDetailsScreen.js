@@ -1,7 +1,7 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useState, useCallback, useContext, useRef } from 'react';
 
-import { View, Text, StyleSheet, FlatList, Button, TouchableOpacity, Pressable } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Button, TouchableOpacity, Pressable, Animated, Dimensions, Easing } from 'react-native';
 
 import api from '../services/api';
 import { AuthContext } from '../context/AuthContext';
@@ -52,7 +52,49 @@ const BikeDetailsScreen = ({ route, navigation }) => {
     const [sortBy, setSortBy] = useState('date'); // 'date' | 'rating'
     const [sortOrder, setSortOrder] = useState('desc'); // 'asc' | 'desc'
     const [timeWindow, setTimeWindow] = useState('2w'); // '1w', '2w', 'overall'
-    const [modalVisible, setModalVisible] = useState(false);
+    const [isModalRendered, setIsModalRendered] = useState(false);
+    const slideAnim = useRef(new Animated.Value(Dimensions.get('window').height)).current;
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+
+    const openModal = useCallback(() => {
+        setIsModalRendered(true);
+        // Reset values just in case
+        slideAnim.setValue(Dimensions.get('window').height);
+        fadeAnim.setValue(0);
+
+        Animated.parallel([
+            Animated.timing(slideAnim, {
+                toValue: 0,
+                duration: 300,
+                // smooth cubic bezier equivalent
+                easing: Easing.out(Easing.cubic),
+                useNativeDriver: true,
+            }),
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 300,
+                useNativeDriver: true,
+            })
+        ]).start();
+    }, []);
+
+    const closeModal = useCallback(() => {
+        Animated.parallel([
+            Animated.timing(slideAnim, {
+                toValue: Dimensions.get('window').height,
+                duration: 250,
+                easing: Easing.in(Easing.cubic),
+                useNativeDriver: true,
+            }),
+            Animated.timing(fadeAnim, {
+                toValue: 0,
+                duration: 250,
+                useNativeDriver: true,
+            })
+        ]).start(() => {
+            setIsModalRendered(false);
+        });
+    }, []);
     const [expandedReviews, setExpandedReviews] = useState(new Set());
 
     // Ref to track if we need to set the default window (first load or bike switch)
@@ -223,7 +265,7 @@ const BikeDetailsScreen = ({ route, navigation }) => {
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                         {item.poster_id === userId && (
                             <TouchableOpacity onPress={() => {
-                                setModalVisible(false); // Close modal if navigating
+                                closeModal(); // Close modal if navigating
                                 navigation.navigate('UpdateReview', { reviewId: item.review_id });
                             }}>
                                 <Text style={{ color: theme.colors.primary, marginRight: 10, fontWeight: 'bold' }}>{t('edit')}</Text>
@@ -290,7 +332,7 @@ const BikeDetailsScreen = ({ route, navigation }) => {
                         reviews.length === 0 ? (
                             <Text style={styles.emptyText}>{t('no_reviews')}</Text>
                         ) : reviews.length > 3 ? (
-                            <TouchableOpacity style={styles.seeAllButton} onPress={() => setModalVisible(true)}>
+                            <TouchableOpacity style={styles.seeAllButton} onPress={openModal}>
                                 <Text style={styles.seeAllText}>
                                     {t('see_all_reviews', { count: reviews.length })}
                                 </Text>
@@ -331,16 +373,19 @@ const BikeDetailsScreen = ({ route, navigation }) => {
             </View>
 
             {/* Custom Modal for All Reviews (Absolute Positioned View) */}
-            {modalVisible && (
+            {isModalRendered && (
                 <View style={styles.customModalOverlay}>
-                    <Pressable onPress={() => setModalVisible(false)} style={StyleSheet.absoluteFill}>
-                        <View style={styles.customModalBackdrop} />
+                    <Pressable onPress={closeModal} style={StyleSheet.absoluteFill}>
+                        <Animated.View style={[styles.customModalBackdrop, { opacity: fadeAnim }]} />
                     </Pressable>
 
-                    <View style={styles.modalContent}>
+                    <Animated.View style={[
+                        styles.modalContent,
+                        { transform: [{ translateY: slideAnim }] }
+                    ]}>
                         <View style={styles.modalHeader}>
                             <Text style={styles.subtitle}>{t('all_reviews')}</Text>
-                            <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeButton}>
+                            <TouchableOpacity onPress={closeModal} style={styles.closeButton}>
                                 <Text style={styles.closeButtonText}>✕</Text>
                             </TouchableOpacity>
                         </View>
@@ -372,7 +417,7 @@ const BikeDetailsScreen = ({ route, navigation }) => {
                             renderItem={(props) => renderReviewItem(props, 'modal')}
                             contentContainerStyle={{ paddingBottom: 40 }}
                         />
-                    </View>
+                    </Animated.View>
                 </View>
             )}
         </View>
