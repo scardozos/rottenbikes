@@ -39,6 +39,12 @@ patches:
     kind: Secret
     metadata:
       name: rottenbikes-secrets
+- patch: |
+    $patch: delete
+    apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: rottenbikes
 labels:
 - includeSelectors: true
   pairs:
