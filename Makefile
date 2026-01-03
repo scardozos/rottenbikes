@@ -35,6 +35,10 @@ reset-login-dev:
 	@if [ -z "$(USER)" ]; then echo "Usage: make reset-login-dev USER=<email_or_username>"; exit 1; fi
 	@.scripts/reset_login_attempts.sh $(USER) .env.dev
 
+reset-login-prd:
+	@if [ -z "$(USER)" ]; then echo "Usage: make reset-login-prd USER=<email_or_username>"; exit 1; fi
+	@.scripts/reset_login_attempts.sh $(USER) .env.prod
+
 db-reset:
 
 	@echo "Resetting database (drop + re-run migrations)..."
