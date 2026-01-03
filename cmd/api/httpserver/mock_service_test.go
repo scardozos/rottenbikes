@@ -14,13 +14,13 @@ type MockService struct {
 	CheckMagicLinkStatusFunc         func(ctx context.Context, token string) (string, error)
 	DeletePosterFunc                 func(ctx context.Context, posterID int64, deleteContent bool) error
 	ListBikesFunc                    func(ctx context.Context) ([]domain.Bike, error)
-	CreateBikeFunc                   func(ctx context.Context, numericalID int64, hashID *string, isElectric bool, creatorID int64) (*domain.Bike, error)
-	GetBikeFunc                      func(ctx context.Context, id int64) (*domain.Bike, error)
-	GetBikeDetailsFunc               func(ctx context.Context, id int64) (*domain.BikeDetails, error)
-	UpdateBikeFunc                   func(ctx context.Context, id int64, hashID *string, isElectric *bool) error
-	DeleteBikeFunc                   func(ctx context.Context, id int64) error
-	ListRatingAggregatesByBikeFunc   func(ctx context.Context, bikeID int64) ([]domain.RatingAggregate, error)
-	ListReviewsWithRatingsByBikeFunc func(ctx context.Context, bikeID int64) ([]domain.ReviewWithRatings, error)
+	CreateBikeFunc                   func(ctx context.Context, numericalID string, hashID *string, isElectric bool, creatorID int64) (*domain.Bike, error)
+	GetBikeFunc                      func(ctx context.Context, id string) (*domain.Bike, error)
+	GetBikeDetailsFunc               func(ctx context.Context, id string) (*domain.BikeDetails, error)
+	UpdateBikeFunc                   func(ctx context.Context, id string, hashID *string, isElectric *bool) error
+	DeleteBikeFunc                   func(ctx context.Context, id string) error
+	ListRatingAggregatesByBikeFunc   func(ctx context.Context, bikeID string) ([]domain.RatingAggregate, error)
+	ListReviewsWithRatingsByBikeFunc func(ctx context.Context, bikeID string) ([]domain.ReviewWithRatings, error)
 	CreateReviewWithRatingsFunc      func(ctx context.Context, in domain.CreateReviewInput) (int64, error)
 	UpdateReviewWithRatingsFunc      func(ctx context.Context, in domain.UpdateReviewInput) error
 	GetReviewWithRatingsByIDFunc     func(ctx context.Context, reviewID int64) (*domain.ReviewWithRatings, error)
@@ -58,31 +58,31 @@ func (m *MockService) ListBikes(ctx context.Context) ([]domain.Bike, error) {
 	return m.ListBikesFunc(ctx)
 }
 
-func (m *MockService) CreateBike(ctx context.Context, numericalID int64, hashID *string, isElectric bool, creatorID int64) (*domain.Bike, error) {
+func (m *MockService) CreateBike(ctx context.Context, numericalID string, hashID *string, isElectric bool, creatorID int64) (*domain.Bike, error) {
 	return m.CreateBikeFunc(ctx, numericalID, hashID, isElectric, creatorID)
 }
 
-func (m *MockService) GetBike(ctx context.Context, id int64) (*domain.Bike, error) {
+func (m *MockService) GetBike(ctx context.Context, id string) (*domain.Bike, error) {
 	return m.GetBikeFunc(ctx, id)
 }
 
-func (m *MockService) GetBikeDetails(ctx context.Context, id int64) (*domain.BikeDetails, error) {
+func (m *MockService) GetBikeDetails(ctx context.Context, id string) (*domain.BikeDetails, error) {
 	return m.GetBikeDetailsFunc(ctx, id)
 }
 
-func (m *MockService) UpdateBike(ctx context.Context, id int64, hashID *string, isElectric *bool) error {
+func (m *MockService) UpdateBike(ctx context.Context, id string, hashID *string, isElectric *bool) error {
 	return m.UpdateBikeFunc(ctx, id, hashID, isElectric)
 }
 
-func (m *MockService) DeleteBike(ctx context.Context, id int64) error {
+func (m *MockService) DeleteBike(ctx context.Context, id string) error {
 	return m.DeleteBikeFunc(ctx, id)
 }
 
-func (m *MockService) ListRatingAggregatesByBike(ctx context.Context, bikeID int64) ([]domain.RatingAggregate, error) {
+func (m *MockService) ListRatingAggregatesByBike(ctx context.Context, bikeID string) ([]domain.RatingAggregate, error) {
 	return m.ListRatingAggregatesByBikeFunc(ctx, bikeID)
 }
 
-func (m *MockService) ListReviewsWithRatingsByBike(ctx context.Context, bikeID int64) ([]domain.ReviewWithRatings, error) {
+func (m *MockService) ListReviewsWithRatingsByBike(ctx context.Context, bikeID string) ([]domain.ReviewWithRatings, error) {
 	return m.ListReviewsWithRatingsByBikeFunc(ctx, bikeID)
 }
 

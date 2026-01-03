@@ -6,13 +6,13 @@ import (
 )
 
 type RatingAggregate struct {
-	BikeNumericalID int64             `db:"bike_numerical_id" json:"bike_numerical_id"`
+	BikeNumericalID string            `db:"bike_numerical_id" json:"bike_numerical_id"`
 	Subcategory     RatingSubcategory `db:"subcategory"        json:"subcategory"`
 	AverageRating   float32           `db:"average_rating"     json:"average_rating"`
 	Window          string            `json:"window,omitempty"` // "1w", "2w", "overall"
 }
 
-func (s *Store) ListRatingAggregatesByBike(ctx context.Context, bikeID int64) ([]RatingAggregate, error) {
+func (s *Store) ListRatingAggregatesByBike(ctx context.Context, bikeID string) ([]RatingAggregate, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT bike_numerical_id, subcategory, average_rating
 		FROM rating_aggregates
@@ -36,7 +36,7 @@ func (s *Store) ListRatingAggregatesByBike(ctx context.Context, bikeID int64) ([
 	return aggs, rows.Err()
 }
 
-func (s *Store) ListWindowedRatingAggregatesByBike(ctx context.Context, bikeID int64) ([]RatingAggregate, error) {
+func (s *Store) ListWindowedRatingAggregatesByBike(ctx context.Context, bikeID string) ([]RatingAggregate, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT
 			rr.subcategory,
@@ -83,7 +83,7 @@ func (s *Store) ListWindowedRatingAggregatesByBike(ctx context.Context, bikeID i
 	return aggs, rows.Err()
 }
 
-func RecomputeAggregatesForBike(ctx context.Context, tx *sql.Tx, bikeID int64) error {
+func RecomputeAggregatesForBike(ctx context.Context, tx *sql.Tx, bikeID string) error {
 	// Remove old aggregates for this bike
 	if _, err := tx.ExecContext(ctx, `
 		DELETE FROM rating_aggregates

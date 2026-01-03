@@ -84,12 +84,9 @@ func (s *HTTPServer) handleBikeSubroutes(w http.ResponseWriter, r *http.Request)
 
 	if len(parts) == 1 && parts[0] != "" {
 		// /bikes/{id}
-		idStr := parts[0]
-		bikeID, err := strconv.ParseInt(idStr, 10, 64)
-		if err != nil {
-			s.sendError(w, "invalid bike id", http.StatusBadRequest)
-			return
-		}
+		// /bikes/{id}
+		// /bikes/{id}
+		bikeID := parts[0]
 		switch r.Method {
 		case http.MethodGet:
 			s.handleGetBike(w, r, bikeID)
@@ -108,12 +105,7 @@ func (s *HTTPServer) handleBikeSubroutes(w http.ResponseWriter, r *http.Request)
 	}
 
 	if len(parts) == 2 {
-		idStr, sub := parts[0], parts[1]
-		bikeID, err := strconv.ParseInt(idStr, 10, 64)
-		if err != nil {
-			s.sendError(w, "invalid bike id", http.StatusBadRequest)
-			return
-		}
+		bikeID, sub := parts[0], parts[1]
 
 		switch sub {
 		case "reviews":

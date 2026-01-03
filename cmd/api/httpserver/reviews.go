@@ -27,7 +27,7 @@ type createReviewRequest struct {
 }
 
 // POST /bikes/{id}/reviews → create a review with optional subcategory ratings
-func (s *HTTPServer) handleCreateBikeReview(w http.ResponseWriter, r *http.Request, bikeID int64) {
+func (s *HTTPServer) handleCreateBikeReview(w http.ResponseWriter, r *http.Request, bikeID string) {
 	if r.Method != http.MethodPost {
 		s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -70,7 +70,7 @@ func (s *HTTPServer) handleCreateBikeReview(w http.ResponseWriter, r *http.Reque
 			return
 		}
 
-		zerolog.Ctx(r.Context()).Error().Err(err).Int64("bike_id", bikeID).Msg("create review error")
+		zerolog.Ctx(r.Context()).Error().Err(err).Str("bike_id", bikeID).Msg("create review error")
 		s.sendError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}

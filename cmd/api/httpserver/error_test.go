@@ -41,7 +41,7 @@ func TestSendError(t *testing.T) {
 
 func TestErrorSchemas(t *testing.T) {
 	mockService := &MockService{
-		GetBikeFunc: func(ctx context.Context, id int64) (*domain.Bike, error) {
+		GetBikeFunc: func(ctx context.Context, id string) (*domain.Bike, error) {
 			return nil, sql.ErrNoRows
 		},
 		GetReviewWithRatingsByIDFunc: func(ctx context.Context, reviewID int64) (*domain.ReviewWithRatings, error) {

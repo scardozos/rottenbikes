@@ -15,7 +15,7 @@ func TestListRatingAggregatesByBike(t *testing.T) {
 	defer db.Close()
 
 	ctx := context.Background()
-	bikeID := int64(1)
+	bikeID := "0101"
 
 	t.Run("success", func(t *testing.T) {
 		rows := sqlmock.NewRows([]string{"bike_numerical_id", "subcategory", "average_rating"}).
@@ -47,7 +47,7 @@ func TestListWindowedRatingAggregatesByBike(t *testing.T) {
 	defer db.Close()
 
 	ctx := context.Background()
-	bikeID := int64(1)
+	bikeID := "0101"
 
 	t.Run("success", func(t *testing.T) {
 		// Mock rows:
@@ -98,7 +98,7 @@ func TestRecomputeAggregatesForBike(t *testing.T) {
 	defer db.Close()
 
 	ctx := context.Background()
-	bikeID := int64(1)
+	bikeID := "0101"
 
 	t.Run("success", func(t *testing.T) {
 		mock.ExpectBegin()

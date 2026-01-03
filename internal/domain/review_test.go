@@ -18,7 +18,7 @@ func TestCreateReviewWithRatings(t *testing.T) {
 
 	ctx := context.Background()
 	posterID := int64(1)
-	bikeID := int64(1)
+	bikeID := "0101"
 	comment := "great bike"
 	bikeImg := "img.jpg"
 	score := int16(5)
@@ -148,7 +148,7 @@ func TestUpdateReviewWithRatings(t *testing.T) {
 	ctx := context.Background()
 	reviewID := int64(1)
 	posterID := int64(1)
-	bikeID := int64(1)
+	bikeID := "0101"
 	comment := "updated comment"
 	score := int16(4)
 
@@ -220,7 +220,7 @@ func TestDeleteReview(t *testing.T) {
 	ctx := context.Background()
 	reviewID := int64(1)
 	posterID := int64(1)
-	bikeID := int64(1)
+	bikeID := "0101"
 
 	t.Run("success", func(t *testing.T) {
 		mock.ExpectBegin()
@@ -287,7 +287,7 @@ func TestGetReviewWithRatingsByID(t *testing.T) {
 		rows := sqlmock.NewRows([]string{
 			"review_id", "poster_id", "username", "bike_numerical_id", "comment", "created_ts", "subcategory", "score", "bike_img",
 		}).
-			AddRow(reviewID, 1, "user1", 1, "comment", time.Now(), "overall", 5, "img.jpg")
+			AddRow(reviewID, 1, "user1", "0101", "comment", time.Now(), "overall", 5, "img.jpg")
 
 		mock.ExpectQuery("SELECT .* FROM reviews r LEFT JOIN posters p .* LEFT JOIN review_ratings rr .*").
 			WithArgs(reviewID).

@@ -314,7 +314,7 @@ func TestDeletePoster(t *testing.T) {
 		// 1. List user reviews (returns 2 bikes)
 		mock.ExpectQuery("SELECT DISTINCT bike_numerical_id FROM reviews").
 			WithArgs(posterID).
-			WillReturnRows(sqlmock.NewRows([]string{"bike_numerical_id"}).AddRow(101).AddRow(102))
+			WillReturnRows(sqlmock.NewRows([]string{"bike_numerical_id"}).AddRow("101").AddRow("102"))
 
 		// 2. Delete ratings
 		mock.ExpectExec("DELETE FROM review_ratings").
@@ -328,18 +328,18 @@ func TestDeletePoster(t *testing.T) {
 
 		// 4. Recompute aggregates (for bike 101)
 		mock.ExpectExec("DELETE FROM rating_aggregates").
-			WithArgs(int64(101)).
+			WithArgs("101").
 			WillReturnResult(sqlmock.NewResult(0, 1))
 		mock.ExpectExec("INSERT INTO rating_aggregates").
-			WithArgs(int64(101)).
+			WithArgs("101").
 			WillReturnResult(sqlmock.NewResult(0, 1))
 
 		// 4. Recompute aggregates (for bike 102)
 		mock.ExpectExec("DELETE FROM rating_aggregates").
-			WithArgs(int64(102)).
+			WithArgs("102").
 			WillReturnResult(sqlmock.NewResult(0, 1))
 		mock.ExpectExec("INSERT INTO rating_aggregates").
-			WithArgs(int64(102)).
+			WithArgs("102").
 			WillReturnResult(sqlmock.NewResult(0, 1))
 
 		// 5. Delete user bikes

@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/lib/pq"
@@ -66,16 +65,27 @@ func (s *HTTPServer) handleCreateBike(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate numerical_id consistency (4-5 digits)
+	// We don't parse to int64 anymore to preserve leading zeros, but strictly check format.
+	// Allow 0-9, length 4-5.
+	validID := true
 	if len(req.NumericalID) < 4 || len(req.NumericalID) > 5 {
-		s.sendError(w, "numerical_id must be between 4 and 5 digits", http.StatusBadRequest)
+		validID = false
+	} else {
+		for _, r := range req.NumericalID {
+			if r < '0' || r > '9' {
+				validID = false
+				break
+			}
+		}
+	}
+
+	if !validID {
+		s.sendError(w, "numerical_id must be 4-5 digits", http.StatusBadRequest)
 		return
 	}
 
-	numericalID, err := strconv.ParseInt(req.NumericalID, 10, 64)
-	if err != nil || numericalID < 0 {
-		s.sendError(w, "numerical_id must be a valid number", http.StatusBadRequest)
-		return
-	}
+	numericalID := req.NumericalID
 
 	// Treat empty string hash_id as nil to allow multiple bikes without hash_ids
 	if req.HashID != nil && *req.HashID == "" {
@@ -125,9 +135,14 @@ type updateBikeRequest struct {
 }
 
 // PUT /bikes/{id} → update hash_id/is_electric
-func (s *HTTPServer) handleUpdateBike(w http.ResponseWriter, r *http.Request, bikeID int64) {
+func (s *HTTPServer) handleUpdateBike(w http.ResponseWriter, r *http.Request, bikeID string) {
 	if r.Method != http.MethodPut {
 		s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if !isNumeric(bikeID) {
+		s.sendError(w, "invalid bike id", http.StatusBadRequest)
 		return
 	}
 
@@ -151,7 +166,7 @@ func (s *HTTPServer) handleUpdateBike(w http.ResponseWriter, r *http.Request, bi
 	defer cancel()
 
 	if err := s.service.UpdateBike(ctx, bikeID, req.HashID, req.IsElectric); err != nil {
-		zerolog.Ctx(r.Context()).Error().Err(err).Int64("bike_id", bikeID).Msg("update bike error")
+		zerolog.Ctx(r.Context()).Error().Err(err).Str("bike_id", bikeID).Msg("update bike error")
 		s.sendError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -160,9 +175,14 @@ func (s *HTTPServer) handleUpdateBike(w http.ResponseWriter, r *http.Request, bi
 }
 
 // GET /bikes/{id} → single bike
-func (s *HTTPServer) handleGetBike(w http.ResponseWriter, r *http.Request, bikeID int64) {
+func (s *HTTPServer) handleGetBike(w http.ResponseWriter, r *http.Request, bikeID string) {
 	if r.Method != http.MethodGet {
 		s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if !isNumeric(bikeID) {
+		s.sendError(w, "invalid bike id", http.StatusBadRequest)
 		return
 	}
 
@@ -175,7 +195,7 @@ func (s *HTTPServer) handleGetBike(w http.ResponseWriter, r *http.Request, bikeI
 			s.sendError(w, "bike not found", http.StatusNotFound)
 			return
 		}
-		zerolog.Ctx(r.Context()).Error().Err(err).Int64("bike_id", bikeID).Msg("get bike error")
+		zerolog.Ctx(r.Context()).Error().Err(err).Str("bike_id", bikeID).Msg("get bike error")
 		s.sendError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -185,9 +205,14 @@ func (s *HTTPServer) handleGetBike(w http.ResponseWriter, r *http.Request, bikeI
 }
 
 // DELETE /bikes/{id}
-func (s *HTTPServer) handleDeleteBike(w http.ResponseWriter, r *http.Request, bikeID int64) {
+func (s *HTTPServer) handleDeleteBike(w http.ResponseWriter, r *http.Request, bikeID string) {
 	if r.Method != http.MethodDelete {
 		s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if !isNumeric(bikeID) {
+		s.sendError(w, "invalid bike id", http.StatusBadRequest)
 		return
 	}
 
@@ -195,7 +220,7 @@ func (s *HTTPServer) handleDeleteBike(w http.ResponseWriter, r *http.Request, bi
 	defer cancel()
 
 	if err := s.service.DeleteBike(ctx, bikeID); err != nil {
-		zerolog.Ctx(r.Context()).Error().Err(err).Int64("bike_id", bikeID).Msg("delete bike error")
+		zerolog.Ctx(r.Context()).Error().Err(err).Str("bike_id", bikeID).Msg("delete bike error")
 		s.sendError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -204,9 +229,14 @@ func (s *HTTPServer) handleDeleteBike(w http.ResponseWriter, r *http.Request, bi
 }
 
 // GET /bikes/{id}/details → single bike + ratings + reviews
-func (s *HTTPServer) handleGetBikeDetails(w http.ResponseWriter, r *http.Request, bikeID int64) {
+func (s *HTTPServer) handleGetBikeDetails(w http.ResponseWriter, r *http.Request, bikeID string) {
 	if r.Method != http.MethodGet {
 		s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if !isNumeric(bikeID) {
+		s.sendError(w, "invalid bike id", http.StatusBadRequest)
 		return
 	}
 
@@ -219,7 +249,7 @@ func (s *HTTPServer) handleGetBikeDetails(w http.ResponseWriter, r *http.Request
 			s.sendError(w, "bike not found", http.StatusNotFound)
 			return
 		}
-		zerolog.Ctx(r.Context()).Error().Err(err).Int64("bike_id", bikeID).Msg("get bike details error")
+		zerolog.Ctx(r.Context()).Error().Err(err).Str("bike_id", bikeID).Msg("get bike details error")
 		s.sendError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -231,6 +261,15 @@ func (s *HTTPServer) handleGetBikeDetails(w http.ResponseWriter, r *http.Request
 func isAlphanumeric(s string) bool {
 	for _, r := range s {
 		if (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') && (r < '0' || r > '9') {
+			return false
+		}
+	}
+	return true
+}
+
+func isNumeric(s string) bool {
+	for _, r := range s {
+		if r < '0' || r > '9' {
 			return false
 		}
 	}
