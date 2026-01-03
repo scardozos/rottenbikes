@@ -8,7 +8,7 @@ import (
 )
 
 type Bike struct {
-	NumericalID   int64     `db:"numerical_id" json:"numerical_id"` // PK
+	NumericalID   string    `db:"numerical_id" json:"numerical_id"` // PK
 	HashID        *string   `db:"hash_id" json:"hash_id"`
 	IsElectric    bool      `db:"is_electric" json:"is_electric"`
 	AverageRating *float64  `db:"average_rating" json:"average_rating"`
@@ -57,7 +57,7 @@ func (s *Store) ListBikes(ctx context.Context) ([]Bike, error) {
 	return bikes, rows.Err()
 }
 
-func (s *Store) CreateBike(ctx context.Context, numericalID int64, hashID *string, isElectric bool, creatorID int64) (*Bike, error) {
+func (s *Store) CreateBike(ctx context.Context, numericalID string, hashID *string, isElectric bool, creatorID int64) (*Bike, error) {
 	var b Bike
 	err := s.db.QueryRowContext(ctx, `
 		INSERT INTO bikes (numerical_id, hash_id, is_electric, creator_id)
@@ -76,7 +76,7 @@ func (s *Store) CreateBike(ctx context.Context, numericalID int64, hashID *strin
 	return &b, nil
 }
 
-func (s *Store) GetBike(ctx context.Context, id int64) (*Bike, error) {
+func (s *Store) GetBike(ctx context.Context, id string) (*Bike, error) {
 	var b Bike
 	var avgRating sql.NullFloat64
 	err := s.db.QueryRowContext(ctx, `
@@ -102,7 +102,7 @@ func (s *Store) GetBike(ctx context.Context, id int64) (*Bike, error) {
 	return &b, nil
 }
 
-func (s *Store) GetBikeDetails(ctx context.Context, id int64) (*BikeDetails, error) {
+func (s *Store) GetBikeDetails(ctx context.Context, id string) (*BikeDetails, error) {
 	b, err := s.GetBike(ctx, id)
 	if err != nil {
 		return nil, err
@@ -125,7 +125,7 @@ func (s *Store) GetBikeDetails(ctx context.Context, id int64) (*BikeDetails, err
 	}, nil
 }
 
-func (s *Store) UpdateBike(ctx context.Context, id int64, hashID *string, isElectric *bool) error {
+func (s *Store) UpdateBike(ctx context.Context, id string, hashID *string, isElectric *bool) error {
 	_, err := s.db.ExecContext(ctx, `
 		UPDATE bikes
 		SET
@@ -137,7 +137,7 @@ func (s *Store) UpdateBike(ctx context.Context, id int64, hashID *string, isElec
 	return err
 }
 
-func (s *Store) DeleteBike(ctx context.Context, id int64) error {
+func (s *Store) DeleteBike(ctx context.Context, id string) error {
 	_, err := s.db.ExecContext(ctx, `
 		DELETE FROM bikes
 		WHERE numerical_id = $1

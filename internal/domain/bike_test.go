@@ -20,8 +20,8 @@ func TestListBikes(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		rows := sqlmock.NewRows([]string{"numerical_id", "hash_id", "is_electric", "created_ts", "updated_ts", "average_rating"}).
-			AddRow(1, "hash1", true, time.Now(), time.Now(), 4.5).
-			AddRow(2, "hash2", false, time.Now(), time.Now(), nil)
+			AddRow("01", "hash1", true, time.Now(), time.Now(), 4.5).
+			AddRow("02", "hash2", false, time.Now(), time.Now(), nil)
 
 		mock.ExpectQuery("SELECT b.numerical_id, b.hash_id, b.is_electric, b.created_ts, b.updated_ts, ra.average_rating FROM bikes b LEFT JOIN rating_aggregates ra ON b.numerical_id = ra.bike_numerical_id AND ra.subcategory = 'overall' ORDER BY b.numerical_id").
 			WillReturnRows(rows)
@@ -45,7 +45,7 @@ func TestCreateBike(t *testing.T) {
 	defer db.Close()
 
 	ctx := context.Background()
-	numericalID := int64(123)
+	numericalID := "0123"
 	hashID := "hash_123"
 	isElectric := true
 	creatorID := int64(1)
@@ -64,7 +64,7 @@ func TestCreateBike(t *testing.T) {
 			t.Errorf("unexpected error: %v", err)
 		}
 		if bike.NumericalID != numericalID {
-			t.Errorf("expected numericalID %d, got %d", numericalID, bike.NumericalID)
+			t.Errorf("expected numericalID %s, got %s", numericalID, bike.NumericalID)
 		}
 	})
 }
@@ -77,7 +77,7 @@ func TestGetBike(t *testing.T) {
 	defer db.Close()
 
 	ctx := context.Background()
-	id := int64(1)
+	id := "01"
 
 	t.Run("success", func(t *testing.T) {
 		rows := sqlmock.NewRows([]string{"numerical_id", "hash_id", "is_electric", "created_ts", "updated_ts", "average_rating"}).
@@ -93,7 +93,7 @@ func TestGetBike(t *testing.T) {
 			t.Errorf("unexpected error: %v", err)
 		}
 		if bike.NumericalID != id {
-			t.Errorf("expected id %d, got %d", id, bike.NumericalID)
+			t.Errorf("expected id %s, got %s", id, bike.NumericalID)
 		}
 	})
 
@@ -118,7 +118,7 @@ func TestUpdateBike(t *testing.T) {
 	defer db.Close()
 
 	ctx := context.Background()
-	id := int64(1)
+	id := "01"
 	hashID := "new_hash"
 	isElectric := false
 
@@ -143,7 +143,7 @@ func TestDeleteBike(t *testing.T) {
 	defer db.Close()
 
 	ctx := context.Background()
-	id := int64(1)
+	id := "01"
 
 	t.Run("success", func(t *testing.T) {
 		mock.ExpectExec("DELETE FROM bikes").

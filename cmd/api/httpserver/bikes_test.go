@@ -24,8 +24,8 @@ func TestHandleListBikes(t *testing.T) {
 	mockService := &MockService{
 		ListBikesFunc: func(ctx context.Context) ([]domain.Bike, error) {
 			return []domain.Bike{
-				{NumericalID: 1, HashID: strPtr("hash1"), IsElectric: true},
-				{NumericalID: 2, HashID: strPtr("hash2"), IsElectric: false},
+				{NumericalID: "1", HashID: strPtr("hash1"), IsElectric: true},
+				{NumericalID: "2", HashID: strPtr("hash2"), IsElectric: false},
 			}, nil
 		},
 		GetPosterByAPITokenFunc: func(ctx context.Context, token string) (*domain.AuthPoster, error) {
@@ -80,7 +80,7 @@ func TestHandleCreateBike(t *testing.T) {
 				Email:    "test@example.com",
 			}, nil
 		},
-		CreateBikeFunc: func(ctx context.Context, numericalID int64, hashID *string, isElectric bool, creatorID int64) (*domain.Bike, error) {
+		CreateBikeFunc: func(ctx context.Context, numericalID string, hashID *string, isElectric bool, creatorID int64) (*domain.Bike, error) {
 			return &domain.Bike{
 				NumericalID: numericalID,
 				HashID:      hashID,
@@ -150,7 +150,7 @@ func TestHandleCreateBike(t *testing.T) {
 	})
 
 	t.Run("conflict_numerical_id", func(t *testing.T) {
-		mockService.CreateBikeFunc = func(ctx context.Context, numericalID int64, hashID *string, isElectric bool, creatorID int64) (*domain.Bike, error) {
+		mockService.CreateBikeFunc = func(ctx context.Context, numericalID string, hashID *string, isElectric bool, creatorID int64) (*domain.Bike, error) {
 			return nil, &pq.Error{Code: "23505", Constraint: "bikes_pkey"}
 		}
 
@@ -170,7 +170,7 @@ func TestHandleCreateBike(t *testing.T) {
 	})
 
 	t.Run("internal_error", func(t *testing.T) {
-		mockService.CreateBikeFunc = func(ctx context.Context, numericalID int64, hashID *string, isElectric bool, creatorID int64) (*domain.Bike, error) {
+		mockService.CreateBikeFunc = func(ctx context.Context, numericalID string, hashID *string, isElectric bool, creatorID int64) (*domain.Bike, error) {
 			return nil, errors.New("db error")
 		}
 
@@ -239,9 +239,9 @@ func TestHandleCreateBike(t *testing.T) {
 
 func TestHandleGetBike(t *testing.T) {
 	mockService := &MockService{
-		GetBikeFunc: func(ctx context.Context, id int64) (*domain.Bike, error) {
-			if id == 1 {
-				return &domain.Bike{NumericalID: 1, HashID: strPtr("hash1"), IsElectric: true}, nil
+		GetBikeFunc: func(ctx context.Context, id string) (*domain.Bike, error) {
+			if id == "1" {
+				return &domain.Bike{NumericalID: "1", HashID: strPtr("hash1"), IsElectric: true}, nil
 			}
 			return nil, sql.ErrNoRows
 		},
@@ -273,7 +273,7 @@ func TestHandleUpdateBike(t *testing.T) {
 		GetPosterByAPITokenFunc: func(ctx context.Context, token string) (*domain.AuthPoster, error) {
 			return &domain.AuthPoster{PosterID: 1}, nil
 		},
-		UpdateBikeFunc: func(ctx context.Context, id int64, hashID *string, isElectric *bool) error {
+		UpdateBikeFunc: func(ctx context.Context, id string, hashID *string, isElectric *bool) error {
 			return nil
 		},
 	}
@@ -338,8 +338,8 @@ func TestHandleUpdateBike(t *testing.T) {
 
 func TestHandleDeleteBike(t *testing.T) {
 	mockService := &MockService{
-		DeleteBikeFunc: func(ctx context.Context, id int64) error {
-			if id == 1 {
+		DeleteBikeFunc: func(ctx context.Context, id string) error {
+			if id == "1" {
 				return nil
 			}
 			return errors.New("delete error")
@@ -381,12 +381,12 @@ func TestHandleDeleteBike(t *testing.T) {
 
 func TestHandleGetBikeDetails(t *testing.T) {
 	mockService := &MockService{
-		GetBikeDetailsFunc: func(ctx context.Context, id int64) (*domain.BikeDetails, error) {
-			if id == 1 {
+		GetBikeDetailsFunc: func(ctx context.Context, id string) (*domain.BikeDetails, error) {
+			if id == "1" {
 				return &domain.BikeDetails{
-					Bike: domain.Bike{NumericalID: 1},
+					Bike: domain.Bike{NumericalID: "1"},
 				}, nil
-			} else if id == 404 {
+			} else if id == "404" {
 				return nil, sql.ErrNoRows
 			}
 			return nil, errors.New("db error")

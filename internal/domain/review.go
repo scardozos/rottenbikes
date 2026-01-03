@@ -12,7 +12,7 @@ type ReviewWithRatings struct {
 	ReviewID        int64                       `json:"review_id"`
 	PosterID        int64                       `json:"poster_id"`
 	PosterUsername  string                      `json:"poster_username"`
-	BikeNumericalID int64                       `json:"bike_numerical_id"`
+	BikeNumericalID string                      `json:"bike_numerical_id"`
 	Comment         *string                     `json:"comment"`
 	CreatedAt       time.Time                   `json:"created_at"`
 	Ratings         map[RatingSubcategory]int16 `json:"ratings"`
@@ -23,7 +23,7 @@ type reviewRatingRow struct {
 	ReviewID        int64
 	PosterID        sql.NullInt64
 	PosterUsername  string
-	BikeNumericalID int64
+	BikeNumericalID string
 	Comment         *string
 	CreatedAt       time.Time
 	Subcategory     RatingSubcategory
@@ -34,7 +34,7 @@ type reviewRatingRow struct {
 // all bikes
 
 // single bike
-func (s *Store) ListReviewsWithRatingsByBike(ctx context.Context, bikeID int64) ([]ReviewWithRatings, error) {
+func (s *Store) ListReviewsWithRatingsByBike(ctx context.Context, bikeID string) ([]ReviewWithRatings, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT
 			r.review_id,
@@ -111,7 +111,7 @@ var ErrHourlyRateLimitExceeded = errors.New("hourly review limit exceeded")
 
 type CreateReviewInput struct {
 	PosterID int64
-	BikeID   int64
+	BikeID   string
 	Comment  *string
 	BikeImg  *string
 
@@ -242,7 +242,7 @@ func (s *Store) UpdateReviewWithRatings(ctx context.Context, in UpdateReviewInpu
 	defer tx.Rollback()
 
 	// ensure review belongs to poster
-	var bikeID int64
+	var bikeID string
 	if err := tx.QueryRowContext(ctx, `
 		SELECT bike_numerical_id
 		FROM reviews
@@ -351,7 +351,7 @@ func (s *Store) DeleteReview(ctx context.Context, reviewID int64, posterID int64
 	defer tx.Rollback()
 
 	// ensure review exists and belongs to poster, and get bike id for recompute
-	var bikeID int64
+	var bikeID string
 	if err := tx.QueryRowContext(ctx, `
 		SELECT bike_numerical_id
 		FROM reviews

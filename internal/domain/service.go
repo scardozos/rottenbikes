@@ -16,19 +16,19 @@ type Service interface {
 
 	// Bike
 	ListBikes(ctx context.Context) ([]Bike, error)
-	CreateBike(ctx context.Context, numericalID int64, hashID *string, isElectric bool, creatorID int64) (*Bike, error)
-	GetBike(ctx context.Context, id int64) (*Bike, error)
-	GetBikeDetails(ctx context.Context, id int64) (*BikeDetails, error)
-	UpdateBike(ctx context.Context, id int64, hashID *string, isElectric *bool) error
-	DeleteBike(ctx context.Context, id int64) error
+	CreateBike(ctx context.Context, numericalID string, hashID *string, isElectric bool, creatorID int64) (*Bike, error)
+	GetBike(ctx context.Context, id string) (*Bike, error)
+	GetBikeDetails(ctx context.Context, id string) (*BikeDetails, error)
+	UpdateBike(ctx context.Context, id string, hashID *string, isElectric *bool) error
+	DeleteBike(ctx context.Context, id string) error
 
 	// Rating Aggregate
 
-	ListRatingAggregatesByBike(ctx context.Context, bikeID int64) ([]RatingAggregate, error)
+	ListRatingAggregatesByBike(ctx context.Context, bikeID string) ([]RatingAggregate, error)
 
 	// Review
 
-	ListReviewsWithRatingsByBike(ctx context.Context, bikeID int64) ([]ReviewWithRatings, error)
+	ListReviewsWithRatingsByBike(ctx context.Context, bikeID string) ([]ReviewWithRatings, error)
 	CreateReviewWithRatings(ctx context.Context, in CreateReviewInput) (int64, error)
 	UpdateReviewWithRatings(ctx context.Context, in UpdateReviewInput) error
 	GetReviewWithRatingsByID(ctx context.Context, reviewID int64) (*ReviewWithRatings, error)

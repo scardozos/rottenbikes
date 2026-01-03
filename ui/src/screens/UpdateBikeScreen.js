@@ -32,7 +32,8 @@ const UpdateBikeScreen = ({ route, navigation }) => {
     useEffect(() => {
         const checkAndFetch = async () => {
             // Security Check
-            if (!bikeId || Number(validatedBikeId) !== Number(bikeId)) {
+            // Use String comparison to preserve leading zeros
+            if (!bikeId || String(validatedBikeId) !== String(bikeId)) {
                 showToast(t('unauthorized_update'), "error");
                 navigation.goBack();
                 return;

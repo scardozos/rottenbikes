@@ -13,7 +13,7 @@ CREATE TABLE posters (
 
 -- Bikes
 CREATE TABLE bikes (
-    numerical_id    BIGSERIAL PRIMARY KEY,
+    numerical_id    TEXT PRIMARY KEY,
     hash_id         TEXT UNIQUE,
     is_electric     BOOLEAN     NOT NULL DEFAULT FALSE,
     creator_id      BIGINT,
@@ -41,7 +41,7 @@ CREATE TABLE magic_links (
 CREATE TABLE reviews (
     review_id          BIGSERIAL PRIMARY KEY,
     poster_id          BIGINT,
-    bike_numerical_id  BIGINT      NOT NULL,
+    bike_numerical_id  TEXT      NOT NULL,
     bike_img           TEXT,
     comment            VARCHAR(500),
     created_ts         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -77,7 +77,7 @@ CREATE TABLE review_ratings (
 
 -- rating_aggregates (cached aggregates per bike + subcategory)
 CREATE TABLE rating_aggregates (
-    bike_numerical_id BIGINT             NOT NULL,
+    bike_numerical_id TEXT               NOT NULL,
     subcategory       rating_subcategory NOT NULL,
     rating_sum        BIGINT             NOT NULL DEFAULT 0,
     rating_count      BIGINT             NOT NULL DEFAULT 0,

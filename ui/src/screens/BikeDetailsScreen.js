@@ -41,9 +41,10 @@ const getBorderColor = (rating) => {
 const BikeDetailsScreen = ({ route, navigation }) => {
     const params = route.params || {};
     // Handle both object navigation and deep linking ID
-    const initialBike = params.bike || { numerical_id: Number(params.bikeId) };
+    // We treat IDs as strings now to preserve leading zeros
+    const initialBike = params.bike || { numerical_id: params.bikeId ? String(params.bikeId) : null };
     if (initialBike.numerical_id) {
-        initialBike.numerical_id = Number(initialBike.numerical_id);
+        initialBike.numerical_id = String(initialBike.numerical_id);
     }
     const [bike, setBike] = useState(initialBike);
     const [reviews, setReviews] = useState([]);
@@ -58,25 +59,29 @@ const BikeDetailsScreen = ({ route, navigation }) => {
 
     const openModal = useCallback(() => {
         setIsModalRendered(true);
-        // Reset values just in case
-        slideAnim.setValue(Dimensions.get('window').height);
-        fadeAnim.setValue(0);
-
-        Animated.parallel([
-            Animated.timing(slideAnim, {
-                toValue: 0,
-                duration: 300,
-                // smooth cubic bezier equivalent
-                easing: Easing.out(Easing.cubic),
-                useNativeDriver: true,
-            }),
-            Animated.timing(fadeAnim, {
-                toValue: 1,
-                duration: 300,
-                useNativeDriver: true,
-            })
-        ]).start();
     }, []);
+
+    React.useEffect(() => {
+        if (isModalRendered) {
+            // Reset values to start state
+            slideAnim.setValue(Dimensions.get('window').height);
+            fadeAnim.setValue(0);
+
+            Animated.parallel([
+                Animated.timing(slideAnim, {
+                    toValue: 0,
+                    duration: 300,
+                    easing: Easing.out(Easing.cubic),
+                    useNativeDriver: true,
+                }),
+                Animated.timing(fadeAnim, {
+                    toValue: 1,
+                    duration: 300,
+                    useNativeDriver: true,
+                })
+            ]).start();
+        }
+    }, [isModalRendered, slideAnim, fadeAnim]);
 
     const closeModal = useCallback(() => {
         Animated.parallel([
@@ -125,9 +130,9 @@ const BikeDetailsScreen = ({ route, navigation }) => {
 
 
     // Determine if review is allowed based on session context
-    // Using loose equality or number conversion to handle potential string/number mismatches
+    // Using string comparison to handle leading zeros
     console.log('[BikeDetails] ValidatedID:', validatedBikeId, 'CurrentBikeID:', bike.numerical_id);
-    const isReviewAllowed = validatedBikeId != null && Number(validatedBikeId) === Number(bike.numerical_id);
+    const isReviewAllowed = validatedBikeId != null && String(validatedBikeId) === String(bike.numerical_id);
 
     const fetchData = useCallback(async (currentId) => {
         setLoading(true);
@@ -163,12 +168,12 @@ const BikeDetailsScreen = ({ route, navigation }) => {
             const params = route.params || {};
             const newId = params.bikeId || (params.bike ? params.bike.numerical_id : null);
 
-            // Use Number() to avoid "1" !== 1 infinite loop
-            if (newId && Number(newId) !== Number(bike.numerical_id)) {
+            // Use String() for comparison
+            if (newId && String(newId) !== String(bike.numerical_id)) {
                 console.log('[BikeDetails] Params changed, updating bike ID:', newId);
                 isFirstLoad.current = true; // Reset for new bike
-                setBike(prev => ({ ...prev, numerical_id: Number(newId) }));
-                fetchData(Number(newId));
+                setBike(prev => ({ ...prev, numerical_id: String(newId) }));
+                fetchData(String(newId));
             } else {
                 fetchData();
             }

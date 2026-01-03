@@ -368,9 +368,9 @@ func (s *Store) DeletePoster(ctx context.Context, posterID int64, deleteContent 
 		if err != nil {
 			return fmt.Errorf("list user reviews: %w", err)
 		}
-		var bikeIDs []int64
+		var bikeIDs []string
 		for rows.Next() {
-			var bid int64
+			var bid string
 			if err := rows.Scan(&bid); err != nil {
 				rows.Close()
 				return err
@@ -398,7 +398,7 @@ func (s *Store) DeletePoster(ctx context.Context, posterID int64, deleteContent 
 		// 4. Recompute aggregates for affected bikes
 		for _, bid := range bikeIDs {
 			if err := RecomputeAggregatesForBike(ctx, tx, bid); err != nil {
-				return fmt.Errorf("recompute aggregates for bike %d: %w", bid, err)
+				return fmt.Errorf("recompute aggregates for bike %s: %w", bid, err)
 			}
 		}
 

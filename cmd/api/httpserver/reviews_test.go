@@ -162,7 +162,7 @@ func TestHandleGetReview(t *testing.T) {
 					ReviewID:        1,
 					PosterID:        1,
 					PosterUsername:  "user1",
-					BikeNumericalID: 1,
+					BikeNumericalID: "1",
 					Comment:         &comment,
 					CreatedAt:       time.Now(),
 					Ratings: map[domain.RatingSubcategory]int16{
