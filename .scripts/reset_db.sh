@@ -1,8 +1,19 @@
 #!/bin/bash
 set -e
 
-ENV_FILE=".env.dev"
-BACKUP_FILE="dev_backup_data.sql"
+if [ -z "$1" ]; then
+    echo "Usage: $0 <env_file>"
+    echo "Example: $0 .env.dev"
+    exit 1
+fi
+
+ENV_FILE="$1"
+# Extract env extension if possible (e.g. .env.dev -> dev), otherwise use full name
+ENV_SUFFIX="${ENV_FILE##*.}"
+if [ "$ENV_SUFFIX" = "$ENV_FILE" ]; then
+    ENV_SUFFIX="custom"
+fi
+BACKUP_FILE="backup_data_${ENV_SUFFIX}.sql"
 
 echo "--- Loading environment from $ENV_FILE ---"
 if [ -f "$ENV_FILE" ]; then
@@ -16,10 +27,16 @@ fi
 
 # Sanitize/Encode password for DSN
 # We use Python for encoding to handle special chars safe for the connection string
+DB_PASSWORD="${DB_PASSWORD:-rottenbikes}"
 DB_PASSWORD_ENCODED=$(python3 -c "import urllib.parse, sys; print(urllib.parse.quote(sys.argv[1]))" "$DB_PASSWORD")
 
+DB_USER="${DB_USER:-rottenbikes}"
+DB_HOST="${DB_HOST:-localhost}"
+DB_PORT="${DB_PORT:-5432}"
+DB_NAME="${DB_NAME:-rottenbikes}"
+
 # Construct DSN
-DB_DSN="postgres://$DB_USER:$DB_PASSWORD_ENCODED@$DB_HOST:${DB_PORT:-5432}/$DB_NAME?sslmode=disable"
+DB_DSN="postgres://$DB_USER:$DB_PASSWORD_ENCODED@$DB_HOST:$DB_PORT/$DB_NAME?sslmode=disable"
 
 # For pg_dump/psql which use PGPASSWORD
 export PGPASSWORD="$DB_PASSWORD"

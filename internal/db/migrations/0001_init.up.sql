@@ -6,6 +6,7 @@ CREATE TABLE posters (
     api_token TEXT,
     api_token_expires_ts TIMESTAMPTZ,
     email_verified BOOLEAN NOT NULL DEFAULT FALSE,
+    created_ts TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT email_valid CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$')
 );
 

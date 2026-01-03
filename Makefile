@@ -40,10 +40,9 @@ reset-login-prd:
 	@.scripts/reset_login_attempts.sh $(USER) .env.prod
 
 db-reset:
-
+	@if [ -z "$(ENV)" ]; then echo "Usage: make db-reset ENV=local/dev/prod"; exit 1; fi
 	@echo "Resetting database (drop + re-run migrations)..."
-	migrate -path $(MIGRATIONS_DIR) -database "$(DB_DSN)" drop -f
-	migrate -path $(MIGRATIONS_DIR) -database "$(DB_DSN)" up
+	@.scripts/reset_db.sh .env.$(ENV)
 
 
 db-seed:
