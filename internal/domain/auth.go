@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"database/sql"
+	_ "embed"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -11,6 +12,51 @@ import (
 	"regexp"
 	"strings"
 	"time"
+)
+
+var (
+	//go:embed sql/get_poster.sql
+	getPosterQuery string
+	//go:embed sql/check_magic_link_rate_limit.sql
+	checkMagicLinkRateLimitQuery string
+	//go:embed sql/insert_magic_link.sql
+	insertMagicLinkQuery string
+	//go:embed sql/create_poster.sql
+	createPosterQuery string
+	//go:embed sql/update_poster_token.sql
+	updatePosterTokenQuery string
+	//go:embed sql/update_poster_token_expiry.sql
+	updatePosterTokenExpiryQuery string
+	//go:embed sql/get_magic_link.sql
+	getMagicLinkQuery string
+	//go:embed sql/get_poster_for_update.sql
+	getPosterForUpdateQuery string
+	//go:embed sql/update_poster_verified_new_token.sql
+	updatePosterVerifiedNewTokenQuery string
+	//go:embed sql/update_poster_verified.sql
+	updatePosterVerifiedQuery string
+	//go:embed sql/consume_magic_link.sql
+	consumeMagicLinkQuery string
+	//go:embed sql/get_poster_by_token.sql
+	getPosterByTokenQuery string
+	//go:embed sql/check_magic_link_status.sql
+	checkMagicLinkStatusQuery string
+	//go:embed sql/list_user_reviews_for_delete.sql
+	listUserReviewsForDeleteQuery string
+	//go:embed sql/delete_user_ratings.sql
+	deleteUserRatingsQuery string
+	//go:embed sql/delete_user_reviews.sql
+	deleteUserReviewsQuery string
+	//go:embed sql/delete_user_bikes.sql
+	deleteUserBikesQuery string
+	//go:embed sql/orphan_bikes.sql
+	orphanBikesQuery string
+	//go:embed sql/orphan_reviews.sql
+	orphanReviewsQuery string
+	//go:embed sql/delete_user_magic_links.sql
+	deleteUserMagicLinksQuery string
+	//go:embed sql/delete_user_poster.sql
+	deleteUserPosterQuery string
 )
 
 var (
@@ -50,11 +96,7 @@ func (s *Store) CreateMagicLink(ctx context.Context, identifier string) (magicTo
 	var userEmail string
 
 	// SELECT poster strictly by email OR username
-	err = tx.QueryRowContext(ctx, `
-		SELECT poster_id, api_token, api_token_expires_ts, email
-		FROM posters
-		WHERE email = $1 OR username = $1
-	`, identifier).Scan(&posterID, &apiToken, &apiTokenExpires, &userEmail)
+	err = tx.QueryRowContext(ctx, getPosterQuery, identifier).Scan(&posterID, &apiToken, &apiTokenExpires, &userEmail)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return "", "", ErrUserNotFound
@@ -64,10 +106,7 @@ func (s *Store) CreateMagicLink(ctx context.Context, identifier string) (magicTo
 
 	// Rate limit: max 2 links per user per 24 hours
 	var count int
-	err = tx.QueryRowContext(ctx, `
-		SELECT COUNT(*) FROM magic_links
-		WHERE poster_id = $1 AND created_ts > NOW() - INTERVAL '24 hours'
-	`, posterID).Scan(&count)
+	err = tx.QueryRowContext(ctx, checkMagicLinkRateLimitQuery, posterID).Scan(&count)
 	if err != nil {
 		return "", "", fmt.Errorf("check rate limit: %w", err)
 	}
@@ -111,11 +150,7 @@ func (s *Store) Register(ctx context.Context, username, email string) (string, e
 	var apiTokenExpires sql.NullTime
 
 	// Create poster
-	err = tx.QueryRowContext(ctx, `
-		INSERT INTO posters (email, username)
-		VALUES ($1, $2)
-		RETURNING poster_id, api_token, api_token_expires_ts
-	`, email, username).Scan(&posterID, &apiToken, &apiTokenExpires)
+	err = tx.QueryRowContext(ctx, createPosterQuery, email, username).Scan(&posterID, &apiToken, &apiTokenExpires)
 	if err != nil {
 		if strings.Contains(err.Error(), "posters_email_key") {
 			return "", fmt.Errorf("email already exists")
@@ -153,22 +188,14 @@ func (s *Store) issueMagicLink(ctx context.Context, tx *sql.Tx, posterID int64, 
 			return "", fmt.Errorf("generate api token: %w", err)
 		}
 		exp := now.AddDate(0, 2, 0) // +2 months
-		if _, err := tx.ExecContext(ctx, `
-			UPDATE posters
-			SET api_token = $1, api_token_expires_ts = $2
-			WHERE poster_id = $3
-		`, tok, exp, posterID); err != nil {
+		if _, err := tx.ExecContext(ctx, updatePosterTokenQuery, tok, exp, posterID); err != nil {
 			return "", fmt.Errorf("set api token: %w", err)
 		}
 		apiToken = &tok
 	} else {
 		// refresh expiry on existing token
 		exp := now.AddDate(0, 2, 0)
-		if _, err := tx.ExecContext(ctx, `
-			UPDATE posters
-			SET api_token_expires_ts = $1
-			WHERE poster_id = $2
-		`, exp, posterID); err != nil {
+		if _, err := tx.ExecContext(ctx, updatePosterTokenExpiryQuery, exp, posterID); err != nil {
 			return "", fmt.Errorf("refresh api token expiry: %w", err)
 		}
 	}
@@ -180,10 +207,7 @@ func (s *Store) issueMagicLink(ctx context.Context, tx *sql.Tx, posterID int64, 
 	}
 
 	expires := now.Add(30 * time.Minute)
-	if _, err := tx.ExecContext(ctx, `
-		INSERT INTO magic_links (poster_id, token, expires_ts)
-		VALUES ($1, $2, $3)
-	`, posterID, magicToken, expires); err != nil {
+	if _, err := tx.ExecContext(ctx, insertMagicLinkQuery, posterID, magicToken, expires); err != nil {
 		return "", fmt.Errorf("insert magic link: %w", err)
 	}
 
@@ -209,12 +233,7 @@ func (s *Store) ConfirmMagicLink(ctx context.Context, token string) (*ConfirmRes
 	var expires time.Time
 	var consumed sql.NullTime
 
-	err = tx.QueryRowContext(ctx, `
-		SELECT poster_id, expires_ts, consumed_ts
-		FROM magic_links
-		WHERE token = $1
-		FOR UPDATE
-	`, token).Scan(&posterID, &expires, &consumed)
+	err = tx.QueryRowContext(ctx, getMagicLinkQuery, token).Scan(&posterID, &expires, &consumed)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("invalid token")
@@ -234,12 +253,7 @@ func (s *Store) ConfirmMagicLink(ctx context.Context, token string) (*ConfirmRes
 	var email string
 	var apiTokenExpires sql.NullTime
 
-	err = tx.QueryRowContext(ctx, `
-		SELECT api_token, email, api_token_expires_ts
-		FROM posters
-		WHERE poster_id = $1
-		FOR UPDATE
-	`, posterID).Scan(&apiToken, &email, &apiTokenExpires)
+	err = tx.QueryRowContext(ctx, getPosterForUpdateQuery, posterID).Scan(&apiToken, &email, &apiTokenExpires)
 	if err != nil {
 		return nil, fmt.Errorf("load poster: %w", err)
 	}
@@ -252,23 +266,13 @@ func (s *Store) ConfirmMagicLink(ctx context.Context, token string) (*ConfirmRes
 			return nil, fmt.Errorf("generate api token: %w", err)
 		}
 		exp := now.AddDate(0, 2, 0)
-		if err := tx.QueryRowContext(ctx, `
-			UPDATE posters
-			SET api_token = $1, api_token_expires_ts = $2, email_verified = TRUE
-			WHERE poster_id = $3
-			RETURNING api_token, api_token_expires_ts, email
-		`, tok, exp, posterID).Scan(&apiToken, &apiTokenExpires.Time, &email); err != nil {
+		if err := tx.QueryRowContext(ctx, updatePosterVerifiedNewTokenQuery, tok, exp, posterID).Scan(&apiToken, &apiTokenExpires.Time, &email); err != nil {
 			return nil, fmt.Errorf("update poster with new token: %w", err)
 		}
 		apiTokenExpires.Valid = true
 	} else {
 		// token exists and is valid; ensure email_verified is set
-		if err := tx.QueryRowContext(ctx, `
-			UPDATE posters
-			SET email_verified = TRUE
-			WHERE poster_id = $1
-			RETURNING api_token_expires_ts, email
-		`, posterID).Scan(&apiTokenExpires.Time, &email); err != nil {
+		if err := tx.QueryRowContext(ctx, updatePosterVerifiedQuery, posterID).Scan(&apiTokenExpires.Time, &email); err != nil {
 			return nil, fmt.Errorf("update poster verified: %w", err)
 		}
 		apiTokenExpires.Valid = true
@@ -280,11 +284,7 @@ func (s *Store) ConfirmMagicLink(ctx context.Context, token string) (*ConfirmRes
 
 	// Update magic_links table to store the api_token AND mark as consumed
 	// This makes it available for the polling endpoint.
-	if _, err := s.db.ExecContext(ctx, `
-		UPDATE magic_links
-		SET consumed_ts = NOW(), api_token = $1
-		WHERE token = $2
-	`, apiToken, token); err != nil {
+	if _, err := s.db.ExecContext(ctx, consumeMagicLinkQuery, apiToken, token); err != nil {
 	}
 
 	return &ConfirmResult{
@@ -306,11 +306,7 @@ func (s *Store) GetPosterByAPIToken(ctx context.Context, token string) (*AuthPos
 	var expires sql.NullTime
 	var emailVerified bool
 
-	err := s.db.QueryRowContext(ctx, `
-		SELECT poster_id, email, username, api_token_expires_ts, email_verified
-		FROM posters
-		WHERE api_token = $1
-	`, token).Scan(&p.PosterID, &p.Email, &p.Username, &expires, &emailVerified)
+	err := s.db.QueryRowContext(ctx, getPosterByTokenQuery, token).Scan(&p.PosterID, &p.Email, &p.Username, &expires, &emailVerified)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("invalid token")
@@ -332,11 +328,7 @@ func (s *Store) GetPosterByAPIToken(ctx context.Context, token string) (*AuthPos
 // CheckMagicLinkStatus returns the api_token if the link was confirmed, otherwise empty.
 func (s *Store) CheckMagicLinkStatus(ctx context.Context, token string) (string, error) {
 	var apiToken sql.NullString
-	err := s.db.QueryRowContext(ctx, `
-		SELECT api_token
-		FROM magic_links
-		WHERE token = $1 AND consumed_ts IS NOT NULL
-	`, token).Scan(&apiToken)
+	err := s.db.QueryRowContext(ctx, checkMagicLinkStatusQuery, token).Scan(&apiToken)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return "", nil
@@ -360,11 +352,7 @@ func (s *Store) DeletePoster(ctx context.Context, posterID int64, deleteContent 
 	// Aggregates remain valid as they are sum of ratings.
 	// If deleteContent=true, we delete ratings, so we MUST recompute.
 	if deleteContent {
-		rows, err := tx.QueryContext(ctx, `
-			SELECT DISTINCT bike_numerical_id
-			FROM reviews
-			WHERE poster_id = $1
-		`, posterID)
+		rows, err := tx.QueryContext(ctx, listUserReviewsForDeleteQuery, posterID)
 		if err != nil {
 			return fmt.Errorf("list user reviews: %w", err)
 		}
@@ -380,18 +368,12 @@ func (s *Store) DeletePoster(ctx context.Context, posterID int64, deleteContent 
 		rows.Close()
 
 		// 2. Delete review ratings
-		if _, err := tx.ExecContext(ctx, `
-			DELETE FROM review_ratings
-			WHERE review_id IN (SELECT review_id FROM reviews WHERE poster_id = $1)
-		`, posterID); err != nil {
+		if _, err := tx.ExecContext(ctx, deleteUserRatingsQuery, posterID); err != nil {
 			return fmt.Errorf("delete user ratings: %w", err)
 		}
 
 		// 3. Delete reviews
-		if _, err := tx.ExecContext(ctx, `
-			DELETE FROM reviews
-			WHERE poster_id = $1
-		`, posterID); err != nil {
+		if _, err := tx.ExecContext(ctx, deleteUserReviewsQuery, posterID); err != nil {
 			return fmt.Errorf("delete user reviews: %w", err)
 		}
 
@@ -403,45 +385,28 @@ func (s *Store) DeletePoster(ctx context.Context, posterID int64, deleteContent 
 		}
 
 		// 5. Delete bikes created by user
-		if _, err := tx.ExecContext(ctx, `
-			DELETE FROM bikes
-			WHERE creator_id = $1
-		`, posterID); err != nil {
+		if _, err := tx.ExecContext(ctx, deleteUserBikesQuery, posterID); err != nil {
 			return fmt.Errorf("delete user bikes: %w", err)
 		}
 
 	} else {
 		// Orchid mode: set poster_id/creator_id to NULL
-		if _, err := tx.ExecContext(ctx, `
-			UPDATE bikes
-			SET creator_id = NULL
-			WHERE creator_id = $1
-		`, posterID); err != nil {
+		if _, err := tx.ExecContext(ctx, orphanBikesQuery, posterID); err != nil {
 			return fmt.Errorf("orphan bikes: %w", err)
 		}
 
-		if _, err := tx.ExecContext(ctx, `
-			UPDATE reviews
-			SET poster_id = NULL
-			WHERE poster_id = $1
-		`, posterID); err != nil {
+		if _, err := tx.ExecContext(ctx, orphanReviewsQuery, posterID); err != nil {
 			return fmt.Errorf("orphan reviews: %w", err)
 		}
 	}
 
 	// Always delete magic links
-	if _, err := tx.ExecContext(ctx, `
-		DELETE FROM magic_links
-		WHERE poster_id = $1
-	`, posterID); err != nil {
+	if _, err := tx.ExecContext(ctx, deleteUserMagicLinksQuery, posterID); err != nil {
 		return fmt.Errorf("delete magic links: %w", err)
 	}
 
 	// Always delete poster
-	if _, err := tx.ExecContext(ctx, `
-		DELETE FROM posters
-		WHERE poster_id = $1
-	`, posterID); err != nil {
+	if _, err := tx.ExecContext(ctx, deleteUserPosterQuery, posterID); err != nil {
 		return fmt.Errorf("delete poster: %w", err)
 	}
 
