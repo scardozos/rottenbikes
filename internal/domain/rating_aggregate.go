@@ -3,6 +3,18 @@ package domain
 import (
 	"context"
 	"database/sql"
+	_ "embed"
+)
+
+var (
+	//go:embed sql/list_rating_aggregates.sql
+	listRatingAggregatesQuery string
+	//go:embed sql/list_windowed_rating_aggregates.sql
+	listWindowedRatingAggregatesQuery string
+	//go:embed sql/delete_rating_aggregates.sql
+	deleteRatingAggregatesQuery string
+	//go:embed sql/recompute_rating_aggregates.sql
+	recomputeRatingAggregatesQuery string
 )
 
 type RatingAggregate struct {
@@ -13,12 +25,7 @@ type RatingAggregate struct {
 }
 
 func (s *Store) ListRatingAggregatesByBike(ctx context.Context, bikeID string) ([]RatingAggregate, error) {
-	rows, err := s.db.QueryContext(ctx, `
-		SELECT bike_numerical_id, subcategory, average_rating
-		FROM rating_aggregates
-		WHERE bike_numerical_id = $1
-		ORDER BY subcategory
-	`, bikeID)
+	rows, err := s.db.QueryContext(ctx, listRatingAggregatesQuery, bikeID)
 	if err != nil {
 		return nil, err
 	}
@@ -37,18 +44,7 @@ func (s *Store) ListRatingAggregatesByBike(ctx context.Context, bikeID string) (
 }
 
 func (s *Store) ListWindowedRatingAggregatesByBike(ctx context.Context, bikeID string) ([]RatingAggregate, error) {
-	rows, err := s.db.QueryContext(ctx, `
-		SELECT
-			rr.subcategory,
-			ROUND(AVG(CASE WHEN r.created_ts >= NOW() - INTERVAL '1 week' THEN rr.score END)::numeric, 2) as avg_1w,
-			ROUND(AVG(CASE WHEN r.created_ts >= NOW() - INTERVAL '2 weeks' THEN rr.score END)::numeric, 2) as avg_2w,
-			ROUND(AVG(rr.score)::numeric, 2) as avg_overall
-		FROM review_ratings rr
-		JOIN reviews r ON rr.review_id = r.review_id
-		WHERE r.bike_numerical_id = $1
-		GROUP BY rr.subcategory
-		ORDER BY rr.subcategory
-	`, bikeID)
+	rows, err := s.db.QueryContext(ctx, listWindowedRatingAggregatesQuery, bikeID)
 	if err != nil {
 		return nil, err
 	}
@@ -85,28 +81,11 @@ func (s *Store) ListWindowedRatingAggregatesByBike(ctx context.Context, bikeID s
 
 func RecomputeAggregatesForBike(ctx context.Context, tx *sql.Tx, bikeID string) error {
 	// Remove old aggregates for this bike
-	if _, err := tx.ExecContext(ctx, `
-		DELETE FROM rating_aggregates
-		WHERE bike_numerical_id = $1
-	`, bikeID); err != nil {
+	if _, err := tx.ExecContext(ctx, deleteRatingAggregatesQuery, bikeID); err != nil {
 		return err
 	}
 
 	// Recompute from review_ratings + reviews
-	_, err := tx.ExecContext(ctx, `
-		INSERT INTO rating_aggregates (
-			bike_numerical_id, subcategory, rating_sum, rating_count, average_rating
-		)
-		SELECT
-			r.bike_numerical_id,
-			rr.subcategory,
-			SUM(rr.score)                        AS rating_sum,
-			COUNT(*)                             AS rating_count,
-			ROUND(AVG(rr.score)::numeric, 2)     AS average_rating
-		FROM review_ratings rr
-		JOIN reviews r ON rr.review_id = r.review_id
-		WHERE r.bike_numerical_id = $1
-		GROUP BY r.bike_numerical_id, rr.subcategory
-	`, bikeID)
+	_, err := tx.ExecContext(ctx, recomputeRatingAggregatesQuery, bikeID)
 	return err
 }

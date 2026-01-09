@@ -3,9 +3,37 @@ package domain
 import (
 	"context"
 	"database/sql"
+	_ "embed"
 	"errors"
 	"fmt"
 	"time"
+)
+
+var (
+	//go:embed sql/list_reviews_with_ratings.sql
+	listReviewsWithRatingsQuery string
+	//go:embed sql/create_review_check_rate_limit.sql
+	createReviewCheckRateLimitQuery string
+	//go:embed sql/create_review_check_frequency.sql
+	createReviewCheckFrequencyQuery string
+	//go:embed sql/insert_review.sql
+	insertReviewQuery string
+	//go:embed sql/insert_review_rating.sql
+	insertReviewRatingQuery string
+	//go:embed sql/update_review_check_ownership.sql
+	updateReviewCheckOwnershipQuery string
+	//go:embed sql/update_review.sql
+	updateReviewQuery string
+	//go:embed sql/upsert_review_rating.sql
+	upsertReviewRatingQuery string
+	//go:embed sql/get_review_by_id.sql
+	getReviewByIDQuery string
+	//go:embed sql/delete_review_check_ownership.sql
+	deleteReviewCheckOwnershipQuery string
+	//go:embed sql/delete_review_ratings.sql
+	deleteReviewRatingsQuery string
+	//go:embed sql/delete_review.sql
+	deleteReviewQuery string
 )
 
 type ReviewWithRatings struct {
@@ -35,23 +63,7 @@ type reviewRatingRow struct {
 
 // single bike
 func (s *Store) ListReviewsWithRatingsByBike(ctx context.Context, bikeID string) ([]ReviewWithRatings, error) {
-	rows, err := s.db.QueryContext(ctx, `
-		SELECT
-			r.review_id,
-			r.poster_id,
-			COALESCE(p.username, ''),
-			r.bike_numerical_id,
-			r.comment,
-			r.created_ts,
-			rr.subcategory,
-			rr.score,
-			r.bike_img
-		FROM reviews r
-		LEFT JOIN posters p       ON p.poster_id = r.poster_id
-		JOIN review_ratings rr ON rr.review_id = r.review_id
-		WHERE r.bike_numerical_id = $1
-		ORDER BY r.review_id, rr.subcategory
-	`, bikeID)
+	rows, err := s.db.QueryContext(ctx, listReviewsWithRatingsQuery, bikeID)
 	if err != nil {
 		return nil, err
 	}
@@ -129,11 +141,7 @@ func (s *Store) CreateReviewWithRatings(ctx context.Context, in CreateReviewInpu
 
 	// 1. Check global hourly limit
 	var hourlyCount int
-	if err := s.db.QueryRowContext(ctx, `
-		SELECT COUNT(*)
-		FROM reviews
-		WHERE poster_id = $1 AND created_ts > NOW() - INTERVAL '1 hour'
-	`, in.PosterID).Scan(&hourlyCount); err != nil {
+	if err := s.db.QueryRowContext(ctx, createReviewCheckRateLimitQuery, in.PosterID).Scan(&hourlyCount); err != nil {
 		return 0, fmt.Errorf("check hourly limit: %w", err)
 	}
 	if hourlyCount >= maxHourlyReviews {
@@ -143,13 +151,7 @@ func (s *Store) CreateReviewWithRatings(ctx context.Context, in CreateReviewInpu
 	// 2. Check per-bike frequency
 
 	var lastCreated time.Time
-	err := s.db.QueryRowContext(ctx, `
-		SELECT created_ts
-		FROM reviews
-		WHERE poster_id = $1 AND bike_numerical_id = $2
-		ORDER BY created_ts DESC
-		LIMIT 1
-	`, in.PosterID, in.BikeID).Scan(&lastCreated)
+	err := s.db.QueryRowContext(ctx, createReviewCheckFrequencyQuery, in.PosterID, in.BikeID).Scan(&lastCreated)
 
 	if err == nil {
 		if time.Since(lastCreated) < minInterval {
@@ -167,11 +169,7 @@ func (s *Store) CreateReviewWithRatings(ctx context.Context, in CreateReviewInpu
 
 	// Insert review, now including bike_img
 	var reviewID int64
-	if err := tx.QueryRowContext(ctx, `
-		INSERT INTO reviews (poster_id, bike_numerical_id, bike_img, comment)
-		VALUES ($1, $2, $3, $4)
-		RETURNING review_id
-	`, in.PosterID, in.BikeID, in.BikeImg, in.Comment).Scan(&reviewID); err != nil {
+	if err := tx.QueryRowContext(ctx, insertReviewQuery, in.PosterID, in.BikeID, in.BikeImg, in.Comment).Scan(&reviewID); err != nil {
 		return 0, fmt.Errorf("insert review: %w", err)
 	}
 
@@ -182,10 +180,7 @@ func (s *Store) CreateReviewWithRatings(ctx context.Context, in CreateReviewInpu
 		if *val < 1 || *val > 5 {
 			return fmt.Errorf("invalid score %d for %s", *val, sub)
 		}
-		_, err := tx.ExecContext(ctx, `
-			INSERT INTO review_ratings (review_id, subcategory, score)
-			VALUES ($1, $2, $3)
-		`, reviewID, sub, *val)
+		_, err := tx.ExecContext(ctx, insertReviewRatingQuery, reviewID, sub, *val)
 		return err
 	}
 
@@ -243,11 +238,7 @@ func (s *Store) UpdateReviewWithRatings(ctx context.Context, in UpdateReviewInpu
 
 	// ensure review belongs to poster
 	var bikeID string
-	if err := tx.QueryRowContext(ctx, `
-		SELECT bike_numerical_id
-		FROM reviews
-		WHERE review_id = $1 AND poster_id = $2
-	`, in.ReviewID, in.PosterID).Scan(&bikeID); err != nil {
+	if err := tx.QueryRowContext(ctx, updateReviewCheckOwnershipQuery, in.ReviewID, in.PosterID).Scan(&bikeID); err != nil {
 		if err == sql.ErrNoRows {
 			return sql.ErrNoRows
 		}
@@ -255,12 +246,7 @@ func (s *Store) UpdateReviewWithRatings(ctx context.Context, in UpdateReviewInpu
 	}
 
 	// update main review row
-	if _, err := tx.ExecContext(ctx, `
-		UPDATE reviews
-		SET comment = COALESCE($1, comment),
-		    bike_img = COALESCE($2, bike_img)
-		WHERE review_id = $3
-	`, in.Comment, in.BikeImg, in.ReviewID); err != nil {
+	if _, err := tx.ExecContext(ctx, updateReviewQuery, in.Comment, in.BikeImg, in.ReviewID); err != nil {
 		return fmt.Errorf("update review: %w", err)
 	}
 
@@ -271,12 +257,7 @@ func (s *Store) UpdateReviewWithRatings(ctx context.Context, in UpdateReviewInpu
 		if *val < 1 || *val > 5 {
 			return fmt.Errorf("invalid score %d for %s", *val, sub)
 		}
-		_, err := tx.ExecContext(ctx, `
-			INSERT INTO review_ratings (review_id, subcategory, score)
-			VALUES ($1, $2, $3)
-			ON CONFLICT (review_id, subcategory)
-			DO UPDATE SET score = EXCLUDED.score
-		`, in.ReviewID, sub, *val)
+		_, err := tx.ExecContext(ctx, upsertReviewRatingQuery, in.ReviewID, sub, *val)
 		return err
 	}
 
@@ -311,23 +292,7 @@ func (s *Store) UpdateReviewWithRatings(ctx context.Context, in UpdateReviewInpu
 }
 
 func (s *Store) GetReviewWithRatingsByID(ctx context.Context, reviewID int64) (*ReviewWithRatings, error) {
-	rows, err := s.db.QueryContext(ctx, `
-		SELECT
-			r.review_id,
-			r.poster_id,
-			COALESCE(p.username, ''),
-			r.bike_numerical_id,
-			r.comment,
-			r.created_ts,
-			rr.subcategory,
-			rr.score,
-			r.bike_img
-		FROM reviews r
-		LEFT JOIN posters p       ON p.poster_id = r.poster_id
-		LEFT JOIN review_ratings rr ON rr.review_id = r.review_id
-		WHERE r.review_id = $1
-		ORDER BY rr.subcategory
-	`, reviewID)
+	rows, err := s.db.QueryContext(ctx, getReviewByIDQuery, reviewID)
 	if err != nil {
 		return nil, err
 	}
@@ -352,11 +317,7 @@ func (s *Store) DeleteReview(ctx context.Context, reviewID int64, posterID int64
 
 	// ensure review exists and belongs to poster, and get bike id for recompute
 	var bikeID string
-	if err := tx.QueryRowContext(ctx, `
-		SELECT bike_numerical_id
-		FROM reviews
-		WHERE review_id = $1 AND poster_id = $2
-	`, reviewID, posterID).Scan(&bikeID); err != nil {
+	if err := tx.QueryRowContext(ctx, deleteReviewCheckOwnershipQuery, reviewID, posterID).Scan(&bikeID); err != nil {
 		if err == sql.ErrNoRows {
 			return sql.ErrNoRows
 		}
@@ -364,18 +325,12 @@ func (s *Store) DeleteReview(ctx context.Context, reviewID int64, posterID int64
 	}
 
 	// delete ratings first due to FK
-	if _, err := tx.ExecContext(ctx, `
-		DELETE FROM review_ratings
-		WHERE review_id = $1
-	`, reviewID); err != nil {
+	if _, err := tx.ExecContext(ctx, deleteReviewRatingsQuery, reviewID); err != nil {
 		return fmt.Errorf("delete review_ratings: %w", err)
 	}
 
 	// delete review
-	if _, err := tx.ExecContext(ctx, `
-		DELETE FROM reviews
-		WHERE review_id = $1
-	`, reviewID); err != nil {
+	if _, err := tx.ExecContext(ctx, deleteReviewQuery, reviewID); err != nil {
 		return fmt.Errorf("delete review: %w", err)
 	}
 

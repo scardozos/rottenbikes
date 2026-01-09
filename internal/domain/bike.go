@@ -3,8 +3,22 @@ package domain
 import (
 	"context"
 	"database/sql"
+	_ "embed"
 	"fmt"
 	"time"
+)
+
+var (
+	//go:embed sql/list_bikes.sql
+	listBikesQuery string
+	//go:embed sql/create_bike.sql
+	createBikeQuery string
+	//go:embed sql/get_bike_by_id.sql
+	getBikeQuery string
+	//go:embed sql/update_bike.sql
+	updateBikeQuery string
+	//go:embed sql/delete_bike.sql
+	deleteBikeQuery string
 )
 
 type Bike struct {
@@ -23,20 +37,7 @@ type BikeDetails struct {
 }
 
 func (s *Store) ListBikes(ctx context.Context) ([]Bike, error) {
-	rows, err := s.db.QueryContext(ctx, `
-		SELECT 
-			b.numerical_id, 
-			b.hash_id, 
-			b.is_electric, 
-			b.created_ts, 
-			b.updated_ts,
-			ra.average_rating
-		FROM bikes b
-		LEFT JOIN rating_aggregates ra 
-			ON b.numerical_id = ra.bike_numerical_id 
-			AND ra.subcategory = 'overall'
-		ORDER BY b.numerical_id
-	`)
+	rows, err := s.db.QueryContext(ctx, listBikesQuery)
 	if err != nil {
 		return nil, err
 	}
@@ -59,11 +60,7 @@ func (s *Store) ListBikes(ctx context.Context) ([]Bike, error) {
 
 func (s *Store) CreateBike(ctx context.Context, numericalID string, hashID *string, isElectric bool, creatorID int64) (*Bike, error) {
 	var b Bike
-	err := s.db.QueryRowContext(ctx, `
-		INSERT INTO bikes (numerical_id, hash_id, is_electric, creator_id)
-		VALUES ($1, $2, $3, $4)
-		RETURNING numerical_id, hash_id, is_electric, created_ts, updated_ts
-	`, numericalID, hashID, isElectric, creatorID).Scan(
+	err := s.db.QueryRowContext(ctx, createBikeQuery, numericalID, hashID, isElectric, creatorID).Scan(
 		&b.NumericalID,
 		&b.HashID,
 		&b.IsElectric,
@@ -79,20 +76,7 @@ func (s *Store) CreateBike(ctx context.Context, numericalID string, hashID *stri
 func (s *Store) GetBike(ctx context.Context, id string) (*Bike, error) {
 	var b Bike
 	var avgRating sql.NullFloat64
-	err := s.db.QueryRowContext(ctx, `
-		SELECT 
-			b.numerical_id, 
-			b.hash_id, 
-			b.is_electric, 
-			b.created_ts, 
-			b.updated_ts,
-			ra.average_rating
-		FROM bikes b
-		LEFT JOIN rating_aggregates ra 
-			ON b.numerical_id = ra.bike_numerical_id 
-			AND ra.subcategory = 'overall'
-		WHERE b.numerical_id = $1
-	`, id).Scan(&b.NumericalID, &b.HashID, &b.IsElectric, &b.CreatedAt, &b.UpdatedAt, &avgRating)
+	err := s.db.QueryRowContext(ctx, getBikeQuery, id).Scan(&b.NumericalID, &b.HashID, &b.IsElectric, &b.CreatedAt, &b.UpdatedAt, &avgRating)
 	if err != nil {
 		return nil, err
 	}
@@ -126,21 +110,11 @@ func (s *Store) GetBikeDetails(ctx context.Context, id string) (*BikeDetails, er
 }
 
 func (s *Store) UpdateBike(ctx context.Context, id string, hashID *string, isElectric *bool) error {
-	_, err := s.db.ExecContext(ctx, `
-		UPDATE bikes
-		SET
-			hash_id     = COALESCE($1, hash_id),
-			is_electric = COALESCE($2, is_electric),
-			updated_ts  = NOW()
-		WHERE numerical_id = $3
-	`, hashID, isElectric, id)
+	_, err := s.db.ExecContext(ctx, updateBikeQuery, hashID, isElectric, id)
 	return err
 }
 
 func (s *Store) DeleteBike(ctx context.Context, id string) error {
-	_, err := s.db.ExecContext(ctx, `
-		DELETE FROM bikes
-		WHERE numerical_id = $1
-	`, id)
+	_, err := s.db.ExecContext(ctx, deleteBikeQuery, id)
 	return err
 }
