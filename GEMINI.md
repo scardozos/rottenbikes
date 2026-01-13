@@ -39,6 +39,30 @@ Rotten Bikes is a platform for reviewing and rating shared city bikes (e.g., "Bi
 *   **`Makefile`**: The control center for local development (`db-up`, `run`, `db-reset`).
 *   **`.scripts/`**: Helper shell scripts used by the Makefile.
 
+## Frontend Architecture
+
+The UI is built with **React Native (Expo)**, targeting both mobile (iOS/Android) and Web.
+
+*   **Tech Stack**:
+    *   **Framework**: Expo (~54.0), React Native (0.81).
+    *   **Navigation**: React Navigation v7 (Native Stack & Bottom Tabs).
+    *   **Networking**: Axios with interceptors for auth tokens.
+    *   **State Management**: React Context API.
+
+*   **Navigation Structure** (`ui/src/navigation/AppNavigator.js`):
+    *   **Public Stack**: `Login` -> `Register`.
+    *   **Main Stack** (Authenticated): Bottom Tab Navigator (`Home`, `BikesList`, `Configuration`).
+    *   **Deep Linking**: Supports `rottenbikes://` and `http` schemes.
+        *   `top-level`: `confirm/:token`, `privacy`.
+    *   **Bikes List Logic**: Custom tab press listener resets the stack when tapping the "Bikes" tab.
+
+*   **Key Directories**:
+    *   `src/context/`: Global state providers (`AuthContext`, `ThemeContext`, `LanguageContext`, `SessionContext`).
+    *   `src/services/`: API client (`api.js`). Automatically attaches `Bearer` token from storage.
+    *   `src/translations/`: i18n JSON files (`en`, `es`, `ca`).
+    *   `src/screens/`: Feature logic. `HomeScreen` handles scanning.
+
+
 ## How to Run and Develop Locally
 
 **Standard Workflow:**
