@@ -41,6 +41,7 @@ export default {
     enter_manual_id: 'O introdueix la ID manualment:',
     bike_id_placeholder: 'ID de la Bicicleta (ex. 123)',
     go: 'Vés-hi',
+    scanner_paused: 'Escàner en pausa',
 
     // Create Bike
     add_new_bike: 'Afegir Nova Bicicleta',

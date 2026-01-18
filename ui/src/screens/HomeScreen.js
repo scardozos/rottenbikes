@@ -1,4 +1,4 @@
-import React, { useState, useRef, useContext } from 'react';
+import React, { useState, useRef, useContext, useEffect } from 'react';
 import { Text, View, StyleSheet, Button, ActivityIndicator, Platform, Alert, TextInput, KeyboardAvoidingView, Pressable, Keyboard } from 'react-native';
 // Only import CameraView/Permissions for Native. Web uses html5-qrcode dynamically.
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -49,8 +49,21 @@ const HomeScreen = ({ navigation }) => {
     const { theme } = useContext(ThemeContext);
     const { validateBike } = useSession();
     const [manualId, setManualId] = useState('');
+    const [isInputActive, setIsInputActive] = useState(false);
     const { showToast } = useToast();
-    const { t } = useContext(LanguageContext); // Use language context
+    const { t } = useContext(LanguageContext);
+
+    // Monitor keyboard visibility on Native
+    useEffect(() => {
+        if (Platform.OS !== 'web') {
+            const showSubscription = Keyboard.addListener('keyboardDidShow', () => setIsInputActive(true));
+            const hideSubscription = Keyboard.addListener('keyboardDidHide', () => setIsInputActive(false));
+            return () => {
+                showSubscription.remove();
+                hideSubscription.remove();
+            };
+        }
+    }, []);
 
     const handleManualSubmit = async () => {
         if (!manualId.trim()) return;
@@ -98,7 +111,8 @@ const HomeScreen = ({ navigation }) => {
 
     // Naive check for mobile browser agent
     const isMobileWeb = Platform.OS === 'web' && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    const showCamera = Platform.OS !== 'web' || isMobileWeb;
+    const showCamera = (Platform.OS !== 'web' || isMobileWeb);
+    const shouldRenderCamera = showCamera && !isInputActive;
 
     const content = (
         <KeyboardAvoidingView
@@ -109,12 +123,18 @@ const HomeScreen = ({ navigation }) => {
             {/* Camera Area - Top 70% (Only on Mobile App or Mobile Web) */}
             {showCamera ? (
                 <View style={stylesInternal.cameraContainer}>
-                    {Platform.OS === 'web' ? (
-                        <ErrorBoundary>
-                            <WebScannerLocal navigation={navigation} theme={theme} validateBike={validateBike} t={t} />
-                        </ErrorBoundary>
+                    {shouldRenderCamera ? (
+                        Platform.OS === 'web' ? (
+                            <ErrorBoundary>
+                                <WebScannerLocal navigation={navigation} theme={theme} validateBike={validateBike} t={t} />
+                            </ErrorBoundary>
+                        ) : (
+                            <NativeScannerLocal navigation={navigation} theme={theme} validateBike={validateBike} t={t} />
+                        )
                     ) : (
-                        <NativeScannerLocal navigation={navigation} theme={theme} validateBike={validateBike} t={t} />
+                        <View style={{ flex: 1, backgroundColor: 'black', justifyContent: 'center', alignItems: 'center' }}>
+                            <Text style={{ color: 'gray' }}>{t('scanner_paused') || "Scanner Paused"}</Text>
+                        </View>
                     )}
                 </View>
             ) : (
@@ -134,6 +154,8 @@ const HomeScreen = ({ navigation }) => {
                         onChangeText={setManualId}
                         returnKeyType="done"
                         onSubmitEditing={handleManualSubmit}
+                        onFocus={() => Platform.OS === 'web' && setIsInputActive(true)}
+                        onBlur={() => Platform.OS === 'web' && setIsInputActive(false)}
                     />
                     <Button title={t('go')} onPress={handleManualSubmit} color={theme.colors.primary} />
                 </View>

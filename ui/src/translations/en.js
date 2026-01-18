@@ -41,6 +41,7 @@ export default {
     enter_manual_id: 'Or enter Bike ID manually:',
     bike_id_placeholder: 'Bike ID (e.g. 123)',
     go: 'Go',
+    scanner_paused: 'Scanner Paused',
 
     // Create Bike
     add_new_bike: 'Add a New Bike',
