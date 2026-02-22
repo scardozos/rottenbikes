@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "RottenBikes: Rate City Bikes",
-    "slug": "ui",
+    "slug": "rottenbikes",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -20,14 +20,23 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "android.permission.CAMERA"
+      ],
+      "package": "com.cauliflowersonglemonsorganization.rottenbikes"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-secure-store",
-      "expo-barcode-scanner"
-    ]
+      "expo-secure-store"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "df93d0f2-3a4f-496a-93b6-d685ffa71bee"
+      }
+    },
+    "owner": "cauliflowersonglemons-organization"
   }
 }

@@ -1,0 +1,25 @@
+{
+    "cli": {
+        "version": ">= 14.7.1"
+    },
+    "build": {
+        "development": {
+            "developmentClient": true,
+            "distribution": "internal"
+        },
+        "preview": {
+            "distribution": "internal",
+            "android": {
+                "buildType": "apk"
+            },
+            "env": {
+                "EXPO_PUBLIC_API_URL": "https://api.rottenbik.es",
+                "EXPO_PUBLIC_HCAPTCHA_SITEKEY": "59f8d596-0090-449c-ab7c-a8967718a2c0"
+            }
+        },
+        "production": {}
+    },
+    "submit": {
+        "production": {}
+    }
+}
