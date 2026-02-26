@@ -38,7 +38,10 @@ const CreateReviewScreen = ({ route, navigation }) => {
     useEffect(() => {
         if (!validatedBikeId || String(validatedBikeId) !== String(bikeId)) {
             showToast(t('unauthorized'), 'error');
-            navigation.replace('Main', { screen: 'Home' });
+            navigation.reset({
+                index: 0,
+                routes: [{ name: 'Main', state: { routes: [{ name: 'Home' }] } }],
+            });
         }
     }, [bikeId, validatedBikeId, navigation, showToast, t]);
 

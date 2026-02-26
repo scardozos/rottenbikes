@@ -316,7 +316,7 @@ const NativeScannerLocal = ({ navigation, theme, validateBike, t }) => {
                         {
                             text: "Create",
                             onPress: () => {
-                                navigation.replace('BikesList', { screen: 'CreateBike', params: { initialHashId: data } });
+                                navigation.navigate('BikesList', { screen: 'CreateBike', params: { initialHashId: data } });
                             }
                         }
                     ]
@@ -354,7 +354,10 @@ const NativeScannerLocal = ({ navigation, theme, validateBike, t }) => {
                     opacity: 0.9,
                     alignItems: 'center'
                 }}>
-                    <Button title={'Tap to Scan Again'} onPress={() => setScanned(false)} color={theme.colors.primary} />
+                    <Button title={'Tap to Scan Again'} onPress={() => {
+                        isScanning.current = false;
+                        setScanned(false);
+                    }} color={theme.colors.primary} />
                 </View>
             )}
         </View>
