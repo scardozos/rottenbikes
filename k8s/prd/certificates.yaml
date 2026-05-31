@@ -2,7 +2,7 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: ui-cert
-  namespace: rottenbikes
+  namespace: rottenbikes-prd
 spec:
   secretName: ui-cert-prd
   issuerRef:
@@ -16,7 +16,7 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: api-cert
-  namespace: rottenbikes
+  namespace: rottenbikes-prd
 spec:
   secretName: api-cert-prd
   issuerRef:
