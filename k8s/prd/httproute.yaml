@@ -5,8 +5,9 @@ metadata:
   namespace: rottenbikes
 spec:
   parentRefs:
-  - name: rottenbikes-prd
-    sectionName: ui-https
+  - name: shared-gtw
+    namespace: envoy-gateway-system
+    sectionName: https
   hostnames:
   - rottenbik.es
   rules:
@@ -25,8 +26,9 @@ metadata:
   namespace: rottenbikes
 spec:
   parentRefs:
-  - name: rottenbikes-prd
-    sectionName: api-https
+  - name: shared-gtw
+    namespace: envoy-gateway-system
+    sectionName: https
   hostnames:
   - api.rottenbik.es
   rules:
@@ -45,8 +47,9 @@ metadata:
   namespace: rottenbikes
 spec:
   parentRefs:
-  - name: rottenbikes-prd
-    sectionName: ui-http
+  - name: shared-gtw
+    namespace: envoy-gateway-system
+    sectionName: http
   hostnames:
   - rottenbik.es
   rules:
