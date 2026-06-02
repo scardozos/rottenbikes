@@ -65,7 +65,7 @@ create_secret() {
 # Here we assume the namespaces rottenbikes-dev and rottenbikes-prd exist (or will exist when deploying).
 
 # 1. Dev Secret
-create_secret ".env.dev" "rottenbikes-secrets" "rottenbikes-dev"
+create_secret ".env.dev" "rottenbikes-secrets-dev" "rottenbikes-dev"
 
 # 2. Prod Secret
-create_secret ".env.prod" "rottenbikes-secrets" "rottenbikes-prd"
+create_secret ".env.prod" "rottenbikes-secrets-prd" "rottenbikes-prd"
