@@ -90,6 +90,7 @@ func main() {
 	}
 
 	store := domain.NewStore(db)
+	svc := domain.NewService(store)
 	port := cfg.APIPort
 
 	// Initialize Email Sender
@@ -118,7 +119,7 @@ func main() {
 		Str("email_from_name", cfg.EmailFromName).
 		Msg("starting service")
 
-	srv, err := httpserver.New(store, sender, ":"+port)
+	srv, err := httpserver.New(svc, sender, ":"+port)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to create server")
 	}

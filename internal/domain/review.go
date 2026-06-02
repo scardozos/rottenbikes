@@ -173,34 +173,8 @@ func (s *Store) CreateReviewWithRatings(ctx context.Context, in CreateReviewInpu
 		return 0, fmt.Errorf("insert review: %w", err)
 	}
 
-	insertRating := func(sub RatingSubcategory, val *int16) error {
-		if val == nil {
-			return nil
-		}
-		if *val < 1 || *val > 5 {
-			return fmt.Errorf("invalid score %d for %s", *val, sub)
-		}
-		_, err := tx.ExecContext(ctx, insertReviewRatingQuery, reviewID, sub, *val)
-		return err
-	}
-
-	if err := insertRating(RatingSubcategoryOverall, in.Overall); err != nil {
-		return 0, fmt.Errorf("insert overall rating: %w", err)
-	}
-	if err := insertRating(RatingSubcategoryBreaks, in.Breaks); err != nil {
-		return 0, fmt.Errorf("insert breaks rating: %w", err)
-	}
-	if err := insertRating(RatingSubcategorySeat, in.Seat); err != nil {
-		return 0, fmt.Errorf("insert seat rating: %w", err)
-	}
-	if err := insertRating(RatingSubcategorySturdiness, in.Sturdiness); err != nil {
-		return 0, fmt.Errorf("insert sturdiness rating: %w", err)
-	}
-	if err := insertRating(RatingSubcategoryPower, in.Power); err != nil {
-		return 0, fmt.Errorf("insert power rating: %w", err)
-	}
-	if err := insertRating(RatingSubcategoryPedals, in.Pedals); err != nil {
-		return 0, fmt.Errorf("insert pedals rating: %w", err)
+	if err := execContextInAllRatingTypes(ctx, tx, insertReviewRatingQuery, reviewID, in.Overall, in.Breaks, in.Seat, in.Sturdiness, in.Power, in.Pedals); err != nil {
+		return 0, fmt.Errorf("insert ratings: %w", err)
 	}
 
 	if err := RecomputeAggregatesForBike(ctx, tx, in.BikeID); err != nil {
@@ -250,34 +224,8 @@ func (s *Store) UpdateReviewWithRatings(ctx context.Context, in UpdateReviewInpu
 		return fmt.Errorf("update review: %w", err)
 	}
 
-	updateRating := func(sub RatingSubcategory, val *int16) error {
-		if val == nil {
-			return nil
-		}
-		if *val < 1 || *val > 5 {
-			return fmt.Errorf("invalid score %d for %s", *val, sub)
-		}
-		_, err := tx.ExecContext(ctx, upsertReviewRatingQuery, in.ReviewID, sub, *val)
-		return err
-	}
-
-	if err := updateRating(RatingSubcategoryOverall, in.Overall); err != nil {
-		return fmt.Errorf("update overall rating: %w", err)
-	}
-	if err := updateRating(RatingSubcategoryBreaks, in.Breaks); err != nil {
-		return fmt.Errorf("update breaks rating: %w", err)
-	}
-	if err := updateRating(RatingSubcategorySeat, in.Seat); err != nil {
-		return fmt.Errorf("update seat rating: %w", err)
-	}
-	if err := updateRating(RatingSubcategorySturdiness, in.Sturdiness); err != nil {
-		return fmt.Errorf("update sturdiness rating: %w", err)
-	}
-	if err := updateRating(RatingSubcategoryPower, in.Power); err != nil {
-		return fmt.Errorf("update power rating: %w", err)
-	}
-	if err := updateRating(RatingSubcategoryPedals, in.Pedals); err != nil {
-		return fmt.Errorf("update pedals rating: %w", err)
+	if err := execContextInAllRatingTypes(ctx, tx, upsertReviewRatingQuery, in.ReviewID, in.Overall, in.Breaks, in.Seat, in.Sturdiness, in.Power, in.Pedals); err != nil {
+		return fmt.Errorf("update ratings: %w", err)
 	}
 
 	if err := RecomputeAggregatesForBike(ctx, tx, bikeID); err != nil {
@@ -342,5 +290,44 @@ func (s *Store) DeleteReview(ctx context.Context, reviewID int64, posterID int64
 		return fmt.Errorf("commit tx: %w", err)
 	}
 
+	return nil
+}
+
+func execContextInAllRatingTypes(
+	ctx context.Context,
+	tx *sql.Tx,
+	query string,
+	reviewID int64,
+	overall, breaks, seat, sturdiness, power, pedals *int16,
+) error {
+	run := func(sub RatingSubcategory, val *int16) error {
+		if val == nil {
+			return nil
+		}
+		_, err := tx.ExecContext(ctx, query, reviewID, sub, *val)
+		if err != nil {
+			return fmt.Errorf("%s rating: %w", sub, err)
+		}
+		return nil
+	}
+
+	if err := run(RatingSubcategoryOverall, overall); err != nil {
+		return err
+	}
+	if err := run(RatingSubcategoryBreaks, breaks); err != nil {
+		return err
+	}
+	if err := run(RatingSubcategorySeat, seat); err != nil {
+		return err
+	}
+	if err := run(RatingSubcategorySturdiness, sturdiness); err != nil {
+		return err
+	}
+	if err := run(RatingSubcategoryPower, power); err != nil {
+		return err
+	}
+	if err := run(RatingSubcategoryPedals, pedals); err != nil {
+		return err
+	}
 	return nil
 }

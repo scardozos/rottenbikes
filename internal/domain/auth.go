@@ -9,8 +9,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"net/mail"
-	"regexp"
 	"strings"
 	"time"
 )
@@ -134,18 +132,6 @@ func (s *Store) CreateMagicLink(ctx context.Context, identifier string) (magicTo
 }
 
 func (s *Store) Register(ctx context.Context, username, email string) (string, error) {
-	// Validate email format
-	_, err := mail.ParseAddress(email)
-	if err != nil {
-		return "", fmt.Errorf("invalid email format")
-	}
-
-	// Validate username format (alphanumeric and dots only)
-	validUsername := regexp.MustCompile(`^[a-zA-Z0-9.]+$`)
-	if !validUsername.MatchString(username) {
-		return "", fmt.Errorf("username can only contain letters, numbers and dots")
-	}
-
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return "", fmt.Errorf("begin tx: %w", err)
