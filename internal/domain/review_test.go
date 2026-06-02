@@ -298,3 +298,36 @@ func TestGetReviewWithRatingsByID(t *testing.T) {
 		}
 	})
 }
+
+func TestListReviewsWithRatingsByBike(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer db.Close()
+
+	ctx := context.Background()
+	bikeID := "0101"
+
+	t.Run("success", func(t *testing.T) {
+		rows := sqlmock.NewRows([]string{
+			"review_id", "poster_id", "username", "bike_numerical_id", "comment", "created_ts", "subcategory", "score", "bike_img",
+		}).
+			AddRow(int64(1), 1, "user1", bikeID, "comment", time.Now(), "overall", 5, "img.jpg")
+
+		// Matching query regex
+		mock.ExpectQuery("WITH paginated_reviews AS").
+			WithArgs(bikeID, 10, 5).
+			WillReturnRows(rows)
+
+		store := NewService(NewStore(db))
+		reviews, err := store.ListReviewsWithRatingsByBike(ctx, bikeID, 10, 5)
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+			return
+		}
+		if len(reviews) != 1 {
+			t.Errorf("expected 1 review, got %d", len(reviews))
+		}
+	})
+}

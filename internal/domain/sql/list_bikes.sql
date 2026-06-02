@@ -10,3 +10,5 @@ LEFT JOIN rating_aggregates ra
 	ON b.numerical_id = ra.bike_numerical_id 
 	AND ra.subcategory = 'overall'
 ORDER BY b.numerical_id
+LIMIT (CASE WHEN $1 >= 0 THEN $1 ELSE NULL END)
+OFFSET (CASE WHEN $2 >= 0 THEN $2 ELSE 0 END)

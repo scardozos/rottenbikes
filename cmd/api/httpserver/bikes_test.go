@@ -21,8 +21,11 @@ func strPtr(s string) *string {
 }
 
 func TestHandleListBikes(t *testing.T) {
+	var lastLimit, lastOffset int
 	mockService := &MockService{
-		ListBikesFunc: func(ctx context.Context) ([]domain.Bike, error) {
+		ListBikesFunc: func(ctx context.Context, limit, offset int) ([]domain.Bike, error) {
+			lastLimit = limit
+			lastOffset = offset
 			return []domain.Bike{
 				{NumericalID: "1", HashID: strPtr("hash1"), IsElectric: true},
 				{NumericalID: "2", HashID: strPtr("hash2"), IsElectric: false},
@@ -51,7 +54,7 @@ func TestHandleListBikes(t *testing.T) {
 	})
 
 	t.Run("empty_list", func(t *testing.T) {
-		mockService.ListBikesFunc = func(ctx context.Context) ([]domain.Bike, error) {
+		mockService.ListBikesFunc = func(ctx context.Context, limit, offset int) ([]domain.Bike, error) {
 			return nil, nil // Simulate empty DB returning nil
 		}
 
@@ -68,6 +71,30 @@ func TestHandleListBikes(t *testing.T) {
 		// Verify response body is []
 		if w.Body.String() != "[]\n" {
 			t.Errorf("expected body [], got %q", w.Body.String())
+		}
+	})
+
+	t.Run("pagination_params", func(t *testing.T) {
+		mockService.ListBikesFunc = func(ctx context.Context, limit, offset int) ([]domain.Bike, error) {
+			lastLimit = limit
+			lastOffset = offset
+			return []domain.Bike{}, nil
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/bikes?limit=15&offset=5", nil)
+		req.Header.Set("Authorization", "Bearer valid_token")
+		w := httptest.NewRecorder()
+
+		srv.server.Handler.ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("expected status 200, got %d", w.Code)
+		}
+		if lastLimit != 15 {
+			t.Errorf("expected limit 15, got %d", lastLimit)
+		}
+		if lastOffset != 5 {
+			t.Errorf("expected offset 5, got %d", lastOffset)
 		}
 	})
 }
@@ -380,8 +407,11 @@ func TestHandleDeleteBike(t *testing.T) {
 }
 
 func TestHandleGetBikeDetails(t *testing.T) {
+	var lastLimit, lastOffset int
 	mockService := &MockService{
-		GetBikeDetailsFunc: func(ctx context.Context, id string) (*domain.BikeDetails, error) {
+		GetBikeDetailsFunc: func(ctx context.Context, id string, limit, offset int) (*domain.BikeDetails, error) {
+			lastLimit = limit
+			lastOffset = offset
 			if id == "1" {
 				return &domain.BikeDetails{
 					Bike: domain.Bike{NumericalID: "1"},
@@ -434,6 +464,24 @@ func TestHandleGetBikeDetails(t *testing.T) {
 
 		if w.Code != http.StatusInternalServerError {
 			t.Errorf("expected status 500, got %d", w.Code)
+		}
+	})
+
+	t.Run("pagination_params", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/bikes/1/details?limit=10&offset=2", nil)
+		req.Header.Set("Authorization", "Bearer valid_token")
+		w := httptest.NewRecorder()
+
+		srv.server.Handler.ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("expected status 200, got %d", w.Code)
+		}
+		if lastLimit != 10 {
+			t.Errorf("expected limit 10, got %d", lastLimit)
+		}
+		if lastOffset != 2 {
+			t.Errorf("expected offset 2, got %d", lastOffset)
 		}
 	})
 }

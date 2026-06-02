@@ -62,8 +62,8 @@ type reviewRatingRow struct {
 // all bikes
 
 // single bike
-func (s *Store) ListReviewsWithRatingsByBike(ctx context.Context, bikeID string) ([]ReviewWithRatings, error) {
-	rows, err := s.db.QueryContext(ctx, listReviewsWithRatingsQuery, bikeID)
+func (s *Store) ListReviewsWithRatingsByBike(ctx context.Context, bikeID string, limit, offset int) ([]ReviewWithRatings, error) {
+	rows, err := s.db.QueryContext(ctx, listReviewsWithRatingsQuery, bikeID, limit, offset)
 	if err != nil {
 		return nil, err
 	}

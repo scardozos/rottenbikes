@@ -85,6 +85,11 @@ func main() {
 	}
 	defer db.Close()
 
+	// Tune connection pool settings to prevent exhaustion/leak under load
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(25)
+	db.SetConnMaxLifetime(5 * time.Minute)
+
 	if err := db.Ping(); err != nil {
 		log.Fatal().Err(err).Msg("failed to ping db")
 	}

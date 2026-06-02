@@ -18,10 +18,10 @@ type Service interface {
 	DeletePoster(ctx context.Context, posterID int64, deleteContent bool) error
 
 	// Bike
-	ListBikes(ctx context.Context) ([]Bike, error)
+	ListBikes(ctx context.Context, limit, offset int) ([]Bike, error)
 	CreateBike(ctx context.Context, numericalID string, hashID *string, isElectric bool, creatorID int64) (*Bike, error)
 	GetBike(ctx context.Context, id string) (*Bike, error)
-	GetBikeDetails(ctx context.Context, id string) (*BikeDetails, error)
+	GetBikeDetails(ctx context.Context, id string, limit, offset int) (*BikeDetails, error)
 	UpdateBike(ctx context.Context, id string, hashID *string, isElectric *bool) error
 	DeleteBike(ctx context.Context, id string) error
 
@@ -29,7 +29,7 @@ type Service interface {
 	ListRatingAggregatesByBike(ctx context.Context, bikeID string) ([]RatingAggregate, error)
 
 	// Review
-	ListReviewsWithRatingsByBike(ctx context.Context, bikeID string) ([]ReviewWithRatings, error)
+	ListReviewsWithRatingsByBike(ctx context.Context, bikeID string, limit, offset int) ([]ReviewWithRatings, error)
 	CreateReviewWithRatings(ctx context.Context, in CreateReviewInput) (int64, error)
 	UpdateReviewWithRatings(ctx context.Context, in UpdateReviewInput) error
 	GetReviewWithRatingsByID(ctx context.Context, reviewID int64) (*ReviewWithRatings, error)
@@ -92,8 +92,8 @@ func (s *service) DeletePoster(ctx context.Context, posterID int64, deleteConten
 
 // Bike
 
-func (s *service) ListBikes(ctx context.Context) ([]Bike, error) {
-	return s.store.ListBikes(ctx)
+func (s *service) ListBikes(ctx context.Context, limit, offset int) ([]Bike, error) {
+	return s.store.ListBikes(ctx, limit, offset)
 }
 
 func (s *service) CreateBike(ctx context.Context, numericalID string, hashID *string, isElectric bool, creatorID int64) (*Bike, error) {
@@ -129,8 +129,8 @@ func (s *service) GetBike(ctx context.Context, id string) (*Bike, error) {
 	return s.store.GetBike(ctx, id)
 }
 
-func (s *service) GetBikeDetails(ctx context.Context, id string) (*BikeDetails, error) {
-	return s.store.GetBikeDetails(ctx, id)
+func (s *service) GetBikeDetails(ctx context.Context, id string, limit, offset int) (*BikeDetails, error) {
+	return s.store.GetBikeDetails(ctx, id, limit, offset)
 }
 
 func (s *service) UpdateBike(ctx context.Context, id string, hashID *string, isElectric *bool) error {
@@ -152,8 +152,8 @@ func (s *service) ListRatingAggregatesByBike(ctx context.Context, bikeID string)
 
 // Review
 
-func (s *service) ListReviewsWithRatingsByBike(ctx context.Context, bikeID string) ([]ReviewWithRatings, error) {
-	return s.store.ListReviewsWithRatingsByBike(ctx, bikeID)
+func (s *service) ListReviewsWithRatingsByBike(ctx context.Context, bikeID string, limit, offset int) ([]ReviewWithRatings, error) {
+	return s.store.ListReviewsWithRatingsByBike(ctx, bikeID, limit, offset)
 }
 
 func (s *service) CreateReviewWithRatings(ctx context.Context, in CreateReviewInput) (int64, error) {

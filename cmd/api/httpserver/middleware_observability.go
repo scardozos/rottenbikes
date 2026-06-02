@@ -153,10 +153,28 @@ func observabilityMiddleware(next http.Handler) http.Handler {
 }
 
 func sanitizePath(path string) string {
-	if strings.HasPrefix(path, "/auth/confirm/") {
-		return "/auth/confirm/[REDACTED]"
+	trimmed := strings.Trim(path, "/")
+	if trimmed == "" {
+		return "/"
 	}
-	return path
+	parts := strings.Split(trimmed, "/")
+
+	switch parts[0] {
+	case "auth":
+		if len(parts) > 1 && parts[1] == "confirm" {
+			return "/auth/confirm/[REDACTED]"
+		}
+	case "bikes":
+		if len(parts) > 1 {
+			parts[1] = "{id}"
+		}
+	case "reviews":
+		if len(parts) > 1 {
+			parts[1] = "{id}"
+		}
+	}
+
+	return "/" + strings.Join(parts, "/")
 }
 
 func sanitizeURI(uri string) string {

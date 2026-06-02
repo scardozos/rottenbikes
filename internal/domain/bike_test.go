@@ -24,10 +24,11 @@ func TestListBikes(t *testing.T) {
 			AddRow("02", "hash2", false, time.Now(), time.Now(), nil)
 
 		mock.ExpectQuery("SELECT b.numerical_id, b.hash_id, b.is_electric, b.created_ts, b.updated_ts, ra.average_rating FROM bikes b LEFT JOIN rating_aggregates ra ON b.numerical_id = ra.bike_numerical_id AND ra.subcategory = 'overall' ORDER BY b.numerical_id").
+			WithArgs(-1, -1).
 			WillReturnRows(rows)
 
 		store := NewService(NewStore(db))
-		bikes, err := store.ListBikes(ctx)
+		bikes, err := store.ListBikes(ctx, -1, -1)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
