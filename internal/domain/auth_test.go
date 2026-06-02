@@ -190,7 +190,7 @@ func TestConfirmMagicLink(t *testing.T) {
 
 		// Load magic link
 		mock.ExpectQuery("SELECT poster_id, expires_ts, consumed_ts FROM magic_links").
-			WithArgs(token).
+			WithArgs(HashToken(token)).
 			WillReturnRows(sqlmock.NewRows([]string{"poster_id", "expires_ts", "consumed_ts"}).
 				AddRow(1, time.Now().Add(time.Hour), nil))
 
@@ -210,7 +210,7 @@ func TestConfirmMagicLink(t *testing.T) {
 
 		// New: External update for polling
 		mock.ExpectExec("UPDATE magic_links").
-			WithArgs("api_token", token).
+			WithArgs("api_token", HashToken(token)).
 			WillReturnResult(sqlmock.NewResult(1, 1))
 
 		store := NewStore(db)
@@ -230,7 +230,7 @@ func TestConfirmMagicLink(t *testing.T) {
 	t.Run("invalid_token", func(t *testing.T) {
 		mock.ExpectBegin()
 		mock.ExpectQuery("SELECT poster_id, expires_ts, consumed_ts FROM magic_links").
-			WithArgs(token).
+			WithArgs(HashToken(token)).
 			WillReturnError(sql.ErrNoRows)
 		mock.ExpectRollback()
 

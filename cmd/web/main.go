@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -21,8 +22,18 @@ func main() {
 			return
 		}
 
+		// Clean the path to prevent directory traversal
+		cleanedPath := filepath.Clean(path)
+		fullPath := filepath.Join("ui/dist", cleanedPath)
+
+		// Verify that the requested file path stays inside ui/dist
+		rel, err := filepath.Rel("ui/dist", fullPath)
+		if err != nil || strings.HasPrefix(rel, "..") {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+
 		// Check if file exists in ui/dist
-		fullPath := "./ui/dist" + path
 		if _, err := os.Stat(fullPath); os.IsNotExist(err) {
 			// Fallback to index.html for SPA routing
 			serveIndex(w)

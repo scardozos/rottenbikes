@@ -7,8 +7,10 @@ COPY . .
 RUN go build -o api ./cmd/api/main.go
 
 FROM alpine:latest AS api
+RUN adduser -D -g '' appuser
 WORKDIR /app
 COPY --from=api-builder /app/api .
+USER appuser
 EXPOSE 8080
 CMD ["./api"]
 
@@ -28,8 +30,10 @@ COPY . .
 RUN go build -o web ./cmd/web/main.go
 
 FROM alpine:latest AS ui
+RUN adduser -D -g '' appuser
 WORKDIR /app
 COPY --from=ui-server-builder /app/web .
 COPY --from=ui-builder /app/dist ./ui/dist
+USER appuser
 EXPOSE 8081
 CMD ["./web"]

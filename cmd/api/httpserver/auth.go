@@ -82,10 +82,13 @@ func (s *HTTPServer) handleRegister(w http.ResponseWriter, r *http.Request) {
 	if req.Origin != "" {
 		uiURL = fmt.Sprintf("%s?origin=%s", uiURL, req.Origin)
 	}
+
+	uiURLRedacted := fmt.Sprintf("%s://%s:%s/confirm/%s", scheme, uiHost, uiPort, "[REDACTED]")
 	if req.Origin != "" {
-		uiURL = fmt.Sprintf("%s?origin=%s", uiURL, req.Origin)
+		uiURLRedacted = fmt.Sprintf("%s?origin=%s", uiURLRedacted, req.Origin)
 	}
-	zerolog.Ctx(r.Context()).Info().Str("email", req.Email).Str("url", uiURL).Msg("sending UI confirmation link")
+
+	zerolog.Ctx(r.Context()).Info().Str("email", req.Email).Str("url", uiURLRedacted).Msg("sending UI confirmation link")
 
 	subject := "Welcome to RottenBikes!"
 	body := fmt.Sprintf("Hello %s,\n\nPlease confirm your registration by clicking the following link:\n\n%s\n\nIf you did not request this, please ignore this email.", req.Username, uiURL)
@@ -100,7 +103,7 @@ func (s *HTTPServer) handleRegister(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(map[string]string{
 		"message":     "confirmation email sent",
-		"magic_token": magicToken,
+		"magic_token": domain.HashToken(magicToken),
 	})
 }
 
@@ -164,10 +167,13 @@ func (s *HTTPServer) handleRequestMagicLink(w http.ResponseWriter, r *http.Reque
 	if req.Origin != "" {
 		uiURL = fmt.Sprintf("%s?origin=%s", uiURL, req.Origin)
 	}
+
+	uiURLRedacted := fmt.Sprintf("%s://%s:%s/confirm/%s", scheme, uiHost, uiPort, "[REDACTED]")
 	if req.Origin != "" {
-		uiURL = fmt.Sprintf("%s?origin=%s", uiURL, req.Origin)
+		uiURLRedacted = fmt.Sprintf("%s?origin=%s", uiURLRedacted, req.Origin)
 	}
-	zerolog.Ctx(r.Context()).Info().Str("email", targetEmail).Str("url", uiURL).Msg("sending magic link")
+
+	zerolog.Ctx(r.Context()).Info().Str("email", targetEmail).Str("url", uiURLRedacted).Msg("sending magic link")
 
 	subject := "Your RottenBikes Magic Link"
 	body := fmt.Sprintf("Hello,\n\nYou requested a magic link to log in to RottenBikes. Click the following link to continue:\n\n%s\n\nIf you did not request this, please ignore this email.", uiURL)
@@ -182,12 +188,13 @@ func (s *HTTPServer) handleRequestMagicLink(w http.ResponseWriter, r *http.Reque
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(map[string]string{
 		"message":     "magic link email sent",
-		"magic_token": magicToken,
+		"magic_token": domain.HashToken(magicToken),
 	})
 }
 
 func (s *HTTPServer) verifyCaptcha(ctx context.Context, token, email string) error {
 	secret := strings.TrimSpace(os.Getenv("HCAPTCHA_SECRET"))
+	appEnv := strings.ToLower(strings.TrimSpace(os.Getenv("APP_ENV")))
 
 	if secret != "" {
 		vreq, err := http.PostForm("https://api.hcaptcha.com/siteverify", url.Values{
@@ -217,7 +224,12 @@ func (s *HTTPServer) verifyCaptcha(ctx context.Context, token, email string) err
 		}
 		zerolog.Ctx(ctx).Info().Str("email", email).Msg("hCaptcha verification SUCCESS")
 	} else {
-		zerolog.Ctx(ctx).Warn().Msg("HCAPTCHA_SECRET not set, skipping verification request (DEV mode?)")
+		if appEnv == "development" || appEnv == "dev" || appEnv == "local" {
+			zerolog.Ctx(ctx).Warn().Msg("HCAPTCHA_SECRET not set, skipping verification request in development/local mode")
+			return nil
+		}
+		zerolog.Ctx(ctx).Error().Msg("HCAPTCHA_SECRET not set, cannot verify captcha in production")
+		return fmt.Errorf("captcha verification not configured")
 	}
 	return nil
 }
