@@ -29,6 +29,7 @@ configMapGenerator:
   - EXPO_PUBLIC_HCAPTCHA_SITEKEY=59f8d596-0090-449c-ab7c-a8967718a2c0
   - UI_HOST=dev.rottenbik.es
   - UI_PORT=443
+  - APP_ENV=development
   name: rottenbikes-config
 
 

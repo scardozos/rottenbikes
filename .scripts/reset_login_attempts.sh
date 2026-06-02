@@ -32,13 +32,13 @@ fi
 
 echo "Resetting login attempts for user: $IDENTIFIER"
 
-# Execute SQL
-psql "$DATABASE_URL" -c "
+# Execute SQL using psql variables and stdin to prevent SQL injection
+psql "$DATABASE_URL" -v identifier="$IDENTIFIER" <<EOF
 DELETE FROM magic_links 
 WHERE poster_id = (
-    SELECT poster_id FROM posters WHERE email = '$IDENTIFIER' OR username = '$IDENTIFIER'
+    SELECT poster_id FROM posters WHERE email = :'identifier' OR username = :'identifier'
 );
-"
+EOF
 
 if [ $? -eq 0 ]; then
   echo "Successfully reset login attempts (if user existed)."

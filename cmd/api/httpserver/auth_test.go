@@ -15,6 +15,7 @@ import (
 )
 
 func TestHandleRequestMagicLink(t *testing.T) {
+	t.Setenv("APP_ENV", "local")
 	mockService := &MockService{
 		RegisterFunc: func(ctx context.Context, username, email string) (string, error) {
 			return "magic-token-for-" + email, nil
@@ -102,8 +103,9 @@ func TestHandleRequestMagicLink(t *testing.T) {
 			t.Fatalf("failed to decode response: %v", err)
 		}
 
-		if resp["magic_token"] != "magic-token-for-"+username {
-			t.Errorf("expected magic_token %s, got %s", "magic-token-for-"+username, resp["magic_token"])
+		expectedToken := domain.HashToken("magic-token-for-" + username)
+		if resp["magic_token"] != expectedToken {
+			t.Errorf("expected magic_token %s, got %s", expectedToken, resp["magic_token"])
 		}
 	})
 

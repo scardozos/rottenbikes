@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -133,7 +134,7 @@ func observabilityMiddleware(next http.Handler) http.Handler {
 		event.
 			Str("type", "access").
 			Str("method", r.Method).
-			Str("path", r.RequestURI).
+			Str("path", sanitizeURI(r.RequestURI)).
 			Int("status", rw.Status).
 			Float64("duration", duration).
 			Int("size", rw.Size).
@@ -153,9 +154,35 @@ func observabilityMiddleware(next http.Handler) http.Handler {
 
 func sanitizePath(path string) string {
 	if strings.HasPrefix(path, "/auth/confirm/") {
-		return "/auth/confirm/MAGIC_TOKEN_REDACTED"
+		return "/auth/confirm/[REDACTED]"
 	}
 	return path
+}
+
+func sanitizeURI(uri string) string {
+	u, err := url.Parse(uri)
+	if err != nil {
+		if strings.HasPrefix(uri, "/auth/confirm/") {
+			parts := strings.SplitN(uri, "?", 2)
+			if len(parts) == 2 {
+				return "/auth/confirm/[REDACTED]?" + parts[1]
+			}
+			return "/auth/confirm/[REDACTED]"
+		}
+		return uri
+	}
+
+	if strings.HasPrefix(u.Path, "/auth/confirm/") {
+		u.Path = "/auth/confirm/[REDACTED]"
+	}
+
+	q := u.Query()
+	if q.Has("token") {
+		q.Set("token", "[REDACTED]")
+	}
+	u.RawQuery = q.Encode()
+
+	return u.String()
 }
 
 func generateRequestID() string {

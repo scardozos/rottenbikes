@@ -3,6 +3,7 @@ package domain
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"database/sql"
 	_ "embed"
 	"encoding/hex"
@@ -70,6 +71,12 @@ func randomToken(nBytes int) (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(b), nil
+}
+
+func HashToken(token string) string {
+	h := sha256.New()
+	h.Write([]byte(token))
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 type Poster struct {
@@ -206,8 +213,9 @@ func (s *Store) issueMagicLink(ctx context.Context, tx *sql.Tx, posterID int64, 
 		return "", fmt.Errorf("generate magic token: %w", err)
 	}
 
+	hashedToken := HashToken(magicToken)
 	expires := now.Add(30 * time.Minute)
-	if _, err := tx.ExecContext(ctx, insertMagicLinkQuery, posterID, magicToken, expires); err != nil {
+	if _, err := tx.ExecContext(ctx, insertMagicLinkQuery, posterID, hashedToken, expires); err != nil {
 		return "", fmt.Errorf("insert magic link: %w", err)
 	}
 
@@ -233,7 +241,9 @@ func (s *Store) ConfirmMagicLink(ctx context.Context, token string) (*ConfirmRes
 	var expires time.Time
 	var consumed sql.NullTime
 
-	err = tx.QueryRowContext(ctx, getMagicLinkQuery, token).Scan(&posterID, &expires, &consumed)
+	hashedToken := HashToken(token)
+
+	err = tx.QueryRowContext(ctx, getMagicLinkQuery, hashedToken).Scan(&posterID, &expires, &consumed)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("invalid token")
@@ -284,7 +294,7 @@ func (s *Store) ConfirmMagicLink(ctx context.Context, token string) (*ConfirmRes
 
 	// Update magic_links table to store the api_token AND mark as consumed
 	// This makes it available for the polling endpoint.
-	if _, err := s.db.ExecContext(ctx, consumeMagicLinkQuery, apiToken, token); err != nil {
+	if _, err := s.db.ExecContext(ctx, consumeMagicLinkQuery, apiToken, hashedToken); err != nil {
 	}
 
 	return &ConfirmResult{

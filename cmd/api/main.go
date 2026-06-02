@@ -109,7 +109,14 @@ func main() {
 	}
 
 	// Log Startup Config
-	log.Info().Interface("config", cfg).Msg("starting service")
+	log.Info().
+		Str("api_port", cfg.APIPort).
+		Str("metrics_port", cfg.MetricsPort).
+		Str("email_sender_type", cfg.EmailSenderType).
+		Bool("mailtrap_token_set", cfg.MailtrapTokenSet).
+		Str("email_from_address", cfg.EmailFromAddress).
+		Str("email_from_name", cfg.EmailFromName).
+		Msg("starting service")
 
 	srv, err := httpserver.New(store, sender, ":"+port)
 	if err != nil {
