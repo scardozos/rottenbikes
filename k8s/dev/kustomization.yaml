@@ -46,6 +46,21 @@ patches:
     kind: Namespace
     metadata:
       name: rottenbikes
+- patch: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: api
+    spec:
+      template:
+        spec:
+          containers:
+            - name: api
+              envFrom:
+                - secretRef:
+                    name: rottenbikes-secrets-dev
+                - configMapRef:
+                    name: rottenbikes-config
 labels:
 - includeSelectors: true
   pairs:
