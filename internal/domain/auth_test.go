@@ -206,12 +206,12 @@ func TestConfirmMagicLink(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"api_token_expires_ts", "email"}).
 				AddRow(time.Now().Add(time.Hour), "test@example.com"))
 
-		mock.ExpectCommit()
-
 		// New: External update for polling
 		mock.ExpectExec("UPDATE magic_links").
 			WithArgs("api_token", HashToken(token)).
 			WillReturnResult(sqlmock.NewResult(1, 1))
+
+		mock.ExpectCommit()
 
 		store := NewStore(db)
 		res, err := store.ConfirmMagicLink(ctx, token)

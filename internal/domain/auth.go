@@ -288,13 +288,14 @@ func (s *Store) ConfirmMagicLink(ctx context.Context, token string) (*ConfirmRes
 		apiTokenExpires.Valid = true
 	}
 
-	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("commit tx: %w", err)
-	}
-
 	// Update magic_links table to store the api_token AND mark as consumed
 	// This makes it available for the polling endpoint.
-	if _, err := s.db.ExecContext(ctx, consumeMagicLinkQuery, apiToken, hashedToken); err != nil {
+	if _, err := tx.ExecContext(ctx, consumeMagicLinkQuery, apiToken, hashedToken); err != nil {
+		return nil, fmt.Errorf("consume magic link: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit tx: %w", err)
 	}
 
 	return &ConfirmResult{
