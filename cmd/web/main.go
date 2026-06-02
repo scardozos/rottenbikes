@@ -1,14 +1,22 @@
 package main
 
 import (
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 func main() {
+	// Configure zerolog
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	if os.Getenv("ENV") == "local" || os.Getenv("ENV") == "" {
+		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006-01-02T15:04:05Z07:00"})
+	}
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8081"
@@ -43,9 +51,9 @@ func main() {
 		http.ServeFile(w, r, fullPath)
 	})
 
-	log.Printf("Web UI server listening on :%s", port)
+	log.Info().Str("port", port).Msg("Web UI server listening")
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err).Msg("Web UI server failed to start")
 	}
 }
 

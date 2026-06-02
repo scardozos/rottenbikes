@@ -19,6 +19,8 @@ var (
 	updateBikeQuery string
 	//go:embed sql/delete_bike.sql
 	deleteBikeQuery string
+	//go:embed sql/count_reviews_by_bike.sql
+	countReviewsByBikeQuery string
 )
 
 type Bike struct {
@@ -32,12 +34,13 @@ type Bike struct {
 
 type BikeDetails struct {
 	Bike
-	Ratings []RatingAggregate   `json:"ratings"`
-	Reviews []ReviewWithRatings `json:"reviews"`
+	Ratings      []RatingAggregate   `json:"ratings"`
+	Reviews      []ReviewWithRatings `json:"reviews"`
+	TotalReviews int                 `json:"total_reviews"`
 }
 
-func (s *Store) ListBikes(ctx context.Context) ([]Bike, error) {
-	rows, err := s.db.QueryContext(ctx, listBikesQuery)
+func (s *Store) ListBikes(ctx context.Context, limit, offset int) ([]Bike, error) {
+	rows, err := s.db.QueryContext(ctx, listBikesQuery, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +89,7 @@ func (s *Store) GetBike(ctx context.Context, id string) (*Bike, error) {
 	return &b, nil
 }
 
-func (s *Store) GetBikeDetails(ctx context.Context, id string) (*BikeDetails, error) {
+func (s *Store) GetBikeDetails(ctx context.Context, id string, limit, offset int) (*BikeDetails, error) {
 	b, err := s.GetBike(ctx, id)
 	if err != nil {
 		return nil, err
@@ -97,15 +100,22 @@ func (s *Store) GetBikeDetails(ctx context.Context, id string) (*BikeDetails, er
 		return nil, fmt.Errorf("failed to fetch ratings: %w", err)
 	}
 
-	reviews, err := s.ListReviewsWithRatingsByBike(ctx, id)
+	reviews, err := s.ListReviewsWithRatingsByBike(ctx, id, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch reviews: %w", err)
 	}
 
+	var totalReviews int
+	err = s.db.QueryRowContext(ctx, countReviewsByBikeQuery, id).Scan(&totalReviews)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch total review count: %w", err)
+	}
+
 	return &BikeDetails{
-		Bike:    *b,
-		Ratings: ratings,
-		Reviews: reviews,
+		Bike:         *b,
+		Ratings:      ratings,
+		Reviews:      reviews,
+		TotalReviews: totalReviews,
 	}, nil
 }
 

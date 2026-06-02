@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/lib/pq"
@@ -20,10 +21,26 @@ func (s *HTTPServer) handleListBikes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	limitVal := -1
+	offsetVal := -1
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		if val, err := strconv.Atoi(limitStr); err == nil && val >= 0 {
+			limitVal = val
+			if limitVal > 100 {
+				limitVal = 100 // Cap to prevent abuse
+			}
+		}
+	}
+	if offsetStr := r.URL.Query().Get("offset"); offsetStr != "" {
+		if val, err := strconv.Atoi(offsetStr); err == nil && val >= 0 {
+			offsetVal = val
+		}
+	}
+
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
 
-	bikes, err := s.service.ListBikes(ctx)
+	bikes, err := s.service.ListBikes(ctx, limitVal, offsetVal)
 	if err != nil {
 		zerolog.Ctx(r.Context()).Error().Err(err).Msg("list bikes error")
 		s.sendError(w, "internal server error", http.StatusInternalServerError)
@@ -240,10 +257,26 @@ func (s *HTTPServer) handleGetBikeDetails(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	limitVal := -1
+	offsetVal := -1
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		if val, err := strconv.Atoi(limitStr); err == nil && val >= 0 {
+			limitVal = val
+			if limitVal > 100 {
+				limitVal = 100 // Cap to prevent abuse
+			}
+		}
+	}
+	if offsetStr := r.URL.Query().Get("offset"); offsetStr != "" {
+		if val, err := strconv.Atoi(offsetStr); err == nil && val >= 0 {
+			offsetVal = val
+		}
+	}
+
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
 
-	details, err := s.service.GetBikeDetails(ctx, bikeID)
+	details, err := s.service.GetBikeDetails(ctx, bikeID, limitVal, offsetVal)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			s.sendError(w, "bike not found", http.StatusNotFound)

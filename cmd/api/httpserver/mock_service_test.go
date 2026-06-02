@@ -13,14 +13,14 @@ type MockService struct {
 	GetPosterByAPITokenFunc          func(ctx context.Context, token string) (*domain.AuthPoster, error)
 	CheckMagicLinkStatusFunc         func(ctx context.Context, token string) (string, error)
 	DeletePosterFunc                 func(ctx context.Context, posterID int64, deleteContent bool) error
-	ListBikesFunc                    func(ctx context.Context) ([]domain.Bike, error)
+	ListBikesFunc                    func(ctx context.Context, limit, offset int) ([]domain.Bike, error)
 	CreateBikeFunc                   func(ctx context.Context, numericalID string, hashID *string, isElectric bool, creatorID int64) (*domain.Bike, error)
 	GetBikeFunc                      func(ctx context.Context, id string) (*domain.Bike, error)
-	GetBikeDetailsFunc               func(ctx context.Context, id string) (*domain.BikeDetails, error)
+	GetBikeDetailsFunc               func(ctx context.Context, id string, limit, offset int) (*domain.BikeDetails, error)
 	UpdateBikeFunc                   func(ctx context.Context, id string, hashID *string, isElectric *bool) error
 	DeleteBikeFunc                   func(ctx context.Context, id string) error
 	ListRatingAggregatesByBikeFunc   func(ctx context.Context, bikeID string) ([]domain.RatingAggregate, error)
-	ListReviewsWithRatingsByBikeFunc func(ctx context.Context, bikeID string) ([]domain.ReviewWithRatings, error)
+	ListReviewsWithRatingsByBikeFunc func(ctx context.Context, bikeID string, limit, offset int) ([]domain.ReviewWithRatings, error)
 	CreateReviewWithRatingsFunc      func(ctx context.Context, in domain.CreateReviewInput) (int64, error)
 	UpdateReviewWithRatingsFunc      func(ctx context.Context, in domain.UpdateReviewInput) error
 	GetReviewWithRatingsByIDFunc     func(ctx context.Context, reviewID int64) (*domain.ReviewWithRatings, error)
@@ -54,8 +54,8 @@ func (m *MockService) DeletePoster(ctx context.Context, posterID int64, deleteCo
 	return nil
 }
 
-func (m *MockService) ListBikes(ctx context.Context) ([]domain.Bike, error) {
-	return m.ListBikesFunc(ctx)
+func (m *MockService) ListBikes(ctx context.Context, limit, offset int) ([]domain.Bike, error) {
+	return m.ListBikesFunc(ctx, limit, offset)
 }
 
 func (m *MockService) CreateBike(ctx context.Context, numericalID string, hashID *string, isElectric bool, creatorID int64) (*domain.Bike, error) {
@@ -66,8 +66,8 @@ func (m *MockService) GetBike(ctx context.Context, id string) (*domain.Bike, err
 	return m.GetBikeFunc(ctx, id)
 }
 
-func (m *MockService) GetBikeDetails(ctx context.Context, id string) (*domain.BikeDetails, error) {
-	return m.GetBikeDetailsFunc(ctx, id)
+func (m *MockService) GetBikeDetails(ctx context.Context, id string, limit, offset int) (*domain.BikeDetails, error) {
+	return m.GetBikeDetailsFunc(ctx, id, limit, offset)
 }
 
 func (m *MockService) UpdateBike(ctx context.Context, id string, hashID *string, isElectric *bool) error {
@@ -82,8 +82,8 @@ func (m *MockService) ListRatingAggregatesByBike(ctx context.Context, bikeID str
 	return m.ListRatingAggregatesByBikeFunc(ctx, bikeID)
 }
 
-func (m *MockService) ListReviewsWithRatingsByBike(ctx context.Context, bikeID string) ([]domain.ReviewWithRatings, error) {
-	return m.ListReviewsWithRatingsByBikeFunc(ctx, bikeID)
+func (m *MockService) ListReviewsWithRatingsByBike(ctx context.Context, bikeID string, limit, offset int) ([]domain.ReviewWithRatings, error) {
+	return m.ListReviewsWithRatingsByBikeFunc(ctx, bikeID, limit, offset)
 }
 
 func (m *MockService) CreateReviewWithRatings(ctx context.Context, in domain.CreateReviewInput) (int64, error) {

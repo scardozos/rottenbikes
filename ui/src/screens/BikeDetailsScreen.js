@@ -1,7 +1,7 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useState, useCallback, useContext, useRef } from 'react';
 
-import { View, Text, StyleSheet, FlatList, Button, TouchableOpacity, Pressable, Animated, Dimensions, Easing } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Button, TouchableOpacity, Pressable, Animated, Dimensions, Easing, ActivityIndicator } from 'react-native';
 
 import api from '../services/api';
 import { AuthContext } from '../context/AuthContext';
@@ -53,6 +53,12 @@ const BikeDetailsScreen = ({ route, navigation }) => {
     const [sortBy, setSortBy] = useState('date'); // 'date' | 'rating'
     const [sortOrder, setSortOrder] = useState('desc'); // 'asc' | 'desc'
     const [timeWindow, setTimeWindow] = useState('2w'); // '1w', '2w', 'overall'
+
+    const REVIEWS_LIMIT = 5;
+    const [reviewsOffset, setReviewsOffset] = useState(0);
+    const [hasMoreReviews, setHasMoreReviews] = useState(true);
+    const [loadingMoreReviews, setLoadingMoreReviews] = useState(false);
+    const [totalReviews, setTotalReviews] = useState(0);
     const [isModalRendered, setIsModalRendered] = useState(false);
     const slideAnim = useRef(new Animated.Value(Dimensions.get('window').height)).current;
     const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -136,16 +142,23 @@ const BikeDetailsScreen = ({ route, navigation }) => {
 
     const fetchData = useCallback(async (currentId) => {
         setLoading(true);
+        setReviewsOffset(0);
+        setHasMoreReviews(true);
         try {
             // Ensure we use the ID from params if available, otherwise fallback to state
             const targetId = currentId || bike.numerical_id;
             console.log('[BikeDetails] Fetching details for:', targetId);
 
-            const res = await api.get(`/bikes/${targetId}/details`);
+            const res = await api.get(`/bikes/${targetId}/details?limit=${REVIEWS_LIMIT}&offset=0`);
             const details = res.data;
 
             setBike(prev => ({ ...prev, ...details }));
-            setReviews(details.reviews || []);
+            const initialReviews = details.reviews || [];
+            setReviews(initialReviews);
+            setReviewsOffset(initialReviews.length);
+            setHasMoreReviews(initialReviews.length === REVIEWS_LIMIT);
+            setTotalReviews(details.total_reviews || 0);
+
             const ratings = details.ratings || [];
             setAggregates(ratings);
 
@@ -161,6 +174,28 @@ const BikeDetailsScreen = ({ route, navigation }) => {
             setLoading(false);
         }
     }, [bike.numerical_id]);
+
+    const fetchMoreReviews = async () => {
+        if (loadingMoreReviews || !hasMoreReviews) return;
+        setLoadingMoreReviews(true);
+        try {
+            const targetId = bike.numerical_id;
+            console.log('[BikeDetails] Fetching more reviews. Offset:', reviewsOffset);
+            const res = await api.get(`/bikes/${targetId}/details?limit=${REVIEWS_LIMIT}&offset=${reviewsOffset}`);
+            const details = res.data;
+            const newReviews = details.reviews || [];
+
+            if (newReviews.length < REVIEWS_LIMIT) {
+                setHasMoreReviews(false);
+            }
+            setReviews(prev => [...prev, ...newReviews]);
+            setReviewsOffset(prev => prev + newReviews.length);
+        } catch (e) {
+            console.log("Failed to fetch more reviews", e);
+        } finally {
+            setLoadingMoreReviews(false);
+        }
+    };
 
     useFocusEffect(
         useCallback(() => {
@@ -336,10 +371,10 @@ const BikeDetailsScreen = ({ route, navigation }) => {
                     ListFooterComponent={
                         reviews.length === 0 ? (
                             <Text style={styles.emptyText}>{t('no_reviews')}</Text>
-                        ) : reviews.length > 3 ? (
+                        ) : (reviews.length > 3 || hasMoreReviews) ? (
                             <TouchableOpacity style={styles.seeAllButton} onPress={openModal}>
                                 <Text style={styles.seeAllText}>
-                                    {t('see_all_reviews', { count: reviews.length })}
+                                    {t('see_all_reviews', { count: totalReviews })}
                                 </Text>
                             </TouchableOpacity>
                         ) : null
@@ -421,6 +456,14 @@ const BikeDetailsScreen = ({ route, navigation }) => {
                             keyExtractor={item => item.review_id ? 'modal-' + item.review_id.toString() : Math.random().toString()}
                             renderItem={(props) => renderReviewItem(props, 'modal')}
                             contentContainerStyle={{ paddingBottom: 40 }}
+                            onEndReached={fetchMoreReviews}
+                            onEndReachedThreshold={0.5}
+                            ListFooterComponent={() => {
+                                if (loadingMoreReviews) {
+                                    return <ActivityIndicator size="small" color={theme.colors.primary} style={{ marginVertical: 15 }} />;
+                                }
+                                return null;
+                            }}
                         />
                     </Animated.View>
                 </View>

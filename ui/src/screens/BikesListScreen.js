@@ -11,24 +11,52 @@ const BikesListScreen = ({ navigation }) => {
     const [filteredBikes, setFilteredBikes] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [hasMore, setHasMore] = useState(true);
     const { theme } = useContext(ThemeContext);
     const { t } = useContext(LanguageContext);
 
-    const fetchBikes = async () => {
+    const fetchBikes = async (isRefresh = false) => {
+        if (loadingMore && !isRefresh) return;
+        const nextOffset = isRefresh ? 0 : bikes.length;
+        if (!isRefresh && !hasMore) return;
+
+        if (isRefresh) {
+            setLoading(true);
+        } else {
+            setLoadingMore(true);
+        }
+
         try {
-            const bikesRes = await api.get('/bikes');
-            setBikes(bikesRes.data || []);
-            setFilteredBikes(bikesRes.data || []);
+            const limit = 20;
+            const bikesRes = await api.get(`/bikes?limit=${limit}&offset=${nextOffset}`);
+            const data = bikesRes.data || [];
+
+            if (data.length < limit) {
+                setHasMore(false);
+            } else {
+                setHasMore(true);
+            }
+
+            if (isRefresh) {
+                setBikes(data);
+                setFilteredBikes(data);
+            } else {
+                const combined = [...bikes, ...data];
+                setBikes(combined);
+                setFilteredBikes(combined);
+            }
         } catch (e) {
             console.error('Fetch bikes error:', e);
         } finally {
             setLoading(false);
+            setLoadingMore(false);
         }
     };
 
     useFocusEffect(
         useCallback(() => {
-            fetchBikes();
+            fetchBikes(true);
         }, [])
     );
 
@@ -94,11 +122,25 @@ const BikesListScreen = ({ navigation }) => {
                 />
             </View>
 
-            {loading ? <ActivityIndicator size="large" color={theme.colors.primary} /> : (
+            {loading && bikes.length === 0 ? <ActivityIndicator size="large" color={theme.colors.primary} style={{ marginTop: 20 }} /> : (
                 <FlatList
                     data={filteredBikes}
                     keyExtractor={item => item.numerical_id.toString()}
                     renderItem={renderItem}
+                    onEndReached={() => {
+                        if (!searchQuery) {
+                            fetchBikes(false);
+                        }
+                    }}
+                    onEndReachedThreshold={0.5}
+                    onRefresh={() => fetchBikes(true)}
+                    refreshing={loading}
+                    ListFooterComponent={() => {
+                        if (loadingMore) {
+                            return <ActivityIndicator size="small" color={theme.colors.primary} style={{ marginVertical: 15 }} />;
+                        }
+                        return null;
+                    }}
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
                             <Text style={styles.emptyText}>

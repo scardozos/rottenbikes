@@ -9,8 +9,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"net/mail"
-	"regexp"
 	"strings"
 	"time"
 )
@@ -134,18 +132,6 @@ func (s *Store) CreateMagicLink(ctx context.Context, identifier string) (magicTo
 }
 
 func (s *Store) Register(ctx context.Context, username, email string) (string, error) {
-	// Validate email format
-	_, err := mail.ParseAddress(email)
-	if err != nil {
-		return "", fmt.Errorf("invalid email format")
-	}
-
-	// Validate username format (alphanumeric and dots only)
-	validUsername := regexp.MustCompile(`^[a-zA-Z0-9.]+$`)
-	if !validUsername.MatchString(username) {
-		return "", fmt.Errorf("username can only contain letters, numbers and dots")
-	}
-
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return "", fmt.Errorf("begin tx: %w", err)
@@ -288,13 +274,14 @@ func (s *Store) ConfirmMagicLink(ctx context.Context, token string) (*ConfirmRes
 		apiTokenExpires.Valid = true
 	}
 
-	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("commit tx: %w", err)
-	}
-
 	// Update magic_links table to store the api_token AND mark as consumed
 	// This makes it available for the polling endpoint.
-	if _, err := s.db.ExecContext(ctx, consumeMagicLinkQuery, apiToken, hashedToken); err != nil {
+	if _, err := tx.ExecContext(ctx, consumeMagicLinkQuery, apiToken, hashedToken); err != nil {
+		return nil, fmt.Errorf("consume magic link: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit tx: %w", err)
 	}
 
 	return &ConfirmResult{

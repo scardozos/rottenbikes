@@ -10,6 +10,10 @@ func TestSanitizePath(t *testing.T) {
 		expected string
 	}{
 		{"/bikes", "/bikes"},
+		{"/bikes/1001", "/bikes/{id}"},
+		{"/bikes/1001/details", "/bikes/{id}/details"},
+		{"/bikes/1001/reviews", "/bikes/{id}/reviews"},
+		{"/reviews/7", "/reviews/{id}"},
 		{"/auth/confirm/123456", "/auth/confirm/[REDACTED]"},
 		{"/auth/confirm/", "/auth/confirm/[REDACTED]"},
 	}

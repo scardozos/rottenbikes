@@ -24,10 +24,11 @@ func TestListBikes(t *testing.T) {
 			AddRow("02", "hash2", false, time.Now(), time.Now(), nil)
 
 		mock.ExpectQuery("SELECT b.numerical_id, b.hash_id, b.is_electric, b.created_ts, b.updated_ts, ra.average_rating FROM bikes b LEFT JOIN rating_aggregates ra ON b.numerical_id = ra.bike_numerical_id AND ra.subcategory = 'overall' ORDER BY b.numerical_id").
+			WithArgs(-1, -1).
 			WillReturnRows(rows)
 
-		store := NewStore(db)
-		bikes, err := store.ListBikes(ctx)
+		store := NewService(NewStore(db))
+		bikes, err := store.ListBikes(ctx, -1, -1)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
@@ -46,7 +47,7 @@ func TestCreateBike(t *testing.T) {
 
 	ctx := context.Background()
 	numericalID := "0123"
-	hashID := "hash_123"
+	hashID := "hash123"
 	isElectric := true
 	creatorID := int64(1)
 
@@ -58,7 +59,7 @@ func TestCreateBike(t *testing.T) {
 			WithArgs(numericalID, &hashID, isElectric, creatorID).
 			WillReturnRows(rows)
 
-		store := NewStore(db)
+		store := NewService(NewStore(db))
 		bike, err := store.CreateBike(ctx, numericalID, &hashID, isElectric, creatorID)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
@@ -87,7 +88,7 @@ func TestGetBike(t *testing.T) {
 			WithArgs(id).
 			WillReturnRows(rows)
 
-		store := NewStore(db)
+		store := NewService(NewStore(db))
 		bike, err := store.GetBike(ctx, id)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
@@ -102,7 +103,7 @@ func TestGetBike(t *testing.T) {
 			WithArgs(id).
 			WillReturnError(sql.ErrNoRows)
 
-		store := NewStore(db)
+		store := NewService(NewStore(db))
 		_, err := store.GetBike(ctx, id)
 		if err != sql.ErrNoRows {
 			t.Errorf("expected sql.ErrNoRows, got %v", err)
@@ -119,7 +120,7 @@ func TestUpdateBike(t *testing.T) {
 
 	ctx := context.Background()
 	id := "01"
-	hashID := "new_hash"
+	hashID := "newhash"
 	isElectric := false
 
 	t.Run("success", func(t *testing.T) {
@@ -127,7 +128,7 @@ func TestUpdateBike(t *testing.T) {
 			WithArgs(&hashID, &isElectric, id).
 			WillReturnResult(sqlmock.NewResult(0, 1))
 
-		store := NewStore(db)
+		store := NewService(NewStore(db))
 		err := store.UpdateBike(ctx, id, &hashID, &isElectric)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
@@ -150,7 +151,7 @@ func TestDeleteBike(t *testing.T) {
 			WithArgs(id).
 			WillReturnResult(sqlmock.NewResult(0, 1))
 
-		store := NewStore(db)
+		store := NewService(NewStore(db))
 		err := store.DeleteBike(ctx, id)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)

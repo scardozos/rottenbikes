@@ -64,7 +64,7 @@ func TestCreateReviewWithRatings(t *testing.T) {
 
 		mock.ExpectCommit()
 
-		store := NewStore(db)
+		store := NewService(NewStore(db))
 		id, err := store.CreateReviewWithRatings(ctx, in)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
@@ -80,7 +80,7 @@ func TestCreateReviewWithRatings(t *testing.T) {
 			WithArgs(posterID).
 			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(5))
 
-		store := NewStore(db)
+		store := NewService(NewStore(db))
 		_, err := store.CreateReviewWithRatings(ctx, in)
 		if err != ErrHourlyRateLimitExceeded {
 			t.Errorf("expected error %v, got %v", ErrHourlyRateLimitExceeded, err)
@@ -98,7 +98,7 @@ func TestCreateReviewWithRatings(t *testing.T) {
 			WithArgs(posterID, bikeID).
 			WillReturnRows(sqlmock.NewRows([]string{"created_ts"}).AddRow(time.Now()))
 
-		store := NewStore(db)
+		store := NewService(NewStore(db))
 		_, err := store.CreateReviewWithRatings(ctx, in)
 		if err != ErrTooFrequentReview {
 			t.Errorf("expected error %v, got %v", ErrTooFrequentReview, err)
@@ -106,34 +106,16 @@ func TestCreateReviewWithRatings(t *testing.T) {
 	})
 
 	t.Run("invalid_rating", func(t *testing.T) {
-		// Hourly limit is fine
-		mock.ExpectQuery("SELECT COUNT\\(\\*\\) FROM reviews").
-			WithArgs(posterID).
-			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
-
-		// Last review was long ago
-		mock.ExpectQuery("SELECT created_ts FROM reviews").
-			WithArgs(posterID, bikeID).
-			WillReturnRows(sqlmock.NewRows([]string{"created_ts"}).AddRow(time.Now().Add(-24 * time.Hour)))
-
-		mock.ExpectBegin()
-
-		// Insert review
-		mock.ExpectQuery("INSERT INTO reviews").
-			WithArgs(posterID, bikeID, bikeImg, comment).
-			WillReturnRows(sqlmock.NewRows([]string{"review_id"}).AddRow(1))
-
 		// Invalid score
 		invalidScore := int16(6)
 		inInvalid := in
 		inInvalid.Overall = &invalidScore
 
-		store := NewStore(db)
+		store := NewService(NewStore(db))
 		_, err := store.CreateReviewWithRatings(ctx, inInvalid)
 		if err == nil {
 			t.Error("expected error for invalid rating, got nil")
 		}
-		// Expect rollback implicitly on error
 	})
 
 }
@@ -187,7 +169,7 @@ func TestUpdateReviewWithRatings(t *testing.T) {
 
 		mock.ExpectCommit()
 
-		store := NewStore(db)
+		store := NewService(NewStore(db))
 		err := store.UpdateReviewWithRatings(ctx, in)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
@@ -201,7 +183,7 @@ func TestUpdateReviewWithRatings(t *testing.T) {
 			WillReturnError(sql.ErrNoRows)
 		mock.ExpectRollback()
 
-		store := NewStore(db)
+		store := NewService(NewStore(db))
 		err := store.UpdateReviewWithRatings(ctx, in)
 		if err != sql.ErrNoRows {
 			t.Errorf("expected error %v, got %v", sql.ErrNoRows, err)
@@ -250,7 +232,7 @@ func TestDeleteReview(t *testing.T) {
 
 		mock.ExpectCommit()
 
-		store := NewStore(db)
+		store := NewService(NewStore(db))
 		err := store.DeleteReview(ctx, reviewID, posterID)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
@@ -264,7 +246,7 @@ func TestDeleteReview(t *testing.T) {
 			WillReturnError(sql.ErrNoRows)
 		mock.ExpectRollback()
 
-		store := NewStore(db)
+		store := NewService(NewStore(db))
 		err := store.DeleteReview(ctx, reviewID, posterID)
 		if err != sql.ErrNoRows {
 			t.Errorf("expected error %v, got %v", sql.ErrNoRows, err)
@@ -293,7 +275,7 @@ func TestGetReviewWithRatingsByID(t *testing.T) {
 			WithArgs(reviewID).
 			WillReturnRows(rows)
 
-		store := NewStore(db)
+		store := NewService(NewStore(db))
 		review, err := store.GetReviewWithRatingsByID(ctx, reviewID)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
@@ -309,10 +291,43 @@ func TestGetReviewWithRatingsByID(t *testing.T) {
 			WithArgs(reviewID).
 			WillReturnError(sql.ErrNoRows)
 
-		store := NewStore(db)
+		store := NewService(NewStore(db))
 		_, err := store.GetReviewWithRatingsByID(ctx, reviewID)
 		if err != sql.ErrNoRows {
 			t.Errorf("expected error %v, got %v", sql.ErrNoRows, err)
+		}
+	})
+}
+
+func TestListReviewsWithRatingsByBike(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer db.Close()
+
+	ctx := context.Background()
+	bikeID := "0101"
+
+	t.Run("success", func(t *testing.T) {
+		rows := sqlmock.NewRows([]string{
+			"review_id", "poster_id", "username", "bike_numerical_id", "comment", "created_ts", "subcategory", "score", "bike_img",
+		}).
+			AddRow(int64(1), 1, "user1", bikeID, "comment", time.Now(), "overall", 5, "img.jpg")
+
+		// Matching query regex
+		mock.ExpectQuery("WITH paginated_reviews AS").
+			WithArgs(bikeID, 10, 5).
+			WillReturnRows(rows)
+
+		store := NewService(NewStore(db))
+		reviews, err := store.ListReviewsWithRatingsByBike(ctx, bikeID, 10, 5)
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+			return
+		}
+		if len(reviews) != 1 {
+			t.Errorf("expected 1 review, got %d", len(reviews))
 		}
 	})
 }

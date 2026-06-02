@@ -52,7 +52,7 @@ func TestCreateMagicLink(t *testing.T) {
 
 		mock.ExpectCommit()
 
-		store := NewStore(db)
+		store := NewService(NewStore(db))
 		token, _, err := store.CreateMagicLink(ctx, email)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
@@ -73,7 +73,7 @@ func TestCreateMagicLink(t *testing.T) {
 			WillReturnError(sql.ErrNoRows)
 		mock.ExpectRollback()
 
-		store := NewStore(db)
+		store := NewService(NewStore(db))
 		_, _, err := store.CreateMagicLink(ctx, email)
 		if err == nil {
 			t.Error("expected error user not found")
@@ -93,7 +93,7 @@ func TestCreateMagicLink(t *testing.T) {
 
 		mock.ExpectRollback()
 
-		store := NewStore(db)
+		store := NewService(NewStore(db))
 		_, _, err := store.CreateMagicLink(ctx, email)
 		if err == nil || !errors.Is(err, ErrRateLimitExceeded) {
 			t.Errorf("expected ErrRateLimitExceeded, got %v", err)
@@ -132,7 +132,7 @@ func TestRegister(t *testing.T) {
 
 		mock.ExpectCommit()
 
-		store := NewStore(db)
+		store := NewService(NewStore(db))
 		token, err := store.Register(ctx, username, email)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
@@ -150,7 +150,7 @@ func TestRegister(t *testing.T) {
 		username := "testuser"
 		email := "invalid-email" // Missing @ and domain
 
-		store := NewStore(db)
+		store := NewService(NewStore(db))
 		_, err := store.Register(ctx, username, email)
 		if err == nil {
 			t.Error("expected error for invalid email, got nil")
@@ -164,7 +164,7 @@ func TestRegister(t *testing.T) {
 		username := "test@user" // Contains special character
 		email := "test@example.com"
 
-		store := NewStore(db)
+		store := NewService(NewStore(db))
 		_, err := store.Register(ctx, username, email)
 		if err == nil {
 			t.Error("expected error for invalid username, got nil")
@@ -206,14 +206,14 @@ func TestConfirmMagicLink(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"api_token_expires_ts", "email"}).
 				AddRow(time.Now().Add(time.Hour), "test@example.com"))
 
-		mock.ExpectCommit()
-
 		// New: External update for polling
 		mock.ExpectExec("UPDATE magic_links").
 			WithArgs("api_token", HashToken(token)).
 			WillReturnResult(sqlmock.NewResult(1, 1))
 
-		store := NewStore(db)
+		mock.ExpectCommit()
+
+		store := NewService(NewStore(db))
 		res, err := store.ConfirmMagicLink(ctx, token)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
@@ -234,7 +234,7 @@ func TestConfirmMagicLink(t *testing.T) {
 			WillReturnError(sql.ErrNoRows)
 		mock.ExpectRollback()
 
-		store := NewStore(db)
+		store := NewService(NewStore(db))
 		_, err := store.ConfirmMagicLink(ctx, token)
 		if err == nil {
 			t.Error("expected error")
@@ -258,7 +258,7 @@ func TestGetPosterByAPIToken(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"poster_id", "email", "username", "api_token_expires_ts", "email_verified"}).
 				AddRow(1, "test@example.com", "testuser", time.Now().Add(time.Hour), true))
 
-		store := NewStore(db)
+		store := NewService(NewStore(db))
 		poster, err := store.GetPosterByAPIToken(ctx, token)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
@@ -277,7 +277,7 @@ func TestGetPosterByAPIToken(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"poster_id", "email", "username", "api_token_expires_ts", "email_verified"}).
 				AddRow(1, "test@example.com", "testuser", time.Now().Add(-time.Hour), true))
 
-		store := NewStore(db)
+		store := NewService(NewStore(db))
 		_, err := store.GetPosterByAPIToken(ctx, token)
 		if err == nil {
 			t.Error("expected error for expired token")
@@ -290,7 +290,7 @@ func TestGetPosterByAPIToken(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"poster_id", "email", "username", "api_token_expires_ts", "email_verified"}).
 				AddRow(1, "test@example.com", "testuser", time.Now().Add(time.Hour), false))
 
-		store := NewStore(db)
+		store := NewService(NewStore(db))
 		_, err := store.GetPosterByAPIToken(ctx, token)
 		if err == nil {
 			t.Error("expected error for unverified email")
@@ -359,7 +359,7 @@ func TestDeletePoster(t *testing.T) {
 
 		mock.ExpectCommit()
 
-		store := NewStore(db)
+		store := NewService(NewStore(db))
 		// deleteContent = true
 		err := store.DeletePoster(ctx, posterID, true)
 		if err != nil {
@@ -396,7 +396,7 @@ func TestDeletePoster(t *testing.T) {
 
 		mock.ExpectCommit()
 
-		store := NewStore(db)
+		store := NewService(NewStore(db))
 		// deleteContent = false
 		err := store.DeletePoster(ctx, posterID, false)
 		if err != nil {

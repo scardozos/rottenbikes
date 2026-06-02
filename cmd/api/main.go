@@ -85,11 +85,17 @@ func main() {
 	}
 	defer db.Close()
 
+	// Tune connection pool settings to prevent exhaustion/leak under load
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(25)
+	db.SetConnMaxLifetime(5 * time.Minute)
+
 	if err := db.Ping(); err != nil {
 		log.Fatal().Err(err).Msg("failed to ping db")
 	}
 
 	store := domain.NewStore(db)
+	svc := domain.NewService(store)
 	port := cfg.APIPort
 
 	// Initialize Email Sender
@@ -118,7 +124,7 @@ func main() {
 		Str("email_from_name", cfg.EmailFromName).
 		Msg("starting service")
 
-	srv, err := httpserver.New(store, sender, ":"+port)
+	srv, err := httpserver.New(svc, sender, ":"+port)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to create server")
 	}
