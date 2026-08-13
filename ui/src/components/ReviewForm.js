@@ -31,6 +31,7 @@ export const ReviewForm = ({
     overall,
     comment, setComment,
     onSubmit,
+    onDelete,
     loading,
     submitButtonText,
     t, theme
@@ -90,6 +91,11 @@ export const ReviewForm = ({
                 </View>
 
                 <Button title={submitButtonText} onPress={onSubmit} disabled={loading} color={theme.colors.primary} />
+                {onDelete && (
+                    <View style={{ marginTop: 10 }}>
+                        <Button title={t('delete')} onPress={onDelete} disabled={loading} color="red" />
+                    </View>
+                )}
 
                 {/* Info Modal */}
                 <Modal

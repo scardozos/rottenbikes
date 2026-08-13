@@ -13,7 +13,7 @@ type MockService struct {
 	GetPosterByAPITokenFunc          func(ctx context.Context, token string) (*domain.AuthPoster, error)
 	CheckMagicLinkStatusFunc         func(ctx context.Context, token string) (string, error)
 	DeletePosterFunc                 func(ctx context.Context, posterID int64, deleteContent bool) error
-	ListBikesFunc                    func(ctx context.Context, limit, offset int) ([]domain.Bike, error)
+	ListBikesFunc                    func(ctx context.Context, searchQuery, sortBy string, limit, offset int) ([]domain.Bike, error)
 	CreateBikeFunc                   func(ctx context.Context, numericalID string, hashID *string, isElectric bool, creatorID int64) (*domain.Bike, error)
 	GetBikeFunc                      func(ctx context.Context, id string) (*domain.Bike, error)
 	GetBikeDetailsFunc               func(ctx context.Context, id string, limit, offset int) (*domain.BikeDetails, error)
@@ -25,6 +25,7 @@ type MockService struct {
 	UpdateReviewWithRatingsFunc      func(ctx context.Context, in domain.UpdateReviewInput) error
 	GetReviewWithRatingsByIDFunc     func(ctx context.Context, reviewID int64) (*domain.ReviewWithRatings, error)
 	DeleteReviewFunc                 func(ctx context.Context, reviewID int64, posterID int64) error
+	ListReviewsWithRatingsByUserFunc func(ctx context.Context, posterID int64, limit, offset int) ([]domain.ReviewWithRatings, error)
 }
 
 func (m *MockService) Register(ctx context.Context, username, email string) (string, string, error) {
@@ -54,8 +55,11 @@ func (m *MockService) DeletePoster(ctx context.Context, posterID int64, deleteCo
 	return nil
 }
 
-func (m *MockService) ListBikes(ctx context.Context, limit, offset int) ([]domain.Bike, error) {
-	return m.ListBikesFunc(ctx, limit, offset)
+func (m *MockService) ListBikes(ctx context.Context, searchQuery, sortBy string, limit, offset int) ([]domain.Bike, error) {
+	if m.ListBikesFunc != nil {
+		return m.ListBikesFunc(ctx, searchQuery, sortBy, limit, offset)
+	}
+	return nil, nil
 }
 
 func (m *MockService) CreateBike(ctx context.Context, numericalID string, hashID *string, isElectric bool, creatorID int64) (*domain.Bike, error) {
@@ -83,7 +87,17 @@ func (m *MockService) ListRatingAggregatesByBike(ctx context.Context, bikeID str
 }
 
 func (m *MockService) ListReviewsWithRatingsByBike(ctx context.Context, bikeID string, limit, offset int) ([]domain.ReviewWithRatings, error) {
-	return m.ListReviewsWithRatingsByBikeFunc(ctx, bikeID, limit, offset)
+	if m.ListReviewsWithRatingsByBikeFunc != nil {
+		return m.ListReviewsWithRatingsByBikeFunc(ctx, bikeID, limit, offset)
+	}
+	return nil, nil
+}
+
+func (m *MockService) ListReviewsWithRatingsByUser(ctx context.Context, posterID int64, limit, offset int) ([]domain.ReviewWithRatings, error) {
+	if m.ListReviewsWithRatingsByUserFunc != nil {
+		return m.ListReviewsWithRatingsByUserFunc(ctx, posterID, limit, offset)
+	}
+	return nil, nil
 }
 
 func (m *MockService) CreateReviewWithRatings(ctx context.Context, in domain.CreateReviewInput) (int64, error) {

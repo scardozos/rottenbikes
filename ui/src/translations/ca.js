@@ -12,6 +12,8 @@ export default {
     login: 'Iniciar Sessió',
     register: 'Registrar-se',
     logout: 'Tancar Sessió',
+    logout_confirm_title: 'Confirmar Tancament de Sessió',
+    logout_confirm_desc: 'Estàs segur que vols tancar la sessió?',
     email_or_username: 'Correu o Nom d\'usuari',
     get_magic_link: 'Obtenir Enllaç Màgic',
     complete_challenge_login: 'Completa el repte per iniciar sessió',
@@ -68,9 +70,12 @@ export default {
     sort_asc: 'Ascendent',
     sort_desc: 'Descendent',
 
-
-
-
+    sort_most_reviewed: 'Més valorades',
+    sort_recent: 'Recents',
+    my_reviews: 'Les Meves Ressenyes',
+    trend_stable: 'Estable',
+    trend_improving: 'Millorant',
+    trend_degrading: 'Degradant',
 
 
     // Settings

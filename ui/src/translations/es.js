@@ -12,6 +12,8 @@ export default {
     login: 'Iniciar Sesión',
     register: 'Registrarse',
     logout: 'Cerrar Sesión',
+    logout_confirm_title: 'Confirmar Cierre de Sesión',
+    logout_confirm_desc: '¿Estás seguro de que quieres cerrar sesión?',
     email_or_username: 'Correo o Nombre de usuario',
     get_magic_link: 'Obtener Enlace Mágico',
     complete_challenge_login: 'Completa el reto para iniciar sesión',
@@ -68,9 +70,12 @@ export default {
     sort_asc: 'Ascendente',
     sort_desc: 'Descendente',
 
-
-
-
+    sort_most_reviewed: 'Más valoradas',
+    sort_recent: 'Recientes',
+    my_reviews: 'Mis Reseñas',
+    trend_stable: 'Estable',
+    trend_improving: 'Mejorando',
+    trend_degrading: 'Degradando',
 
 
     // Settings

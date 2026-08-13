@@ -12,6 +12,8 @@ export default {
     login: 'Login',
     register: 'Register',
     logout: 'Logout',
+    logout_confirm_title: 'Confirm Logout',
+    logout_confirm_desc: 'Are you sure you want to log out?',
     email_or_username: 'Email or Username',
     get_magic_link: 'Get Magic Link',
     complete_challenge_login: 'Complete the challenge to login',
@@ -68,9 +70,12 @@ export default {
     sort_asc: 'Ascending',
     sort_desc: 'Descending',
 
-
-
-
+    sort_most_reviewed: 'Most Reviewed',
+    sort_recent: 'Recent',
+    my_reviews: 'My Reviews',
+    trend_stable: 'Stable',
+    trend_improving: 'Improving',
+    trend_degrading: 'Degrading',
 
 
     // Settings

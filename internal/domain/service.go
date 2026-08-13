@@ -18,7 +18,7 @@ type Service interface {
 	DeletePoster(ctx context.Context, posterID int64, deleteContent bool) error
 
 	// Bike
-	ListBikes(ctx context.Context, limit, offset int) ([]Bike, error)
+	ListBikes(ctx context.Context, searchQuery, sortBy string, limit, offset int) ([]Bike, error)
 	CreateBike(ctx context.Context, numericalID string, hashID *string, isElectric bool, creatorID int64) (*Bike, error)
 	GetBike(ctx context.Context, id string) (*Bike, error)
 	GetBikeDetails(ctx context.Context, id string, limit, offset int) (*BikeDetails, error)
@@ -30,6 +30,7 @@ type Service interface {
 
 	// Review
 	ListReviewsWithRatingsByBike(ctx context.Context, bikeID string, limit, offset int) ([]ReviewWithRatings, error)
+	ListReviewsWithRatingsByUser(ctx context.Context, posterID int64, limit, offset int) ([]ReviewWithRatings, error)
 	CreateReviewWithRatings(ctx context.Context, in CreateReviewInput) (int64, error)
 	UpdateReviewWithRatings(ctx context.Context, in UpdateReviewInput) error
 	GetReviewWithRatingsByID(ctx context.Context, reviewID int64) (*ReviewWithRatings, error)
@@ -92,8 +93,8 @@ func (s *service) DeletePoster(ctx context.Context, posterID int64, deleteConten
 
 // Bike
 
-func (s *service) ListBikes(ctx context.Context, limit, offset int) ([]Bike, error) {
-	return s.store.ListBikes(ctx, limit, offset)
+func (s *service) ListBikes(ctx context.Context, searchQuery, sortBy string, limit, offset int) ([]Bike, error) {
+	return s.store.ListBikes(ctx, searchQuery, sortBy, limit, offset)
 }
 
 func (s *service) CreateBike(ctx context.Context, numericalID string, hashID *string, isElectric bool, creatorID int64) (*Bike, error) {
@@ -154,6 +155,10 @@ func (s *service) ListRatingAggregatesByBike(ctx context.Context, bikeID string)
 
 func (s *service) ListReviewsWithRatingsByBike(ctx context.Context, bikeID string, limit, offset int) ([]ReviewWithRatings, error) {
 	return s.store.ListReviewsWithRatingsByBike(ctx, bikeID, limit, offset)
+}
+
+func (s *service) ListReviewsWithRatingsByUser(ctx context.Context, posterID int64, limit, offset int) ([]ReviewWithRatings, error) {
+	return s.store.ListReviewsWithRatingsByUser(ctx, posterID, limit, offset)
 }
 
 func (s *service) CreateReviewWithRatings(ctx context.Context, in CreateReviewInput) (int64, error) {

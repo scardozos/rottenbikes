@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -62,10 +63,12 @@ func (s *HTTPServer) handleCreateBikeReview(w http.ResponseWriter, r *http.Reque
 	})
 	if err != nil {
 		if errors.Is(err, domain.ErrTooFrequentReview) {
+			w.Header().Set("Retry-After", "600")
 			s.sendError(w, "you can only review this bike every 10 minutes", http.StatusTooManyRequests)
 			return
 		}
 		if errors.Is(err, domain.ErrHourlyRateLimitExceeded) {
+			w.Header().Set("Retry-After", "3600")
 			s.sendError(w, "you have reached the hourly limit of 5 reviews", http.StatusTooManyRequests)
 			return
 		}
@@ -190,4 +193,48 @@ func (s *HTTPServer) handleDeleteReview(w http.ResponseWriter, r *http.Request, 
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// GET /users/me/reviews
+func (s *HTTPServer) handleListMyReviews(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	posterID, ok := posterIDFromContext(r.Context())
+	if !ok {
+		w.WriteHeader(http.StatusUnauthorized)
+		_, _ = w.Write([]byte("unauthorized"))
+		return
+	}
+
+	// Parse pagination
+	limit := 20
+	offset := 0
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 {
+			limit = parsed
+		}
+	}
+	if o := r.URL.Query().Get("offset"); o != "" {
+		if parsed, err := strconv.Atoi(o); err == nil && parsed >= 0 {
+			offset = parsed
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	reviews, err := s.service.ListReviewsWithRatingsByUser(ctx, posterID, limit, offset)
+	if err != nil {
+		zerolog.Ctx(r.Context()).Error().Err(err).Int64("poster_id", posterID).Msg("list user reviews error")
+		s.sendError(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(reviews); err != nil {
+		zerolog.Ctx(r.Context()).Error().Err(err).Msg("encode user reviews error")
+	}
 }

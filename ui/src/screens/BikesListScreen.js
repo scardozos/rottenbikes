@@ -5,11 +5,13 @@ import api from '../services/api';
 import { AuthContext } from '../context/AuthContext';
 import { ThemeContext } from '../context/ThemeContext';
 import { LanguageContext } from '../context/LanguageContext';
+import SortDropdown from '../components/SortDropdown';
 
 const BikesListScreen = ({ navigation }) => {
     const [bikes, setBikes] = useState([]);
-    const [filteredBikes, setFilteredBikes] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
+    const [serverSearchQuery, setServerSearchQuery] = useState('');
+    const [sortOption, setSortOption] = useState('recent');
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [hasMore, setHasMore] = useState(true);
@@ -29,7 +31,7 @@ const BikesListScreen = ({ navigation }) => {
 
         try {
             const limit = 20;
-            const bikesRes = await api.get(`/bikes?limit=${limit}&offset=${nextOffset}`);
+            const bikesRes = await api.get(`/bikes?limit=${limit}&offset=${nextOffset}&q=${encodeURIComponent(serverSearchQuery)}&sort=${sortOption}`);
             const data = bikesRes.data || [];
 
             if (data.length < limit) {
@@ -40,15 +42,8 @@ const BikesListScreen = ({ navigation }) => {
 
             if (isRefresh) {
                 setBikes(data);
-                setFilteredBikes(data);
             } else {
                 setBikes(prev => {
-                    // Prevent duplicates in case of race condition
-                    const combined = [...prev, ...data];
-                    const unique = combined.filter((v, i, a) => a.findIndex(t => (t.numerical_id === v.numerical_id)) === i);
-                    return unique;
-                });
-                setFilteredBikes(prev => {
                     const combined = [...prev, ...data];
                     const unique = combined.filter((v, i, a) => a.findIndex(t => (t.numerical_id === v.numerical_id)) === i);
                     return unique;
@@ -65,21 +60,16 @@ const BikesListScreen = ({ navigation }) => {
     useFocusEffect(
         useCallback(() => {
             fetchBikes(true);
-        }, [])
+        }, [serverSearchQuery, sortOption])
     );
 
+    // Debounce search query before sending to server
     useEffect(() => {
-        if (!searchQuery) {
-            setFilteredBikes(bikes);
-        } else {
-            const query = searchQuery.toLowerCase();
-            const filtered = bikes.filter(bike =>
-                bike.numerical_id.toString().includes(query) ||
-                (bike.hash_id && bike.hash_id.toLowerCase().includes(query))
-            );
-            setFilteredBikes(filtered);
-        }
-    }, [searchQuery, bikes]);
+        const timeoutId = setTimeout(() => {
+            setServerSearchQuery(searchQuery);
+        }, 500);
+        return () => clearTimeout(timeoutId);
+    }, [searchQuery]);
 
     const styles = createStyles(theme);
 
@@ -130,15 +120,15 @@ const BikesListScreen = ({ navigation }) => {
                 />
             </View>
 
+            <SortDropdown selectedSort={sortOption} onSortChange={setSortOption} />
+
             {loading && bikes.length === 0 ? <ActivityIndicator size="large" color={theme.colors.primary} style={{ marginTop: 20 }} /> : (
                 <FlatList
-                    data={filteredBikes}
+                    data={bikes}
                     keyExtractor={item => item.numerical_id.toString()}
                     renderItem={renderItem}
                     onEndReached={() => {
-                        if (!searchQuery) {
-                            fetchBikes(false);
-                        }
+                        fetchBikes(false);
                     }}
                     onEndReachedThreshold={0.5}
                     onRefresh={() => fetchBikes(true)}

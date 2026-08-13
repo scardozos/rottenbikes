@@ -10,26 +10,8 @@ import { useSession } from '../context/SessionContext';
 import { LanguageContext } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
 
-const getRelativeTime = (dateString, t) => {
-    if (!dateString) return '';
-    const now = new Date();
-    const then = new Date(dateString);
-    const seconds = Math.floor((now - then) / 1000);
-
-    if (seconds < 60) return t('just_now');
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return t('m_ago', { minutes });
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return t('h_ago', { hours });
-    const days = Math.floor(hours / 24);
-    if (days < 7) return t('d_ago', { days });
-    const weeks = Math.floor(days / 7);
-    if (weeks < 4) return t('w_ago', { weeks });
-    const months = Math.floor(days / 30);
-    if (months < 12) return t('mo_ago', { months });
-    const years = Math.floor(days / 365);
-    return t('y_ago', { years });
-};
+import ReviewItem from '../components/ReviewItem';
+import HealthTrendBadge from '../components/HealthTrendBadge';
 
 const getBorderColor = (rating) => {
     if (rating == null) return 'transparent';
@@ -181,9 +163,8 @@ const BikeDetailsScreen = ({ route, navigation }) => {
         try {
             const targetId = bike.numerical_id;
             console.log('[BikeDetails] Fetching more reviews. Offset:', reviewsOffset);
-            const res = await api.get(`/bikes/${targetId}/details?limit=${REVIEWS_LIMIT}&offset=${reviewsOffset}`);
-            const details = res.data;
-            const newReviews = details.reviews || [];
+            const res = await api.get(`/bikes/${targetId}/reviews?limit=${REVIEWS_LIMIT}&offset=${reviewsOffset}`);
+            const newReviews = res.data?.reviews || [];
 
             if (newReviews.length < REVIEWS_LIMIT) {
                 setHasMoreReviews(false);
@@ -267,6 +248,7 @@ const BikeDetailsScreen = ({ route, navigation }) => {
                                 <View key="overall" style={[styles.aggItem, styles.overallItem]}>
                                     <Text style={[styles.aggLabel, styles.overallLabel]}>{t('overall_rating')}</Text>
                                     <Text style={[styles.aggValue, styles.overallValue]}>{agg.average_rating.toFixed(1)} ⭐</Text>
+                                    {timeWindow === 'overall' && <HealthTrendBadge aggregates={aggregates} subcategory="overall" />}
                                 </View>
                             ))
                         }
@@ -276,6 +258,7 @@ const BikeDetailsScreen = ({ route, navigation }) => {
                                 <View key={agg.subcategory} style={styles.aggItem}>
                                     <Text style={styles.aggLabel}>{t(agg.subcategory) || agg.subcategory.charAt(0).toUpperCase() + agg.subcategory.slice(1)}</Text>
                                     <Text style={styles.aggValue}>{agg.average_rating.toFixed(1)} ⭐</Text>
+                                    {timeWindow === 'overall' && <HealthTrendBadge aggregates={aggregates} subcategory={agg.subcategory} />}
                                 </View>
                             ))}
                         {aggregates.filter(agg => agg.window === timeWindow).length === 0 && (
@@ -292,47 +275,17 @@ const BikeDetailsScreen = ({ route, navigation }) => {
     const renderReviewItem = ({ item }, context) => {
         const key = `${item.review_id}-${context}`;
         const isExpanded = expandedReviews.has(key);
-        const subRatings = item.ratings ? Object.entries(item.ratings).filter(([key]) => key !== 'overall') : [];
 
         return (
-            <TouchableOpacity
-                style={styles.reviewItem}
-                onPress={() => toggleReview(item.review_id, context)}
-                activeOpacity={0.7}
-            >
-                <View style={styles.reviewHeader}>
-                    <Text style={styles.rating}>{'⭐'.repeat(item.ratings?.overall || 0)}</Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        {item.poster_id === userId && (
-                            <TouchableOpacity onPress={() => {
-                                closeModal(); // Close modal if navigating
-                                navigation.navigate('UpdateReview', { reviewId: item.review_id });
-                            }}>
-                                <Text style={{ color: theme.colors.primary, marginRight: 10, fontWeight: 'bold' }}>{t('edit')}</Text>
-                            </TouchableOpacity>
-                        )}
-                        <Text style={styles.timeText}>{getRelativeTime(item.created_at, t)}</Text>
-                        <View style={styles.dropdownButton}>
-                            <Text style={styles.dropdownArrow}>{isExpanded ? '▲' : '▼'}</Text>
-                        </View>
-                    </View>
-                </View>
-
-                {isExpanded && subRatings.length > 0 && (
-                    <View style={styles.subRatingsContainer}>
-                        {subRatings.map(([key, score]) => (
-                            <View key={key} style={styles.subRatingItem}>
-                                <Text style={styles.subRatingText}>
-                                    {t(key)}: <Text style={{ fontWeight: 'bold' }}>{score}⭐</Text>
-                                </Text>
-                            </View>
-                        ))}
-                    </View>
-                )}
-
-                <Text style={styles.commentText}>{item.comment}</Text>
-                <Text style={styles.user}>- {item.poster_username || t('anonymous')}</Text>
-            </TouchableOpacity>
+            <ReviewItem
+                item={item}
+                isExpanded={isExpanded}
+                onToggle={() => toggleReview(item.review_id, context)}
+                onEdit={() => {
+                    closeModal(); // Close modal if navigating
+                    navigation.navigate('UpdateReview', { reviewId: item.review_id });
+                }}
+            />
         );
     };
 
@@ -484,12 +437,7 @@ const createStyles = (theme) => StyleSheet.create({
     aggLabel: { fontSize: 14, color: theme.colors.subtext, marginBottom: 2 },
     aggValue: { fontSize: 16, fontWeight: 'bold', color: '#f39c12' },
     subtitle: { fontSize: 20, marginBottom: 10, fontWeight: '600', color: theme.colors.text },
-    reviewItem: { padding: 10, borderBottomWidth: 1, borderBottomColor: theme.colors.border, marginBottom: 10 },
-    reviewHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 },
-    timeText: { fontSize: 14, color: theme.colors.subtext },
-    rating: { fontSize: 18, color: theme.colors.text },
-    commentText: { color: theme.colors.text },
-    user: { fontStyle: 'italic', marginTop: 5, color: theme.colors.subtext },
+    subtitle: { fontSize: 20, marginBottom: 10, fontWeight: '600', color: theme.colors.text },
     emptyText: { color: theme.colors.subtext },
     updateLink: {
         fontSize: 14,
@@ -584,30 +532,10 @@ const createStyles = (theme) => StyleSheet.create({
         color: theme.colors.text,
         fontWeight: 'bold'
     },
-    dropdownButton: {
-        padding: 5,
-        marginLeft: 10,
-    },
-    dropdownArrow: {
-        fontSize: 14,
-        color: theme.colors.subtext,
-    },
-    subRatingsContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        marginTop: 5,
-        marginBottom: 10,
-        backgroundColor: theme.colors.inputBackground,
-        padding: 8,
-        borderRadius: 5
-    },
-    subRatingItem: {
-        width: '50%',
-        paddingVertical: 2
-    },
-    subRatingText: {
-        fontSize: 12,
-        color: theme.colors.subtext
+    closeButtonText: {
+        fontSize: 24,
+        color: theme.colors.text,
+        fontWeight: 'bold'
     },
     actionButton: {
         backgroundColor: theme.colors.primary,

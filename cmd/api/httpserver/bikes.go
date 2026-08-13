@@ -37,10 +37,13 @@ func (s *HTTPServer) handleListBikes(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	searchQuery := r.URL.Query().Get("q")
+	sortBy := r.URL.Query().Get("sort")
+
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
 
-	bikes, err := s.service.ListBikes(ctx, limitVal, offsetVal)
+	bikes, err := s.service.ListBikes(ctx, searchQuery, sortBy, limitVal, offsetVal)
 	if err != nil {
 		zerolog.Ctx(r.Context()).Error().Err(err).Msg("list bikes error")
 		s.sendError(w, "internal server error", http.StatusInternalServerError)
@@ -327,4 +330,52 @@ func isNumeric(s string) bool {
 		}
 	}
 	return true
+}
+
+// GET /bikes/{id}/reviews → list reviews for a bike
+func (s *HTTPServer) handleListBikeReviews(w http.ResponseWriter, r *http.Request, bikeID string) {
+	if r.Method != http.MethodGet {
+		s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if !isNumeric(bikeID) {
+		s.sendError(w, "invalid bike id", http.StatusBadRequest)
+		return
+	}
+
+	limitVal := 20
+	offsetVal := 0
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		if val, err := strconv.Atoi(limitStr); err == nil && val > 0 {
+			limitVal = val
+			if limitVal > 100 {
+				limitVal = 100 // Cap to prevent abuse
+			}
+		}
+	}
+	if offsetStr := r.URL.Query().Get("offset"); offsetStr != "" {
+		if val, err := strconv.Atoi(offsetStr); err == nil && val >= 0 {
+			offsetVal = val
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel()
+
+	reviews, err := s.service.ListReviewsWithRatingsByBike(ctx, bikeID, limitVal, offsetVal)
+	if err != nil {
+		zerolog.Ctx(r.Context()).Error().Err(err).Str("bike_id", bikeID).Msg("list bike reviews error")
+		s.sendError(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	if reviews == nil {
+		reviews = []domain.ReviewWithRatings{}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"reviews": reviews,
+	})
 }

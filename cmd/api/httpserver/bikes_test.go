@@ -23,7 +23,7 @@ func strPtr(s string) *string {
 func TestHandleListBikes(t *testing.T) {
 	var lastLimit, lastOffset int
 	mockService := &MockService{
-		ListBikesFunc: func(ctx context.Context, limit, offset int) ([]domain.Bike, error) {
+		ListBikesFunc: func(ctx context.Context, searchQuery, sortBy string, limit, offset int) ([]domain.Bike, error) {
 			lastLimit = limit
 			lastOffset = offset
 			return []domain.Bike{
@@ -54,7 +54,7 @@ func TestHandleListBikes(t *testing.T) {
 	})
 
 	t.Run("empty_list", func(t *testing.T) {
-		mockService.ListBikesFunc = func(ctx context.Context, limit, offset int) ([]domain.Bike, error) {
+		mockService.ListBikesFunc = func(ctx context.Context, searchQuery, sortBy string, limit, offset int) ([]domain.Bike, error) {
 			return nil, nil // Simulate empty DB returning nil
 		}
 
@@ -75,7 +75,7 @@ func TestHandleListBikes(t *testing.T) {
 	})
 
 	t.Run("pagination_params", func(t *testing.T) {
-		mockService.ListBikesFunc = func(ctx context.Context, limit, offset int) ([]domain.Bike, error) {
+		mockService.ListBikesFunc = func(ctx context.Context, searchQuery, sortBy string, limit, offset int) ([]domain.Bike, error) {
 			lastLimit = limit
 			lastOffset = offset
 			return []domain.Bike{}, nil

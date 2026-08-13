@@ -4,19 +4,22 @@ import { ThemeProvider } from './src/context/ThemeContext';
 import { SessionProvider } from './src/context/SessionContext';
 import { LanguageProvider } from './src/context/LanguageContext';
 import AppNavigator from './src/navigation/AppNavigator';
+import ErrorBoundary from './src/components/ErrorBoundary';
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <ToastProvider>
-        <LanguageProvider>
-          <AuthProvider>
-            <SessionProvider>
-              <AppNavigator />
-            </SessionProvider>
-          </AuthProvider>
-        </LanguageProvider>
-      </ToastProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <ToastProvider>
+          <LanguageProvider>
+            <AuthProvider>
+              <SessionProvider>
+                <AppNavigator />
+              </SessionProvider>
+            </AuthProvider>
+          </LanguageProvider>
+        </ToastProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }

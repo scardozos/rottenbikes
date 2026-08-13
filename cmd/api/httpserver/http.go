@@ -43,6 +43,7 @@ func New(service domain.Service, sender email.EmailSender, addr string) (*HTTPSe
 	mux.HandleFunc("/auth/register", s.handleRegister)
 	mux.HandleFunc("/auth/verify", s.middlewareAuth(http.HandlerFunc(s.handleVerifyToken)).ServeHTTP)
 	mux.HandleFunc("/auth/user", s.middlewareAuth(http.HandlerFunc(s.handleDeletePoster)).ServeHTTP)
+	mux.HandleFunc("/users/me/reviews", s.middlewareAuth(http.HandlerFunc(s.handleListMyReviews)).ServeHTTP)
 
 	// /bikes → list and create (Auth required for everything)
 	// /bikes → list and create
@@ -119,6 +120,10 @@ func (s *HTTPServer) handleBikeSubroutes(w http.ResponseWriter, r *http.Request)
 				s.middlewareAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					s.handleCreateBikeReview(w, r, bikeID)
 				})).ServeHTTP(w, r)
+				return
+			}
+			if r.Method == http.MethodGet {
+				s.handleListBikeReviews(w, r, bikeID)
 				return
 			}
 			s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)

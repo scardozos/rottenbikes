@@ -17,6 +17,7 @@ import UpdateReviewScreen from '../screens/UpdateReviewScreen';
 import UpdateBikeScreen from '../screens/UpdateBikeScreen';
 import ConfigurationScreen from '../screens/ConfigurationScreen';
 import PrivacyScreen from '../screens/PrivacyScreen';
+import MyReviewsScreen from '../screens/MyReviewsScreen';
 
 
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -51,6 +52,7 @@ const mainLinking = {
                             UpdateReview: 'reviews/:reviewId/edit',
                         }
                     },
+                    MyReviews: 'my-reviews',
                     Configuration: 'config',
                 }
             },
@@ -150,6 +152,8 @@ const getTabBarIcon = (route, focused, color, size) => {
         iconName = '🏠';
     } else if (route.name === 'BikesList') {
         iconName = '🚲';
+    } else if (route.name === 'MyReviews') {
+        iconName = '⭐';
     } else if (route.name === 'Configuration') {
         iconName = '⚙️';
     }
@@ -238,6 +242,17 @@ const MainTabs = () => {
                 options={{ title: t('browse_bikes') }}
                 listeners={getBikesListListeners()}
             />
+            <Tab.Screen name="MyReviews" component={MyReviewsScreen} options={{
+                title: t('my_reviews') || 'My Reviews',
+                headerShown: true,
+                headerTitleStyle: { color: theme.colors.text },
+                headerTintColor: theme.colors.primary,
+                headerStyle: {
+                    backgroundColor: theme.colors.card,
+                    borderBottomWidth: 1,
+                    borderBottomColor: theme.colors.border
+                }
+            }} />
             <Tab.Screen name="Configuration" component={ConfigurationScreen} options={{
                 title: t('settings'),
                 headerShown: true,

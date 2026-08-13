@@ -12,6 +12,8 @@ import (
 var (
 	//go:embed sql/list_reviews_with_ratings.sql
 	listReviewsWithRatingsQuery string
+	//go:embed sql/list_user_reviews_with_ratings.sql
+	listUserReviewsWithRatingsQuery string
 	//go:embed sql/create_review_check_rate_limit.sql
 	createReviewCheckRateLimitQuery string
 	//go:embed sql/create_review_check_frequency.sql
@@ -66,6 +68,16 @@ type reviewRatingRow struct {
 // single bike
 func (s *Store) ListReviewsWithRatingsByBike(ctx context.Context, bikeID string, limit, offset int) ([]ReviewWithRatings, error) {
 	rows, err := s.db.QueryContext(ctx, listReviewsWithRatingsQuery, bikeID, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return buildReviewWithRatingsFromRows(rows)
+}
+
+func (s *Store) ListReviewsWithRatingsByUser(ctx context.Context, posterID int64, limit, offset int) ([]ReviewWithRatings, error) {
+	rows, err := s.db.QueryContext(ctx, listUserReviewsWithRatingsQuery, posterID, limit, offset)
 	if err != nil {
 		return nil, err
 	}

@@ -37,6 +37,21 @@ const ConfigurationScreen = ({ navigation }) => {
         }
     };
 
+    const handleLogout = () => {
+        Alert.alert(
+            t('logout_confirm_title') || 'Log Out',
+            t('logout_confirm_desc') || 'Are you sure you want to log out?',
+            [
+                { text: t('cancel') || 'Cancel', style: 'cancel' },
+                {
+                    text: t('logout') || 'Log Out',
+                    style: 'destructive',
+                    onPress: () => logout()
+                }
+            ]
+        );
+    };
+
     return (
         <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
             <Text style={styles.header}>{t('settings')}</Text>
@@ -83,7 +98,7 @@ const ConfigurationScreen = ({ navigation }) => {
                 <TouchableOpacity style={styles.infoButton} onPress={() => navigation.navigate('Privacy')}>
                     <Text style={styles.infoButtonText}>{t('privacy_and_terms_title')}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.logoutButton} onPress={logout}>
+                <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
                     <Text style={styles.logoutText}>{t('logout')}</Text>
                 </TouchableOpacity>
             </View>

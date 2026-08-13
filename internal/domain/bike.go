@@ -39,8 +39,12 @@ type BikeDetails struct {
 	TotalReviews int                 `json:"total_reviews"`
 }
 
-func (s *Store) ListBikes(ctx context.Context, limit, offset int) ([]Bike, error) {
-	rows, err := s.db.QueryContext(ctx, listBikesQuery, limit, offset)
+func (s *Store) ListBikes(ctx context.Context, searchQuery, sortBy string, limit, offset int) ([]Bike, error) {
+	if sortBy == "" {
+		sortBy = "recent" // default sort
+	}
+
+	rows, err := s.db.QueryContext(ctx, listBikesQuery, limit, offset, searchQuery, sortBy)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +62,11 @@ func (s *Store) ListBikes(ctx context.Context, limit, offset int) ([]Bike, error
 		}
 		bikes = append(bikes, b)
 	}
-	return bikes, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return bikes, nil
 }
 
 func (s *Store) CreateBike(ctx context.Context, numericalID string, hashID *string, isElectric bool, creatorID int64) (*Bike, error) {
