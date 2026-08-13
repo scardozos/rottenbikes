@@ -17,7 +17,12 @@
                 "EXPO_PUBLIC_HCAPTCHA_SITEKEY": "59f8d596-0090-449c-ab7c-a8967718a2c0"
             }
         },
-        "production": {}
+        "production": {
+            "env": {
+                "EXPO_PUBLIC_API_URL": "https://api.rottenbik.es",
+                "EXPO_PUBLIC_HCAPTCHA_SITEKEY": "59f8d596-0090-449c-ab7c-a8967718a2c0"
+            }
+        }
     },
     "submit": {
         "production": {}

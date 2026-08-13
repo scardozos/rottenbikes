@@ -45,12 +45,16 @@ const HCaptchaView = ({ siteKey, onVerify, onExpired, onError, onCancel }) => {
         <WebView
             ref={webviewRef}
             originWhitelist={['*']}
-            source={{ html: html, baseUrl: 'https://dev.rottenbik.es' }}
+            source={{ html: html, baseUrl: window.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_API_URL || 'https://rottenbik.es' }}
             onMessage={(event) => {
-                const data = JSON.parse(event.nativeEvent.data);
-                if (data.type === 'success') onVerify(data.token);
-                else if (data.type === 'expired') onExpired();
-                else if (data.type === 'error') onError();
+                try {
+                    const data = JSON.parse(event.nativeEvent.data);
+                    if (data.type === 'success') onVerify(data.token);
+                    else if (data.type === 'expired') onExpired();
+                    else if (data.type === 'error') onError();
+                } catch (e) {
+                    console.log("Failed to parse hCaptcha message", e);
+                }
             }}
             style={{ flex: 1 }}
         />
