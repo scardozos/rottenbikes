@@ -58,7 +58,6 @@ export default {
     hash_id_input_label: 'ID Hash',
     scan: 'Escanear',
     update_confirm_checkbox: 'Confirmo que la información es veraz. Si es falsa, mi cuenta podría ser baneada.',
-    cancel: 'Cancelar',
     error_fetching_bike: 'Error al obtener detalles de la bicicleta',
     login_to_review_toast: 'Por favor, inicie sesión en la pantalla de Inicio para enviar una reseña.',
     scan_to_review_toast: 'Por favor, escanee la bicicleta o introduzca su ID en la pantalla de Inicio para enviar una reseña.',
@@ -158,7 +157,6 @@ export default {
     pedals: 'Pedales',
     // Toasts
     confirmation_successful: '¡Confirmación Exitosa!',
-    invalid_numerical_id: 'Por favor, introduce una ID numérica válida',
     found_bike: 'Bicicleta encontrada #{id}',
     scan_lookup_failed: 'Error al buscar la bicicleta tras escanear.',
     captcha_expired: 'El Captcha ha caducado',

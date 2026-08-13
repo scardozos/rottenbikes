@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, ActivityIndicator, Platform, Modal, Alert } from 'react-native';
+import { View, Text, TextInput, Button, StyleSheet, ActivityIndicator, Platform, Modal, Alert, KeyboardAvoidingView } from 'react-native';
 import HCaptchaView from '../components/HCaptchaView';
 import { AuthContext } from '../context/AuthContext';
 import { ThemeContext } from '../context/ThemeContext';
@@ -73,7 +73,10 @@ const LoginScreen = ({ navigation }) => {
     const styles = createStyles(theme);
 
     return (
-        <View style={styles.container}>
+        <KeyboardAvoidingView
+            style={styles.container}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
             <Text style={styles.title}>RottenBikes {t('login')}</Text>
 
             {step === 1 ? (
@@ -133,7 +136,7 @@ const LoginScreen = ({ navigation }) => {
                     color={theme.colors.secondary}
                 />
             </View>
-        </View>
+        </KeyboardAvoidingView>
     );
 };
 

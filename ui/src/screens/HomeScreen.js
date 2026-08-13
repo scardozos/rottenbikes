@@ -8,6 +8,7 @@ import { ThemeContext } from '../context/ThemeContext';
 import { AuthContext } from '../context/AuthContext';
 import { useSession } from '../context/SessionContext';
 import { LanguageContext } from '../context/LanguageContext';
+import { Scanner } from '../components/Scanner';
 
 let WebScanner;
 
@@ -52,6 +53,7 @@ const HomeScreen = ({ navigation }) => {
     const [isInputActive, setIsInputActive] = useState(false);
     const { showToast } = useToast();
     const { t } = useContext(LanguageContext);
+    const isScanning = useRef(false);
 
     // Monitor keyboard visibility on Native
     useEffect(() => {
@@ -84,26 +86,73 @@ const HomeScreen = ({ navigation }) => {
             navigation.navigate('BikesList', { screen: 'BikeDetails', params: { bikeId } });
             setManualId('');
         } catch (e) {
-            console.log('[HomeScreen] Bike not found:', bikeId);
+            console.log('[HomeScreen] Bike lookup error:', e);
 
-            if (Platform.OS === 'web') {
-                const create = window.confirm(`Bike #${bikeId} not found. Would you like to create it?`);
-                if (create) {
-                    navigation.navigate('BikesList', { screen: 'CreateBike', params: { initialNumericalId: bikeId } });
+            if (e.response && e.response.status === 404) {
+                if (Platform.OS === 'web') {
+                    const create = window.confirm(`Bike #${bikeId} not found. Would you like to create it?`);
+                    if (create) {
+                        navigation.navigate('BikesList', { screen: 'CreateBike', params: { initialNumericalId: bikeId } });
+                    }
+                } else {
+                    Alert.alert(
+                        "Bike Not Found",
+                        `Bike #${bikeId} not found. Would you like to create it?`,
+                        [
+                            { text: "Cancel", style: "cancel" },
+                            {
+                                text: "Create",
+                                onPress: () => navigation.navigate('BikesList', { screen: 'CreateBike', params: { initialNumericalId: bikeId } })
+                            }
+                        ]
+                    );
                 }
             } else {
-                Alert.alert(
-                    "Bike Not Found",
-                    `Bike #${bikeId} not found. Would you like to create it?`,
-                    [
-                        { text: "Cancel", style: "cancel" },
-                        {
-                            text: "Create",
-                            onPress: () => navigation.navigate('BikesList', { screen: 'CreateBike', params: { initialNumericalId: bikeId } })
-                        }
-                    ]
-                );
+                const errMsg = e.response?.data?.error || t('scan_lookup_failed');
+                showToast(errMsg, "error");
             }
+        }
+    };
+
+    const handleScanSuccess = async (data) => {
+        if (isScanning.current) return;
+        isScanning.current = true;
+
+        try {
+            const response = await api.get('/bikes');
+            const bikes = response.data || [];
+            const bike = bikes.find(b => b.hash_id === data);
+
+            if (bike) {
+                showToast(t('found_bike', { id: bike.numerical_id }), "success");
+                isScanning.current = false;
+                validateBike(bike.numerical_id);
+                navigation.navigate('BikesList', { screen: 'BikeDetails', params: { bikeId: bike.numerical_id } });
+            } else {
+                if (Platform.OS === 'web') {
+                    const create = window.confirm(`No bike found with Hash ID: ${data}. Create it?`);
+                    if (create) {
+                        navigation.navigate('BikesList', { screen: 'CreateBike', params: { initialHashId: data } });
+                        // Don't reset isScanning here so it doesn't immediately scan again if they navigate back
+                    } else {
+                        isScanning.current = false;
+                    }
+                } else {
+                    Alert.alert(
+                        "Not Found",
+                        `No bike found with Hash ID: ${data}. Would you like to create it?`,
+                        [
+                            { text: "Cancel", onPress: () => { isScanning.current = false; }, style: "cancel" },
+                            { text: "Create", onPress: () => { navigation.navigate('BikesList', { screen: 'CreateBike', params: { initialHashId: data } }); } }
+                        ]
+                    );
+                }
+            }
+        } catch (e) {
+            console.error("error during scan lookup", e);
+            const errMsg = e.response?.data?.error || t('scan_lookup_failed');
+            showToast(errMsg, "error");
+            isScanning.current = false;
         }
     };
 
@@ -124,13 +173,9 @@ const HomeScreen = ({ navigation }) => {
             {showCamera ? (
                 <View style={stylesInternal.cameraContainer}>
                     {shouldRenderCamera ? (
-                        Platform.OS === 'web' ? (
-                            <ErrorBoundary>
-                                <WebScannerLocal navigation={navigation} theme={theme} validateBike={validateBike} t={t} />
-                            </ErrorBoundary>
-                        ) : (
-                            <NativeScannerLocal navigation={navigation} theme={theme} validateBike={validateBike} t={t} />
-                        )
+                        <ErrorBoundary>
+                            <Scanner onScan={handleScanSuccess} theme={theme} t={t} />
+                        </ErrorBoundary>
                     ) : (
                         <View style={{ flex: 1, backgroundColor: 'black', justifyContent: 'center', alignItems: 'center' }}>
                             <Text style={{ color: 'gray' }}>{t('scanner_paused') || "Scanner Paused"}</Text>
@@ -173,198 +218,6 @@ const HomeScreen = ({ navigation }) => {
         </Pressable>
     );
 };
-
-const WebScannerLocal = ({ navigation, theme, validateBike, t }) => {
-    const { showToast } = useToast();
-    const isScanning = useRef(false);
-
-    // Check for Secure Context
-    const isSecure = typeof window !== 'undefined' && window.isSecureContext;
-
-    const handleScanSuccess = async (data) => {
-        if (isScanning.current) return;
-        isScanning.current = true;
-
-        // Delay for navigation safety
-        setTimeout(async () => {
-            try {
-                const response = await api.get('/bikes');
-                const bikes = response.data || [];
-                const bike = bikes.find(b => b.hash_id === data);
-
-                if (bike) {
-                    showToast(t('found_bike', { id: bike.numerical_id }), "success");
-                    isScanning.current = false;
-                    validateBike(bike.numerical_id);
-                    navigation.navigate('BikesList', { screen: 'BikeDetails', params: { bikeId: bike.numerical_id } });
-                } else {
-                    const create = window.confirm(`No bike found with Hash ID: ${data}. Create it?`);
-                    if (create) {
-                        navigation.navigate('BikesList', { screen: 'CreateBike', params: { initialHashId: data } });
-                    } else {
-                        isScanning.current = false;
-                    }
-                }
-            } catch (e) {
-                const errMsg = e.response?.data?.error || t('scan_lookup_failed');
-                showToast(errMsg, "error");
-                isScanning.current = false;
-            }
-        }, 300);
-    };
-
-    const stylesInternal = createStyles(theme);
-
-    if (Platform.OS === 'web' && !isSecure) {
-        return (
-            <View style={[stylesInternal.scannerMessageContainer, { backgroundColor: theme.colors.background }]}>
-                <Text style={[stylesInternal.message, { color: 'red' }]}>
-                    Camera requires a Secure Context (HTTPS or Localhost).
-                </Text>
-            </View>
-        );
-    }
-
-    if (!WebScanner) {
-        return (
-            <View style={[stylesInternal.scannerMessageContainer, { backgroundColor: theme.colors.background }]}>
-                <Text style={[stylesInternal.message, { color: 'red' }]}>
-                    Scanner library not loaded.
-                </Text>
-            </View>
-        );
-    }
-
-    return (
-        <View style={{ flex: 1, backgroundColor: 'black', width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' }}>
-            <View style={{ width: '100%', height: '100%', maxWidth: 500, maxHeight: 500 }}>
-                <WebScanner
-                    onScan={(result) => {
-                        if (result && result.length > 0) {
-                            handleScanSuccess(result[0].rawValue);
-                        }
-                    }}
-                    components={{
-                        audio: false,
-                        finder: false
-                    }}
-                    styles={{
-                        container: {
-                            width: "100%",
-                            height: "100%"
-                        }
-                    }}
-                />
-            </View>
-            <Text style={{ color: 'white', marginTop: 20 }}>{t('scan_qr')}</Text>
-        </View>
-    );
-};
-
-const NativeScannerLocal = ({ navigation, theme, validateBike, t }) => {
-    const [permission, requestPermission] = useCameraPermissions();
-    const [scanned, setScanned] = useState(false);
-    const { showToast } = useToast();
-    const isScanning = useRef(false);
-
-    if (!permission) {
-        return (
-            <View style={[styles.scannerMessageContainer, { backgroundColor: theme.colors.background }]}>
-                <ActivityIndicator size="large" color={theme.colors.primary} />
-                <Text style={{ marginTop: 10, color: theme.colors.text }}>{t('loading')}</Text>
-            </View>
-        );
-    }
-
-    if (!permission.granted) {
-        return (
-            <View style={[styles.scannerMessageContainer, { backgroundColor: theme.colors.background }]}>
-                <Text style={styles.message}>{t('camera_permission')}</Text>
-                <Button onPress={requestPermission} title={t('grant_permission')} color={theme.colors.primary} />
-            </View>
-        );
-    }
-
-    const handleBarCodeScanned = async ({ data }) => {
-        if (isScanning.current) return;
-        isScanning.current = true;
-        setScanned(true);
-
-        try {
-            const response = await api.get('/bikes');
-            const bikes = response.data || [];
-            const bike = bikes.find(b => b.hash_id === data);
-
-            if (bike) {
-                showToast(t('found_bike', { id: bike.numerical_id }), "success");
-                isScanning.current = false;
-                validateBike(bike.numerical_id);
-                navigation.navigate('BikesList', { screen: 'BikeDetails', params: { bikeId: bike.numerical_id } });
-            } else {
-                Alert.alert(
-                    "Not Found",
-                    `No bike found with Hash ID: ${data}. Would you like to create it?`,
-                    [
-                        {
-                            text: "Cancel",
-                            onPress: () => {
-                                isScanning.current = false;
-                                setScanned(false);
-                            },
-                            style: "cancel"
-                        },
-                        {
-                            text: "Create",
-                            onPress: () => {
-                                navigation.navigate('BikesList', { screen: 'CreateBike', params: { initialHashId: data } });
-                            }
-                        }
-                    ]
-                );
-            }
-        } catch (e) {
-            console.error("error during scan lookup", e);
-            const errMsg = e.response?.data?.error || t('scan_lookup_failed');
-            showToast(errMsg, "error");
-            isScanning.current = false;
-            setScanned(false);
-        }
-    };
-
-    const stylesInternal = createStyles(theme);
-
-    return (
-        <View style={stylesInternal.nativeCameraContainer}>
-            <CameraView
-                style={StyleSheet.absoluteFillObject}
-                onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
-                barcodeScannerSettings={{
-                    barcodeTypes: ["qr", "aztec", "ean13", "code128", "pdf417", "upc_e", "datamatrix"],
-                }}
-            />
-            {scanned && (
-                <View style={{
-                    position: 'absolute',
-                    bottom: 20,
-                    left: 20,
-                    right: 20,
-                    backgroundColor: theme.colors.card,
-                    borderRadius: 10,
-                    padding: 10,
-                    opacity: 0.9,
-                    alignItems: 'center'
-                }}>
-                    <Button title={'Tap to Scan Again'} onPress={() => {
-                        isScanning.current = false;
-                        setScanned(false);
-                    }} color={theme.colors.primary} />
-                </View>
-            )}
-        </View>
-    );
-};
-
-const styles = { container: { flex: 1 }, scannerMessageContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' } };
 
 const createStyles = (theme) => StyleSheet.create({
     container: {

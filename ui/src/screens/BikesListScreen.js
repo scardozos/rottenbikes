@@ -42,9 +42,17 @@ const BikesListScreen = ({ navigation }) => {
                 setBikes(data);
                 setFilteredBikes(data);
             } else {
-                const combined = [...bikes, ...data];
-                setBikes(combined);
-                setFilteredBikes(combined);
+                setBikes(prev => {
+                    // Prevent duplicates in case of race condition
+                    const combined = [...prev, ...data];
+                    const unique = combined.filter((v, i, a) => a.findIndex(t => (t.numerical_id === v.numerical_id)) === i);
+                    return unique;
+                });
+                setFilteredBikes(prev => {
+                    const combined = [...prev, ...data];
+                    const unique = combined.filter((v, i, a) => a.findIndex(t => (t.numerical_id === v.numerical_id)) === i);
+                    return unique;
+                });
             }
         } catch (e) {
             console.error('Fetch bikes error:', e);

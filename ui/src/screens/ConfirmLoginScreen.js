@@ -70,7 +70,7 @@ const ConfirmLoginScreen = ({ route, navigation }) => {
                     <Button title={t('confirm_login_btn')} onPress={handleConfirm} disabled={submitting} color={theme.colors.primary} />
                 </View>
                 <View style={{ marginTop: 10 }}>
-                    <Button title={t('cancel')} onPress={() => navigation.navigate('Login')} color={theme.colors.subtext} disabled={submitting} />
+                    <Button title={t('cancel')} onPress={() => navigation.navigate('Public', { screen: 'Login' })} color={theme.colors.subtext} disabled={submitting} />
                 </View>
             </View>
         );
@@ -89,7 +89,7 @@ const ConfirmLoginScreen = ({ route, navigation }) => {
         return (
             <View style={styles.container}>
                 <Text style={[styles.text, { color: theme.colors.error }]}>{errorMsg}</Text>
-                <Button title={t('back_to_login')} onPress={() => navigation.navigate('Login')} color={theme.colors.primary} />
+                <Button title={t('back_to_login')} onPress={() => navigation.navigate('Public', { screen: 'Login' })} color={theme.colors.primary} />
             </View>
         );
     }
@@ -110,10 +110,7 @@ const ConfirmLoginScreen = ({ route, navigation }) => {
                         <Button
                             title={t('continue_to_app')}
                             onPress={() => {
-                                navigation.reset({
-                                    index: 0,
-                                    routes: [{ name: 'Main' }],
-                                });
+                                navigation.replace('Main');
                             }}
                             color={theme.colors.primary}
                         />

@@ -5,7 +5,7 @@ const Toast = ({ message, type = 'success', onClose, duration = 4000 }) => {
     const opacity = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
-        Animated.sequence([
+        const anim = Animated.sequence([
             Animated.timing(opacity, {
                 toValue: 1,
                 duration: 300,
@@ -18,12 +18,18 @@ const Toast = ({ message, type = 'success', onClose, duration = 4000 }) => {
                 duration: 300,
                 useNativeDriver: Platform.OS !== 'web',
             }),
-        ]).start(() => {
-            if (onClose) onClose();
+        ]);
+
+        anim.start(({ finished }) => {
+            if (finished && onClose) onClose();
         });
+
+        return () => anim.stop();
     }, [opacity, duration, onClose]);
 
-    const backgroundColor = type === 'success' ? '#2ecc71' : '#e74c3c';
+    let backgroundColor = '#2ecc71';
+    if (type === 'error') backgroundColor = '#e74c3c';
+    if (type === 'info') backgroundColor = '#3498db';
 
     return (
         <Animated.View style={[styles.container, { opacity, backgroundColor }]}>

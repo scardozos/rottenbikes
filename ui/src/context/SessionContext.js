@@ -1,4 +1,5 @@
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
+import { DeviceEventEmitter } from 'react-native';
 
 export const SessionContext = createContext();
 
@@ -14,6 +15,13 @@ export const SessionProvider = ({ children }) => {
     const clearValidation = () => {
         setValidatedBikeId(null);
     };
+
+    useEffect(() => {
+        const sub = DeviceEventEmitter.addListener('clear_session', () => {
+            clearValidation();
+        });
+        return () => sub.remove();
+    }, []);
 
     return (
         <SessionContext.Provider value={{ validatedBikeId, validateBike, clearValidation }}>

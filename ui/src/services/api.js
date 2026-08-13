@@ -23,4 +23,16 @@ api.interceptors.request.use(
     }
 );
 
+import { DeviceEventEmitter } from 'react-native';
+
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response && error.response.status === 401) {
+            DeviceEventEmitter.emit('session_expired');
+        }
+        return Promise.reject(error);
+    }
+);
+
 export default api;

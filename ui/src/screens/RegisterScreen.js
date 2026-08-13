@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, Alert, Modal, Platform, Switch, TouchableOpacity } from 'react-native';
+import { View, Text, TextInput, Button, StyleSheet, Alert, Modal, Platform, Switch, TouchableOpacity, KeyboardAvoidingView } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { AuthContext } from '../context/AuthContext';
 import { ThemeContext } from '../context/ThemeContext';
@@ -88,7 +88,10 @@ const RegisterScreen = ({ navigation }) => {
   const styles = createStyles(theme);
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <Text style={styles.title}>{t('register')}</Text>
 
       {step === 1 ? (
@@ -179,7 +182,7 @@ const RegisterScreen = ({ navigation }) => {
           <Button title={t('back')} onPress={() => setStep(1)} color={theme.colors.subtext} />
         </>
       )}
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 

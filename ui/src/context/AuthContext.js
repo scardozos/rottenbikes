@@ -1,5 +1,5 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
-import { Platform } from 'react-native';
+import React, { createContext, useState, useEffect, useContext, useRef } from 'react';
+import { Platform, DeviceEventEmitter } from 'react-native';
 import storage from '../utils/storage';
 import api from '../services/api';
 import { useToast } from './ToastContext';
@@ -13,6 +13,16 @@ export const AuthProvider = ({ children }) => {
     const [userId, setUserId] = useState(null);
     const [username, setUsername] = useState(null);
     const [lastUsername, setLastUsername] = useState(null);
+    const lastUsernameRef = useRef(null);
+
+    useEffect(() => {
+        if (username) {
+            lastUsernameRef.current = username;
+            setLastUsername(username);
+        }
+    }, [username]);
+
+
     const { showToast } = useToast();
     const { t } = useContext(LanguageContext);
 
@@ -27,10 +37,7 @@ export const AuthProvider = ({ children }) => {
         } catch (e) {
             console.log('[AuthContext] Failed to fetch current user:', e);
             if (e.response && e.response.status === 401) {
-                console.log('[AuthContext] Session expired (401). Logging out.');
-                setLastUsername(username); // Store current username before clearing
-                logout();
-                showToast(t('session_expired'), 'info');
+                // The global interceptor will catch this and emit session_expired
             }
         }
     };
@@ -145,6 +152,7 @@ export const AuthProvider = ({ children }) => {
         setUserId(null);
         setUsername(null);
         await storage.deleteItem('userToken');
+        DeviceEventEmitter.emit('clear_session');
     };
 
     const isLoggedIn = async () => {
@@ -164,6 +172,18 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         isLoggedIn();
     }, []);
+
+    useEffect(() => {
+        const sub = DeviceEventEmitter.addListener('session_expired', () => {
+            console.log('[AuthContext] Session expired event received.');
+            if (lastUsernameRef.current) {
+                setLastUsername(lastUsernameRef.current);
+            }
+            logout();
+            showToast(t('session_expired'), 'info');
+        });
+        return () => sub.remove();
+    }, [logout, showToast, t]);
 
     return (
         <AuthContext.Provider value={{

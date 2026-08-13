@@ -58,7 +58,6 @@ export default {
     hash_id_input_label: 'Hash ID',
     scan: 'Scan',
     update_confirm_checkbox: 'I confirm that the info provided is true and accurate. If false, my account may be banned.',
-    cancel: 'Cancel',
     error_fetching_bike: 'Error fetching bike details',
     login_to_review_toast: 'Please log in on the Home screen to submit a review.',
     scan_to_review_toast: 'Please scan the bike or enter its ID on the Home screen to submit a review.',
@@ -157,7 +156,6 @@ export default {
     pedals: 'Pedals',
     // Toasts
     confirmation_successful: 'Confirmation Successful!',
-    invalid_numerical_id: 'Please enter a valid numerical ID',
     found_bike: 'Found Bike #{id}',
     scan_lookup_failed: 'Failed to lookup bike after scan.',
     captcha_expired: 'Captcha expired',

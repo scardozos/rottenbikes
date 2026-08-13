@@ -29,7 +29,7 @@ const WebScannerWrapper = ({ onScan, onClose, theme, t }) => {
         return (
             <View style={styles.center}>
                 <Text style={{ color: 'red' }}>Camera requires Secure Context.</Text>
-                <Button title={t('cancel')} onPress={onClose} color={theme.colors.primary} />
+                {onClose && <Button title={t('cancel')} onPress={onClose} color={theme.colors.primary} />}
             </View>
         );
     }
@@ -38,7 +38,7 @@ const WebScannerWrapper = ({ onScan, onClose, theme, t }) => {
         return (
             <View style={styles.center}>
                 <Text style={{ color: 'red' }}>Scanner library not loaded.</Text>
-                <Button title={t('cancel')} onPress={onClose} color={theme.colors.primary} />
+                {onClose && <Button title={t('cancel')} onPress={onClose} color={theme.colors.primary} />}
             </View>
         );
     }
@@ -57,9 +57,11 @@ const WebScannerWrapper = ({ onScan, onClose, theme, t }) => {
                     styles={{ container: { width: "100%", height: "100%" } }}
                 />
             </View>
-            <View style={styles.overlay}>
-                <Button title={t('cancel')} onPress={onClose} color="red" />
-            </View>
+            {onClose && (
+                <View style={styles.overlay}>
+                    <Button title={t('cancel')} onPress={onClose} color="red" />
+                </View>
+            )}
         </View>
     );
 };
@@ -74,7 +76,7 @@ const NativeScannerWrapper = ({ onScan, onClose, theme, t }) => {
             <View style={styles.center}>
                 <Text style={{ color: theme.colors.text, marginBottom: 10 }}>{t('camera_permission')}</Text>
                 <Button onPress={requestPermission} title={t('grant_permission')} color={theme.colors.primary} />
-                <Button onPress={onClose} title={t('cancel')} color="red" />
+                {onClose && <Button onPress={onClose} title={t('cancel')} color="red" />}
             </View>
         );
     }
@@ -91,9 +93,11 @@ const NativeScannerWrapper = ({ onScan, onClose, theme, t }) => {
                     barcodeTypes: ["qr", "aztec", "ean13", "code128", "pdf417", "upc_e", "datamatrix"],
                 }}
             />
-            <View style={styles.overlay}>
-                <Button title={t('cancel')} onPress={onClose} color="red" />
-            </View>
+            {onClose && (
+                <View style={styles.overlay}>
+                    <Button title={t('cancel')} onPress={onClose} color="red" />
+                </View>
+            )}
         </View>
     );
 };
