@@ -6,6 +6,7 @@
 # Parse arguments
 MIGRATE_ONLY=false
 SKIP_MIG=false
+SKIP_BUILD=false
 
 while [[ "$1" == --* ]]; do
     if [ "$1" == "--migrate-only" ]; then
@@ -13,6 +14,9 @@ while [[ "$1" == --* ]]; do
         shift
     elif [ "$1" == "--skip-migrations" ]; then
         SKIP_MIG=true
+        shift
+    elif [ "$1" == "--skip-build" ]; then
+        SKIP_BUILD=true
         shift
     else
         echo "Unknown flag: $1"
@@ -31,7 +35,7 @@ if [ -z "$REMOTE_DB_IP" ]; then
     exit 1
 fi
 
-if [ "$MIGRATE_ONLY" = false ]; then
+if [ "$MIGRATE_ONLY" = false ] && [ "$SKIP_BUILD" = false ]; then
     echo "--- Building Docker images ---"
 
     # Build API (generic, no env hardcoding)
