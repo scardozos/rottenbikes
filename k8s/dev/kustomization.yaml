@@ -8,10 +8,10 @@ namespace: rottenbikes-dev
 images:
 - name: api
   newName: monorailisland/rottenbikes
-  newTag: api-v1.0.9
+  newTag: api-v1.1.0
 - name: ui
   newName: monorailisland/rottenbikes
-  newTag: ui-v1.0.9
+  newTag: ui-v1.1.0
 
 resources:
 - ../base
@@ -30,6 +30,7 @@ configMapGenerator:
   - UI_HOST=dev.rottenbik.es
   - UI_PORT=443
   - APP_ENV=development
+  - CORS_ALLOWED_ORIGINS=https://dev.rottenbik.es
   name: rottenbikes-config
 
 
