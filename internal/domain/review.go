@@ -56,8 +56,8 @@ type reviewRatingRow struct {
 	BikeNumericalID string
 	Comment         *string
 	CreatedAt       time.Time
-	Subcategory     RatingSubcategory
-	Score           int16
+	Subcategory     sql.NullString
+	Score           sql.NullInt16
 	BikeImg         *string
 }
 
@@ -76,6 +76,7 @@ func (s *Store) ListReviewsWithRatingsByBike(ctx context.Context, bikeID string,
 
 func buildReviewWithRatingsFromRows(rows *sql.Rows) ([]ReviewWithRatings, error) {
 	reviewsMap := make(map[int64]*ReviewWithRatings)
+	var order []int64
 
 	for rows.Next() {
 		var row reviewRatingRow
@@ -106,16 +107,19 @@ func buildReviewWithRatingsFromRows(rows *sql.Rows) ([]ReviewWithRatings, error)
 				BikeImg:         row.BikeImg,
 			}
 			reviewsMap[row.ReviewID] = r
+			order = append(order, row.ReviewID)
 		}
-		r.Ratings[row.Subcategory] = row.Score
+		if row.Subcategory.Valid && row.Score.Valid {
+			r.Ratings[RatingSubcategory(row.Subcategory.String)] = row.Score.Int16
+		}
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
-	result := make([]ReviewWithRatings, 0, len(reviewsMap))
-	for _, r := range reviewsMap {
-		result = append(result, *r)
+	result := make([]ReviewWithRatings, 0, len(order))
+	for _, id := range order {
+		result = append(result, *reviewsMap[id])
 	}
 	return result, nil
 }

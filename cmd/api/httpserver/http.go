@@ -220,6 +220,10 @@ func isOriginAllowed(origin string) bool {
 			return true
 		}
 	}
+	// Allow Expo LAN IPs for local testing
+	if strings.HasPrefix(origin, "http://192.168.") || strings.HasPrefix(origin, "http://10.") || strings.HasPrefix(origin, "http://172.") {
+		return true
+	}
 	return false
 }
 

@@ -18,5 +18,5 @@ SELECT
 	r.bike_img
 FROM paginated_reviews r
 LEFT JOIN posters p       ON p.poster_id = r.poster_id
-JOIN review_ratings rr ON rr.review_id = r.review_id
+LEFT JOIN review_ratings rr ON rr.review_id = r.review_id
 ORDER BY r.review_id ASC, rr.subcategory
