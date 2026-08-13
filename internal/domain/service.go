@@ -10,8 +10,8 @@ import (
 
 type Service interface {
 	// Auth
-	Register(ctx context.Context, username, email string) (string, error)
-	CreateMagicLink(ctx context.Context, identifier string) (string, string, error)
+	Register(ctx context.Context, username, email string) (string, string, error)
+	CreateMagicLink(ctx context.Context, identifier string) (string, string, string, error)
 	ConfirmMagicLink(ctx context.Context, token string) (*ConfirmResult, error)
 	GetPosterByAPIToken(ctx context.Context, token string) (*AuthPoster, error)
 	CheckMagicLinkStatus(ctx context.Context, token string) (string, error)
@@ -22,8 +22,8 @@ type Service interface {
 	CreateBike(ctx context.Context, numericalID string, hashID *string, isElectric bool, creatorID int64) (*Bike, error)
 	GetBike(ctx context.Context, id string) (*Bike, error)
 	GetBikeDetails(ctx context.Context, id string, limit, offset int) (*BikeDetails, error)
-	UpdateBike(ctx context.Context, id string, hashID *string, isElectric *bool) error
-	DeleteBike(ctx context.Context, id string) error
+	UpdateBike(ctx context.Context, id string, hashID *string, isElectric *bool, creatorID int64) error
+	DeleteBike(ctx context.Context, id string, creatorID int64) error
 
 	// Rating Aggregate
 	ListRatingAggregatesByBike(ctx context.Context, bikeID string) ([]RatingAggregate, error)
@@ -54,23 +54,23 @@ func NewService(store *Store) Service {
 
 // Auth
 
-func (s *service) Register(ctx context.Context, username, email string) (string, error) {
+func (s *service) Register(ctx context.Context, username, email string) (string, string, error) {
 	// Validate email format
 	_, err := mail.ParseAddress(email)
 	if err != nil {
-		return "", fmt.Errorf("invalid email format")
+		return "", "", fmt.Errorf("invalid email format")
 	}
 
 	// Validate username format (alphanumeric and dots only)
 	validUsername := regexp.MustCompile(`^[a-zA-Z0-9.]+$`)
 	if !validUsername.MatchString(username) {
-		return "", fmt.Errorf("username can only contain letters, numbers and dots")
+		return "", "", fmt.Errorf("username can only contain letters, numbers and dots")
 	}
 
 	return s.store.Register(ctx, username, email)
 }
 
-func (s *service) CreateMagicLink(ctx context.Context, identifier string) (string, string, error) {
+func (s *service) CreateMagicLink(ctx context.Context, identifier string) (string, string, string, error) {
 	return s.store.CreateMagicLink(ctx, identifier)
 }
 
@@ -133,15 +133,15 @@ func (s *service) GetBikeDetails(ctx context.Context, id string, limit, offset i
 	return s.store.GetBikeDetails(ctx, id, limit, offset)
 }
 
-func (s *service) UpdateBike(ctx context.Context, id string, hashID *string, isElectric *bool) error {
+func (s *service) UpdateBike(ctx context.Context, id string, hashID *string, isElectric *bool, creatorID int64) error {
 	if hashID != nil && *hashID != "" && !isDomainAlphanumeric(*hashID) {
 		return fmt.Errorf("hash_id must be alphanumeric")
 	}
-	return s.store.UpdateBike(ctx, id, hashID, isElectric)
+	return s.store.UpdateBike(ctx, id, hashID, isElectric, creatorID)
 }
 
-func (s *service) DeleteBike(ctx context.Context, id string) error {
-	return s.store.DeleteBike(ctx, id)
+func (s *service) DeleteBike(ctx context.Context, id string, creatorID int64) error {
+	return s.store.DeleteBike(ctx, id, creatorID)
 }
 
 // Rating Aggregate

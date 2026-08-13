@@ -28,12 +28,8 @@ var (
 	updatePosterTokenExpiryQuery string
 	//go:embed sql/get_magic_link.sql
 	getMagicLinkQuery string
-	//go:embed sql/get_poster_for_update.sql
-	getPosterForUpdateQuery string
 	//go:embed sql/update_poster_verified_new_token.sql
 	updatePosterVerifiedNewTokenQuery string
-	//go:embed sql/update_poster_verified.sql
-	updatePosterVerifiedQuery string
 	//go:embed sql/consume_magic_link.sql
 	consumeMagicLinkQuery string
 	//go:embed sql/get_poster_by_token.sql
@@ -86,12 +82,18 @@ type Poster struct {
 	EmailVerified     bool
 }
 
-// Create or load poster by email or username, ensure a long-lived api_token exists,
-// and issue a single-use magic link token.
-func (s *Store) CreateMagicLink(ctx context.Context, identifier string) (magicToken string, email string, err error) {
+// CreateMagicLink issues a magic link for the poster identified by email OR
+// username. It returns:
+//   - magicToken: the RAW one-time token embedded in the emailed confirm link
+//     (only the email recipient ever sees it; it confirm()s the link).
+//   - pollToken: the RAW per-request token returned to the requesting device,
+//     used to poll for the api token once the link is confirmed on another
+//     device. The poll token is decoupled from the magic token so that whoever
+//     requests a link cannot confirm it, and the email recipient cannot poll.
+func (s *Store) CreateMagicLink(ctx context.Context, identifier string) (magicToken string, pollToken string, email string, err error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return "", "", fmt.Errorf("begin tx: %w", err)
+		return "", "", "", fmt.Errorf("begin tx: %w", err)
 	}
 	defer tx.Rollback()
 
@@ -104,37 +106,37 @@ func (s *Store) CreateMagicLink(ctx context.Context, identifier string) (magicTo
 	err = tx.QueryRowContext(ctx, getPosterQuery, identifier).Scan(&posterID, &apiToken, &apiTokenExpires, &userEmail)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return "", "", ErrUserNotFound
+			return "", "", "", ErrUserNotFound
 		}
-		return "", "", fmt.Errorf("query poster: %w", err)
+		return "", "", "", fmt.Errorf("query poster: %w", err)
 	}
 
 	// Rate limit: max 2 links per user per 24 hours
 	var count int
 	err = tx.QueryRowContext(ctx, checkMagicLinkRateLimitQuery, posterID).Scan(&count)
 	if err != nil {
-		return "", "", fmt.Errorf("check rate limit: %w", err)
+		return "", "", "", fmt.Errorf("check rate limit: %w", err)
 	}
 	if count >= 2 {
-		return "", "", ErrRateLimitExceeded
+		return "", "", "", ErrRateLimitExceeded
 	}
 
-	magicToken, err = s.issueMagicLink(ctx, tx, posterID, apiToken, apiTokenExpires)
+	magicToken, pollToken, err = s.issueMagicLink(ctx, tx, posterID, apiToken, apiTokenExpires)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 
 	if err := tx.Commit(); err != nil {
-		return "", "", fmt.Errorf("commit tx: %w", err)
+		return "", "", "", fmt.Errorf("commit tx: %w", err)
 	}
 
-	return magicToken, userEmail, nil
+	return magicToken, pollToken, userEmail, nil
 }
 
-func (s *Store) Register(ctx context.Context, username, email string) (string, error) {
+func (s *Store) Register(ctx context.Context, username, email string) (string, string, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return "", fmt.Errorf("begin tx: %w", err)
+		return "", "", fmt.Errorf("begin tx: %w", err)
 	}
 	defer tx.Rollback()
 
@@ -146,27 +148,27 @@ func (s *Store) Register(ctx context.Context, username, email string) (string, e
 	err = tx.QueryRowContext(ctx, createPosterQuery, email, username).Scan(&posterID, &apiToken, &apiTokenExpires)
 	if err != nil {
 		if strings.Contains(err.Error(), "posters_email_key") {
-			return "", fmt.Errorf("email already exists")
+			return "", "", fmt.Errorf("email already exists")
 		}
 		if strings.Contains(err.Error(), "posters_username_key") {
-			return "", fmt.Errorf("username already exists")
+			return "", "", fmt.Errorf("username already exists")
 		}
-		return "", fmt.Errorf("insert poster: %w", err)
+		return "", "", fmt.Errorf("insert poster: %w", err)
 	}
 
-	magicToken, err := s.issueMagicLink(ctx, tx, posterID, apiToken, apiTokenExpires)
+	magicToken, pollToken, err := s.issueMagicLink(ctx, tx, posterID, apiToken, apiTokenExpires)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	if err := tx.Commit(); err != nil {
-		return "", fmt.Errorf("commit tx: %w", err)
+		return "", "", fmt.Errorf("commit tx: %w", err)
 	}
 
-	return magicToken, nil
+	return magicToken, pollToken, nil
 }
 
-func (s *Store) issueMagicLink(ctx context.Context, tx *sql.Tx, posterID int64, apiToken *string, apiTokenExpires sql.NullTime) (string, error) {
+func (s *Store) issueMagicLink(ctx context.Context, tx *sql.Tx, posterID int64, apiToken *string, apiTokenExpires sql.NullTime) (magicToken string, pollToken string, err error) {
 
 	now := time.Now()
 	needNewToken := true
@@ -178,34 +180,42 @@ func (s *Store) issueMagicLink(ctx context.Context, tx *sql.Tx, posterID int64, 
 	if needNewToken {
 		tok, err := randomToken(32)
 		if err != nil {
-			return "", fmt.Errorf("generate api token: %w", err)
+			return "", "", fmt.Errorf("generate api token: %w", err)
 		}
 		exp := now.AddDate(0, 2, 0) // +2 months
-		if _, err := tx.ExecContext(ctx, updatePosterTokenQuery, tok, exp, posterID); err != nil {
-			return "", fmt.Errorf("set api token: %w", err)
+		// Store the SHA-256 hash of the api token; the raw token is only ever
+		// handed to a client at confirm time and is never persisted in posters.
+		if _, err := tx.ExecContext(ctx, updatePosterTokenQuery, HashToken(tok), exp, posterID); err != nil {
+			return "", "", fmt.Errorf("set api token: %w", err)
 		}
 		apiToken = &tok
 	} else {
 		// refresh expiry on existing token
 		exp := now.AddDate(0, 2, 0)
 		if _, err := tx.ExecContext(ctx, updatePosterTokenExpiryQuery, exp, posterID); err != nil {
-			return "", fmt.Errorf("refresh api token expiry: %w", err)
+			return "", "", fmt.Errorf("refresh api token expiry: %w", err)
 		}
 	}
 
-	// issue one-time magic token
-	magicToken, err := randomToken(32)
+	// issue one-time magic token (emailed) and a separate poll token (returned to
+	// the requesting device). Both are stored SHA-256 hashed.
+	magicToken, err = randomToken(32)
 	if err != nil {
-		return "", fmt.Errorf("generate magic token: %w", err)
+		return "", "", fmt.Errorf("generate magic token: %w", err)
+	}
+	pollToken, err = randomToken(32)
+	if err != nil {
+		return "", "", fmt.Errorf("generate poll token: %w", err)
 	}
 
-	hashedToken := HashToken(magicToken)
+	hashedMagic := HashToken(magicToken)
+	hashedPoll := HashToken(pollToken)
 	expires := now.Add(30 * time.Minute)
-	if _, err := tx.ExecContext(ctx, insertMagicLinkQuery, posterID, hashedToken, expires); err != nil {
-		return "", fmt.Errorf("insert magic link: %w", err)
+	if _, err := tx.ExecContext(ctx, insertMagicLinkQuery, posterID, hashedMagic, hashedPoll, expires); err != nil {
+		return "", "", fmt.Errorf("insert magic link: %w", err)
 	}
 
-	return magicToken, nil
+	return magicToken, pollToken, nil
 }
 
 // Consume magic link, verify, and return api_token.
@@ -215,7 +225,13 @@ type ConfirmResult struct {
 	APITokenExpiresAt time.Time
 }
 
-// Consume magic link, verify, and return api_token.
+// ConfirmMagicLink consumes the one-time emailed magic token, rotates the
+// poster's api token (always issuing a fresh one so we never have to return a
+// token we only have on file as a hash), and returns the RAW api token.
+//
+// The raw token is stored transiently in magic_links.api_token (gated by the
+// poll token + expiry) so the requesting device can retrieve it via
+// CheckMagicLinkStatus. posters.api_token only ever stores its SHA-256 hash.
 func (s *Store) ConfirmMagicLink(ctx context.Context, token string) (*ConfirmResult, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -241,42 +257,24 @@ func (s *Store) ConfirmMagicLink(ctx context.Context, token string) (*ConfirmRes
 		return nil, fmt.Errorf("token expired or already used")
 	}
 
-	// We will update the magic_links table with the api_token AFTER we retrieve/generate it.
-	// This happens after line 210 in the original file.
-
-	// Get current token info
-	var apiToken string
-	var email string
-	var apiTokenExpires sql.NullTime
-
-	err = tx.QueryRowContext(ctx, getPosterForUpdateQuery, posterID).Scan(&apiToken, &email, &apiTokenExpires)
+	// Always rotate: generate a fresh raw api token, persist only its hash.
+	tok, err := randomToken(32)
 	if err != nil {
-		return nil, fmt.Errorf("load poster: %w", err)
+		return nil, fmt.Errorf("generate api token: %w", err)
 	}
-
 	now := time.Now()
-	if apiToken == "" || !apiTokenExpires.Valid || apiTokenExpires.Time.Before(now) {
-		// issue a new token valid for 2 months
-		tok, err := randomToken(32)
-		if err != nil {
-			return nil, fmt.Errorf("generate api token: %w", err)
-		}
-		exp := now.AddDate(0, 2, 0)
-		if err := tx.QueryRowContext(ctx, updatePosterVerifiedNewTokenQuery, tok, exp, posterID).Scan(&apiToken, &apiTokenExpires.Time, &email); err != nil {
-			return nil, fmt.Errorf("update poster with new token: %w", err)
-		}
-		apiTokenExpires.Valid = true
-	} else {
-		// token exists and is valid; ensure email_verified is set
-		if err := tx.QueryRowContext(ctx, updatePosterVerifiedQuery, posterID).Scan(&apiTokenExpires.Time, &email); err != nil {
-			return nil, fmt.Errorf("update poster verified: %w", err)
-		}
-		apiTokenExpires.Valid = true
+	exp := now.AddDate(0, 2, 0)
+
+	var apiTokenExpiresAt time.Time
+	var email string
+	if err := tx.QueryRowContext(ctx, updatePosterVerifiedNewTokenQuery, HashToken(tok), exp, posterID).Scan(&apiTokenExpiresAt, &email); err != nil {
+		return nil, fmt.Errorf("rotate api token: %w", err)
 	}
 
-	// Update magic_links table to store the api_token AND mark as consumed
-	// This makes it available for the polling endpoint.
-	if _, err := tx.ExecContext(ctx, consumeMagicLinkQuery, apiToken, hashedToken); err != nil {
+	// Make the raw api token available for one-time poll retrieval (gated by the
+	// poll token + expiry). consume_magic_link matches on magic_links.token and
+	// marks the link consumed.
+	if _, err := tx.ExecContext(ctx, consumeMagicLinkQuery, tok, hashedToken); err != nil {
 		return nil, fmt.Errorf("consume magic link: %w", err)
 	}
 
@@ -285,9 +283,9 @@ func (s *Store) ConfirmMagicLink(ctx context.Context, token string) (*ConfirmRes
 	}
 
 	return &ConfirmResult{
-		APIToken:          apiToken,
+		APIToken:          tok,
 		Email:             email,
-		APITokenExpiresAt: apiTokenExpires.Time,
+		APITokenExpiresAt: apiTokenExpiresAt,
 	}, nil
 }
 
@@ -298,12 +296,13 @@ type AuthPoster struct {
 }
 
 // GetPosterByAPIToken returns the poster for a valid, non-expired token.
+// The stored token is a SHA-256 hash, so the incoming bearer is hashed before lookup.
 func (s *Store) GetPosterByAPIToken(ctx context.Context, token string) (*AuthPoster, error) {
 	var p AuthPoster
 	var expires sql.NullTime
 	var emailVerified bool
 
-	err := s.db.QueryRowContext(ctx, getPosterByTokenQuery, token).Scan(&p.PosterID, &p.Email, &p.Username, &expires, &emailVerified)
+	err := s.db.QueryRowContext(ctx, getPosterByTokenQuery, HashToken(token)).Scan(&p.PosterID, &p.Email, &p.Username, &expires, &emailVerified)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("invalid token")
@@ -322,10 +321,12 @@ func (s *Store) GetPosterByAPIToken(ctx context.Context, token string) (*AuthPos
 	return &p, nil
 }
 
-// CheckMagicLinkStatus returns the api_token if the link was confirmed, otherwise empty.
+// CheckMagicLinkStatus returns the api_token if the link was confirmed using the
+// given poll token, otherwise an empty string. The poll token is stored hashed,
+// so the incoming token is hashed before lookup. The link must also be unexpired.
 func (s *Store) CheckMagicLinkStatus(ctx context.Context, token string) (string, error) {
 	var apiToken sql.NullString
-	err := s.db.QueryRowContext(ctx, checkMagicLinkStatusQuery, token).Scan(&apiToken)
+	err := s.db.QueryRowContext(ctx, checkMagicLinkStatusQuery, HashToken(token)).Scan(&apiToken)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return "", nil

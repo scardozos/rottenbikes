@@ -55,7 +55,7 @@ func (s *HTTPServer) handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	magicToken, err := s.service.Register(r.Context(), req.Username, req.Email)
+	magicToken, pollToken, err := s.service.Register(r.Context(), req.Username, req.Email)
 	if err != nil {
 		if strings.Contains(err.Error(), "email already exists") || strings.Contains(err.Error(), "username already exists") {
 			s.sendError(w, err.Error(), http.StatusConflict)
@@ -80,12 +80,12 @@ func (s *HTTPServer) handleRegister(w http.ResponseWriter, r *http.Request) {
 	}
 	uiURL := fmt.Sprintf("%s://%s:%s/confirm/%s", scheme, uiHost, uiPort, magicToken)
 	if req.Origin != "" {
-		uiURL = fmt.Sprintf("%s?origin=%s", uiURL, req.Origin)
+		uiURL = fmt.Sprintf("%s?origin=%s", uiURL, url.QueryEscape(req.Origin))
 	}
 
 	uiURLRedacted := fmt.Sprintf("%s://%s:%s/confirm/%s", scheme, uiHost, uiPort, "[REDACTED]")
 	if req.Origin != "" {
-		uiURLRedacted = fmt.Sprintf("%s?origin=%s", uiURLRedacted, req.Origin)
+		uiURLRedacted = fmt.Sprintf("%s?origin=%s", uiURLRedacted, url.QueryEscape(req.Origin))
 	}
 
 	zerolog.Ctx(r.Context()).Info().Str("email", req.Email).Str("url", uiURLRedacted).Msg("sending UI confirmation link")
@@ -99,11 +99,14 @@ func (s *HTTPServer) handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The opaque credential returned to the requesting device is the poll token
+	// (raw), used to poll /auth/poll for the api token once the emailed link is
+	// confirmed on another device. It is decoupled from the emailed magic token.
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(map[string]string{
 		"message":     "confirmation email sent",
-		"magic_token": domain.HashToken(magicToken),
+		"magic_token": pollToken,
 	})
 }
 
@@ -136,7 +139,7 @@ func (s *HTTPServer) handleRequestMagicLink(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	magicToken, targetEmail, err := s.service.CreateMagicLink(r.Context(), identifier)
+	magicToken, pollToken, targetEmail, err := s.service.CreateMagicLink(r.Context(), identifier)
 	if err != nil {
 		if errors.Is(err, domain.ErrUserNotFound) {
 			s.sendError(w, "user not found", http.StatusNotFound)
@@ -165,12 +168,12 @@ func (s *HTTPServer) handleRequestMagicLink(w http.ResponseWriter, r *http.Reque
 	}
 	uiURL := fmt.Sprintf("%s://%s:%s/confirm/%s", scheme, uiHost, uiPort, magicToken)
 	if req.Origin != "" {
-		uiURL = fmt.Sprintf("%s?origin=%s", uiURL, req.Origin)
+		uiURL = fmt.Sprintf("%s?origin=%s", uiURL, url.QueryEscape(req.Origin))
 	}
 
 	uiURLRedacted := fmt.Sprintf("%s://%s:%s/confirm/%s", scheme, uiHost, uiPort, "[REDACTED]")
 	if req.Origin != "" {
-		uiURLRedacted = fmt.Sprintf("%s?origin=%s", uiURLRedacted, req.Origin)
+		uiURLRedacted = fmt.Sprintf("%s?origin=%s", uiURLRedacted, url.QueryEscape(req.Origin))
 	}
 
 	zerolog.Ctx(r.Context()).Info().Str("email", targetEmail).Str("url", uiURLRedacted).Msg("sending magic link")
@@ -184,11 +187,14 @@ func (s *HTTPServer) handleRequestMagicLink(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	// The opaque credential returned to the requesting device is the poll token
+	// (raw), used to poll /auth/poll for the api token once the emailed link is
+	// confirmed on another device.
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(map[string]string{
 		"message":     "magic link email sent",
-		"magic_token": domain.HashToken(magicToken),
+		"magic_token": pollToken,
 	})
 }
 

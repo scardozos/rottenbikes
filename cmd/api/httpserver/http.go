@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -70,8 +72,12 @@ func New(service domain.Service, sender email.EmailSender, addr string) (*HTTPSe
 	mux.HandleFunc("/reviews/", s.handleReviewSubroutes)
 
 	s.server = &http.Server{
-		Addr:    addr,
-		Handler: observabilityMiddleware(corsMiddleware(mux)),
+		Addr:              addr,
+		Handler:           observabilityMiddleware(corsMiddleware(mux)),
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       120 * time.Second,
 	}
 
 	return s, nil
@@ -184,16 +190,56 @@ func (s *HTTPServer) Shutdown(ctx context.Context) error {
 
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Allow all origins for now (dev/web UI on 8081)
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		origin := r.Header.Get("Origin")
+		allowed := origin != "" && isOriginAllowed(origin)
 
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusOK)
+		w.Header().Add("Vary", "Origin")
+
+		if allowed {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		}
+
+		if r.Method == http.MethodOptions {
+			if allowed {
+				w.WriteHeader(http.StatusNoContent)
+			} else {
+				w.WriteHeader(http.StatusForbidden)
+			}
 			return
 		}
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+func isOriginAllowed(origin string) bool {
+	for _, a := range allowedOrigins() {
+		if a == origin {
+			return true
+		}
+	}
+	return false
+}
+
+func allowedOrigins() []string {
+	raw := strings.TrimSpace(os.Getenv("CORS_ALLOWED_ORIGINS"))
+	if raw == "" {
+		return defaultAllowedOrigins()
+	}
+	var out []string
+	for _, o := range strings.Split(raw, ",") {
+		if o = strings.TrimSpace(o); o != "" {
+			out = append(out, o)
+		}
+	}
+	if len(out) == 0 {
+		return defaultAllowedOrigins()
+	}
+	return out
+}
+
+func defaultAllowedOrigins() []string {
+	return []string{"http://localhost:8081", "http://localhost:8080"}
 }

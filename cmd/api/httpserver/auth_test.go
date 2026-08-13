@@ -17,14 +17,14 @@ import (
 func TestHandleRequestMagicLink(t *testing.T) {
 	t.Setenv("APP_ENV", "local")
 	mockService := &MockService{
-		RegisterFunc: func(ctx context.Context, username, email string) (string, error) {
-			return "magic-token-for-" + email, nil
+		RegisterFunc: func(ctx context.Context, username, email string) (string, string, error) {
+			return "magic-token-for-" + email, "poll-token-for-" + email, nil
 		},
-		CreateMagicLinkFunc: func(ctx context.Context, email string) (string, string, error) {
-			if email == "test@example.com" || email == "testuser" {
-				return "magic-token-for-" + email, "test@example.com", nil
+		CreateMagicLinkFunc: func(ctx context.Context, identifier string) (string, string, string, error) {
+			if identifier == "test@example.com" || identifier == "testuser" {
+				return "magic-token-for-" + identifier, "poll-token-for-" + identifier, "test@example.com", nil
 			}
-			return "", "", domain.ErrUserNotFound
+			return "", "", "", domain.ErrUserNotFound
 		},
 	}
 
@@ -103,15 +103,22 @@ func TestHandleRequestMagicLink(t *testing.T) {
 			t.Fatalf("failed to decode response: %v", err)
 		}
 
-		expectedToken := domain.HashToken("magic-token-for-" + username)
-		if resp["magic_token"] != expectedToken {
-			t.Errorf("expected magic_token %s, got %s", expectedToken, resp["magic_token"])
+		// The opaque credential in the response is the poll token (raw), NOT the
+		// hash of the emailed magic token. The requester polls with this.
+		expectedPollToken := "poll-token-for-" + username
+		if resp["magic_token"] != expectedPollToken {
+			t.Errorf("expected magic_token (poll token) %s, got %s", expectedPollToken, resp["magic_token"])
+		}
+		// The poll token must NOT equal the hash of the emailed magic token (the
+		// old, vulnerable behavior). That hash should not even appear here.
+		if resp["magic_token"] == domain.HashToken("magic-token-for-"+username) {
+			t.Errorf("poll token must not be deriveable from the emailed magic token")
 		}
 	})
 
 	t.Run("rate_limit_exceeded", func(t *testing.T) {
-		mockService.CreateMagicLinkFunc = func(ctx context.Context, email string) (string, string, error) {
-			return "", "", domain.ErrRateLimitExceeded
+		mockService.CreateMagicLinkFunc = func(ctx context.Context, identifier string) (string, string, string, error) {
+			return "", "", "", domain.ErrRateLimitExceeded
 		}
 
 		reqBody, _ := json.Marshal(map[string]string{

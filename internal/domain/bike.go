@@ -119,12 +119,38 @@ func (s *Store) GetBikeDetails(ctx context.Context, id string, limit, offset int
 	}, nil
 }
 
-func (s *Store) UpdateBike(ctx context.Context, id string, hashID *string, isElectric *bool) error {
-	_, err := s.db.ExecContext(ctx, updateBikeQuery, hashID, isElectric, id)
-	return err
+// UpdateBike updates a bike owned by creatorID. Only the creator may update a
+// bike; a non-creator (or a missing bike) yields sql.ErrNoRows so callers can
+// map both to a single 404 without leaking whether the bike exists.
+func (s *Store) UpdateBike(ctx context.Context, id string, hashID *string, isElectric *bool, creatorID int64) error {
+	res, err := s.db.ExecContext(ctx, updateBikeQuery, hashID, isElectric, id, creatorID)
+	if err != nil {
+		return err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }
 
-func (s *Store) DeleteBike(ctx context.Context, id string) error {
-	_, err := s.db.ExecContext(ctx, deleteBikeQuery, id)
-	return err
+// DeleteBike deletes a bike owned by creatorID. Only the creator may delete a
+// bike (which cascades to all its reviews + aggregates); a non-creator (or a
+// missing bike) yields sql.ErrNoRows.
+func (s *Store) DeleteBike(ctx context.Context, id string, creatorID int64) error {
+	res, err := s.db.ExecContext(ctx, deleteBikeQuery, id, creatorID)
+	if err != nil {
+		return err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }

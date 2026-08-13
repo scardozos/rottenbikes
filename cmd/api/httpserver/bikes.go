@@ -179,10 +179,20 @@ func (s *HTTPServer) handleUpdateBike(w http.ResponseWriter, r *http.Request, bi
 		return
 	}
 
+	posterID, ok := posterIDFromContext(r.Context())
+	if !ok {
+		s.sendError(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
 
-	if err := s.service.UpdateBike(ctx, bikeID, req.HashID, req.IsElectric); err != nil {
+	if err := s.service.UpdateBike(ctx, bikeID, req.HashID, req.IsElectric, posterID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			s.sendError(w, "bike not found", http.StatusNotFound)
+			return
+		}
 		zerolog.Ctx(r.Context()).Error().Err(err).Str("bike_id", bikeID).Msg("update bike error")
 		s.sendError(w, "internal server error", http.StatusInternalServerError)
 		return
@@ -233,10 +243,20 @@ func (s *HTTPServer) handleDeleteBike(w http.ResponseWriter, r *http.Request, bi
 		return
 	}
 
+	posterID, ok := posterIDFromContext(r.Context())
+	if !ok {
+		s.sendError(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
 
-	if err := s.service.DeleteBike(ctx, bikeID); err != nil {
+	if err := s.service.DeleteBike(ctx, bikeID, posterID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			s.sendError(w, "bike not found", http.StatusNotFound)
+			return
+		}
 		zerolog.Ctx(r.Context()).Error().Err(err).Str("bike_id", bikeID).Msg("delete bike error")
 		s.sendError(w, "internal server error", http.StatusInternalServerError)
 		return

@@ -7,8 +7,8 @@ import (
 )
 
 type MockService struct {
-	RegisterFunc                     func(ctx context.Context, username, email string) (string, error)
-	CreateMagicLinkFunc              func(ctx context.Context, email string) (string, string, error)
+	RegisterFunc                     func(ctx context.Context, username, email string) (string, string, error)
+	CreateMagicLinkFunc              func(ctx context.Context, identifier string) (string, string, string, error)
 	ConfirmMagicLinkFunc             func(ctx context.Context, token string) (*domain.ConfirmResult, error)
 	GetPosterByAPITokenFunc          func(ctx context.Context, token string) (*domain.AuthPoster, error)
 	CheckMagicLinkStatusFunc         func(ctx context.Context, token string) (string, error)
@@ -17,8 +17,8 @@ type MockService struct {
 	CreateBikeFunc                   func(ctx context.Context, numericalID string, hashID *string, isElectric bool, creatorID int64) (*domain.Bike, error)
 	GetBikeFunc                      func(ctx context.Context, id string) (*domain.Bike, error)
 	GetBikeDetailsFunc               func(ctx context.Context, id string, limit, offset int) (*domain.BikeDetails, error)
-	UpdateBikeFunc                   func(ctx context.Context, id string, hashID *string, isElectric *bool) error
-	DeleteBikeFunc                   func(ctx context.Context, id string) error
+	UpdateBikeFunc                   func(ctx context.Context, id string, hashID *string, isElectric *bool, creatorID int64) error
+	DeleteBikeFunc                   func(ctx context.Context, id string, creatorID int64) error
 	ListRatingAggregatesByBikeFunc   func(ctx context.Context, bikeID string) ([]domain.RatingAggregate, error)
 	ListReviewsWithRatingsByBikeFunc func(ctx context.Context, bikeID string, limit, offset int) ([]domain.ReviewWithRatings, error)
 	CreateReviewWithRatingsFunc      func(ctx context.Context, in domain.CreateReviewInput) (int64, error)
@@ -27,12 +27,12 @@ type MockService struct {
 	DeleteReviewFunc                 func(ctx context.Context, reviewID int64, posterID int64) error
 }
 
-func (m *MockService) Register(ctx context.Context, username, email string) (string, error) {
+func (m *MockService) Register(ctx context.Context, username, email string) (string, string, error) {
 	return m.RegisterFunc(ctx, username, email)
 }
 
-func (m *MockService) CreateMagicLink(ctx context.Context, email string) (string, string, error) {
-	return m.CreateMagicLinkFunc(ctx, email)
+func (m *MockService) CreateMagicLink(ctx context.Context, identifier string) (string, string, string, error) {
+	return m.CreateMagicLinkFunc(ctx, identifier)
 }
 
 func (m *MockService) ConfirmMagicLink(ctx context.Context, token string) (*domain.ConfirmResult, error) {
@@ -70,12 +70,12 @@ func (m *MockService) GetBikeDetails(ctx context.Context, id string, limit, offs
 	return m.GetBikeDetailsFunc(ctx, id, limit, offset)
 }
 
-func (m *MockService) UpdateBike(ctx context.Context, id string, hashID *string, isElectric *bool) error {
-	return m.UpdateBikeFunc(ctx, id, hashID, isElectric)
+func (m *MockService) UpdateBike(ctx context.Context, id string, hashID *string, isElectric *bool, creatorID int64) error {
+	return m.UpdateBikeFunc(ctx, id, hashID, isElectric, creatorID)
 }
 
-func (m *MockService) DeleteBike(ctx context.Context, id string) error {
-	return m.DeleteBikeFunc(ctx, id)
+func (m *MockService) DeleteBike(ctx context.Context, id string, creatorID int64) error {
+	return m.DeleteBikeFunc(ctx, id, creatorID)
 }
 
 func (m *MockService) ListRatingAggregatesByBike(ctx context.Context, bikeID string) ([]domain.RatingAggregate, error) {

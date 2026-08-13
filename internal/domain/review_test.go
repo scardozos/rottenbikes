@@ -32,17 +32,22 @@ func TestCreateReviewWithRatings(t *testing.T) {
 	}
 
 	t.Run("success", func(t *testing.T) {
-		// New: Check global hourly limit
+		mock.ExpectBegin()
+
+		// Lock the poster row (FOR UPDATE) so concurrent creations serialize.
+		mock.ExpectQuery("SELECT poster_id FROM posters").
+			WithArgs(posterID).
+			WillReturnRows(sqlmock.NewRows([]string{"poster_id"}).AddRow(posterID))
+
+		// Global hourly limit (inside tx, after lock)
 		mock.ExpectQuery("SELECT COUNT\\(\\*\\) FROM reviews").
 			WithArgs(posterID).
 			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
 
-		// Check last review time
+		// Per-bike frequency (inside tx, after lock)
 		mock.ExpectQuery("SELECT created_ts FROM reviews").
 			WithArgs(posterID, bikeID).
 			WillReturnError(sql.ErrNoRows)
-
-		mock.ExpectBegin()
 
 		// Insert review
 		mock.ExpectQuery("INSERT INTO reviews").
@@ -72,10 +77,17 @@ func TestCreateReviewWithRatings(t *testing.T) {
 		if id != 1 {
 			t.Errorf("expected review id 1, got %d", id)
 		}
+
+		if err := mock.ExpectationsWereMet(); err != nil {
+			t.Errorf("there were unfulfilled expectations: %s", err)
+		}
 	})
 
 	t.Run("hourly_limit_exceeded", func(t *testing.T) {
-		// Expect count >= 5
+		mock.ExpectBegin()
+		mock.ExpectQuery("SELECT poster_id FROM posters").
+			WithArgs(posterID).
+			WillReturnRows(sqlmock.NewRows([]string{"poster_id"}).AddRow(posterID))
 		mock.ExpectQuery("SELECT COUNT\\(\\*\\) FROM reviews").
 			WithArgs(posterID).
 			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(5))
@@ -88,12 +100,15 @@ func TestCreateReviewWithRatings(t *testing.T) {
 	})
 
 	t.Run("rate_limit_per_bike", func(t *testing.T) {
-		// Hourly limit is fine
+		mock.ExpectBegin()
+		mock.ExpectQuery("SELECT poster_id FROM posters").
+			WithArgs(posterID).
+			WillReturnRows(sqlmock.NewRows([]string{"poster_id"}).AddRow(posterID))
+		// Hourly limit fine
 		mock.ExpectQuery("SELECT COUNT\\(\\*\\) FROM reviews").
 			WithArgs(posterID).
 			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
-
-		// Last review was recent (per bike)
+		// Last review was recent
 		mock.ExpectQuery("SELECT created_ts FROM reviews").
 			WithArgs(posterID, bikeID).
 			WillReturnRows(sqlmock.NewRows([]string{"created_ts"}).AddRow(time.Now()))
@@ -105,8 +120,24 @@ func TestCreateReviewWithRatings(t *testing.T) {
 		}
 	})
 
+	t.Run("poster_not_found", func(t *testing.T) {
+		// A poster that authenticated but was since deleted: the lock SELECT
+		// returns no rows, so the create aborts rather than inserting an
+		// orphaned review.
+		mock.ExpectBegin()
+		mock.ExpectQuery("SELECT poster_id FROM posters").
+			WithArgs(posterID).
+			WillReturnError(sql.ErrNoRows)
+
+		store := NewService(NewStore(db))
+		_, err := store.CreateReviewWithRatings(ctx, in)
+		if err == nil {
+			t.Error("expected error for missing poster")
+		}
+	})
+
 	t.Run("invalid_rating", func(t *testing.T) {
-		// Invalid score
+		// Validation happens in the service layer before any DB access.
 		invalidScore := int16(6)
 		inInvalid := in
 		inInvalid.Overall = &invalidScore

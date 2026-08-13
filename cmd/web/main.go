@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -52,7 +53,15 @@ func main() {
 	})
 
 	log.Info().Str("port", port).Msg("Web UI server listening")
-	if err := http.ListenAndServe(":"+port, nil); err != nil {
+	webSrv := &http.Server{
+		Addr:              ":" + port,
+		Handler:           http.DefaultServeMux,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       120 * time.Second,
+	}
+	if err := webSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatal().Err(err).Msg("Web UI server failed to start")
 	}
 }

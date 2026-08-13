@@ -16,6 +16,8 @@ var (
 	createReviewCheckRateLimitQuery string
 	//go:embed sql/create_review_check_frequency.sql
 	createReviewCheckFrequencyQuery string
+	//go:embed sql/create_review_lock_poster.sql
+	createReviewLockPosterQuery string
 	//go:embed sql/insert_review.sql
 	insertReviewQuery string
 	//go:embed sql/insert_review_rating.sql
@@ -139,19 +141,37 @@ func (s *Store) CreateReviewWithRatings(ctx context.Context, in CreateReviewInpu
 	const minInterval = 10 * time.Minute
 	const maxHourlyReviews = 5
 
-	// 1. Check global hourly limit
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Lock the poster row for the duration of the transaction so concurrent
+	// review creations by the same poster serialize. This closes the TOCTOU race
+	// on both the hourly limit and the per-bike frequency check: a concurrent
+	// request blocks here until the first commits, then observes the now-
+	// committed review and is rejected. Different posters lock different rows
+	// and do not contend.
+	if err := tx.QueryRowContext(ctx, createReviewLockPosterQuery, in.PosterID).Scan(new(int64)); err != nil {
+		if err == sql.ErrNoRows {
+			return 0, fmt.Errorf("poster not found: %w", err)
+		}
+		return 0, fmt.Errorf("lock poster: %w", err)
+	}
+
+	// 1. Check global hourly limit (inside the tx, after the lock)
 	var hourlyCount int
-	if err := s.db.QueryRowContext(ctx, createReviewCheckRateLimitQuery, in.PosterID).Scan(&hourlyCount); err != nil {
+	if err := tx.QueryRowContext(ctx, createReviewCheckRateLimitQuery, in.PosterID).Scan(&hourlyCount); err != nil {
 		return 0, fmt.Errorf("check hourly limit: %w", err)
 	}
 	if hourlyCount >= maxHourlyReviews {
 		return 0, ErrHourlyRateLimitExceeded
 	}
 
-	// 2. Check per-bike frequency
-
+	// 2. Check per-bike frequency (inside the tx, after the lock)
 	var lastCreated time.Time
-	err := s.db.QueryRowContext(ctx, createReviewCheckFrequencyQuery, in.PosterID, in.BikeID).Scan(&lastCreated)
+	err = tx.QueryRowContext(ctx, createReviewCheckFrequencyQuery, in.PosterID, in.BikeID).Scan(&lastCreated)
 
 	if err == nil {
 		if time.Since(lastCreated) < minInterval {
@@ -160,12 +180,6 @@ func (s *Store) CreateReviewWithRatings(ctx context.Context, in CreateReviewInpu
 	} else if err != sql.ErrNoRows {
 		return 0, fmt.Errorf("check last review time: %w", err)
 	}
-
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return 0, fmt.Errorf("begin tx: %w", err)
-	}
-	defer tx.Rollback()
 
 	// Insert review, now including bike_img
 	var reviewID int64

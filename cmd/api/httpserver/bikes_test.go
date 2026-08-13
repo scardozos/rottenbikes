@@ -296,11 +296,13 @@ func TestHandleGetBike(t *testing.T) {
 }
 
 func TestHandleUpdateBike(t *testing.T) {
+	var capturedCreatorID int64
 	mockService := &MockService{
 		GetPosterByAPITokenFunc: func(ctx context.Context, token string) (*domain.AuthPoster, error) {
 			return &domain.AuthPoster{PosterID: 1}, nil
 		},
-		UpdateBikeFunc: func(ctx context.Context, id string, hashID *string, isElectric *bool) error {
+		UpdateBikeFunc: func(ctx context.Context, id string, hashID *string, isElectric *bool, creatorID int64) error {
+			capturedCreatorID = creatorID
 			return nil
 		},
 	}
@@ -325,6 +327,31 @@ func TestHandleUpdateBike(t *testing.T) {
 
 		if w.Code != http.StatusNoContent {
 			t.Errorf("expected status 204, got %d", w.Code)
+		}
+		// Ownership must be threaded: the authenticated poster's id is passed as
+		// creator_id to the service so the store can enforce it in SQL.
+		if capturedCreatorID != 1 {
+			t.Errorf("expected creatorID 1 to be passed to service, got %d", capturedCreatorID)
+		}
+	})
+
+	t.Run("not_owner_returns_404", func(t *testing.T) {
+		// Non-owner (or nonexistent bike) -> service returns sql.ErrNoRows ->
+		// handler maps to 404 (no enumeration of whether the bike exists).
+		mockService.UpdateBikeFunc = func(ctx context.Context, id string, hashID *string, isElectric *bool, creatorID int64) error {
+			return sql.ErrNoRows
+		}
+
+		token := "valid_token"
+		reqBody, _ := json.Marshal(map[string]interface{}{"hash_id": "x"})
+		req := httptest.NewRequest(http.MethodPut, "/bikes/1", bytes.NewReader(reqBody))
+		req.Header.Set("Authorization", "Bearer "+token)
+		w := httptest.NewRecorder()
+
+		srv.server.Handler.ServeHTTP(w, req)
+
+		if w.Code != http.StatusNotFound {
+			t.Errorf("expected status 404 for non-owner, got %d", w.Code)
 		}
 	})
 
@@ -364,10 +391,15 @@ func TestHandleUpdateBike(t *testing.T) {
 }
 
 func TestHandleDeleteBike(t *testing.T) {
+	var capturedCreatorID int64
 	mockService := &MockService{
-		DeleteBikeFunc: func(ctx context.Context, id string) error {
+		DeleteBikeFunc: func(ctx context.Context, id string, creatorID int64) error {
+			capturedCreatorID = creatorID
 			if id == "1" {
 				return nil
+			}
+			if id == "404" {
+				return sql.ErrNoRows
 			}
 			return errors.New("delete error")
 		},
@@ -390,6 +422,21 @@ func TestHandleDeleteBike(t *testing.T) {
 
 		if w.Code != http.StatusNoContent {
 			t.Errorf("expected status 204, got %d", w.Code)
+		}
+		if capturedCreatorID != 1 {
+			t.Errorf("expected creatorID 1 to be passed to service, got %d", capturedCreatorID)
+		}
+	})
+
+	t.Run("not_owner_returns_404", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodDelete, "/bikes/404", nil)
+		req.Header.Set("Authorization", "Bearer valid_token")
+		w := httptest.NewRecorder()
+
+		srv.server.Handler.ServeHTTP(w, req)
+
+		if w.Code != http.StatusNotFound {
+			t.Errorf("expected status 404 for non-owner, got %d", w.Code)
 		}
 	})
 

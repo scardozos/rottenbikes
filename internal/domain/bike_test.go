@@ -122,16 +122,32 @@ func TestUpdateBike(t *testing.T) {
 	id := "01"
 	hashID := "newhash"
 	isElectric := false
+	creatorID := int64(1)
 
 	t.Run("success", func(t *testing.T) {
 		mock.ExpectExec("UPDATE bikes").
-			WithArgs(&hashID, &isElectric, id).
+			WithArgs(&hashID, &isElectric, id, creatorID).
 			WillReturnResult(sqlmock.NewResult(0, 1))
 
 		store := NewService(NewStore(db))
-		err := store.UpdateBike(ctx, id, &hashID, &isElectric)
+		err := store.UpdateBike(ctx, id, &hashID, &isElectric, creatorID)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("not_owner_or_missing", func(t *testing.T) {
+		// 0 rows affected means the WHERE clause (creator_id match) failed: the
+		// caller is not the owner, or the bike does not exist. Both collapse to
+		// sql.ErrNoRows so the handler can map to a single 404.
+		mock.ExpectExec("UPDATE bikes").
+			WithArgs(&hashID, &isElectric, id, creatorID).
+			WillReturnResult(sqlmock.NewResult(0, 0))
+
+		store := NewService(NewStore(db))
+		err := store.UpdateBike(ctx, id, &hashID, &isElectric, creatorID)
+		if err != sql.ErrNoRows {
+			t.Errorf("expected sql.ErrNoRows for non-owner, got %v", err)
 		}
 	})
 }
@@ -145,16 +161,29 @@ func TestDeleteBike(t *testing.T) {
 
 	ctx := context.Background()
 	id := "01"
+	creatorID := int64(1)
 
 	t.Run("success", func(t *testing.T) {
 		mock.ExpectExec("DELETE FROM bikes").
-			WithArgs(id).
+			WithArgs(id, creatorID).
 			WillReturnResult(sqlmock.NewResult(0, 1))
 
 		store := NewService(NewStore(db))
-		err := store.DeleteBike(ctx, id)
+		err := store.DeleteBike(ctx, id, creatorID)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("not_owner_or_missing", func(t *testing.T) {
+		mock.ExpectExec("DELETE FROM bikes").
+			WithArgs(id, creatorID).
+			WillReturnResult(sqlmock.NewResult(0, 0))
+
+		store := NewService(NewStore(db))
+		err := store.DeleteBike(ctx, id, creatorID)
+		if err != sql.ErrNoRows {
+			t.Errorf("expected sql.ErrNoRows for non-owner, got %v", err)
 		}
 	})
 }

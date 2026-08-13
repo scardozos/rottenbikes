@@ -142,5 +142,6 @@ The application is configured via environment variables. Create a `.env` file (o
 | `EMAIL_SENDER_TOKEN_MAILTRAP` | API Token for Mailtrap (for sending emails). | Empty (uses No-op sender) |
 | `EMAIL_FROM_ADDRESS` | Sender email address. | `hello@rottenbik.es` |
 | `HCAPTCHA_SECRET` | Secret key for hCaptcha verification. | Empty (skips verification in dev) |
+| `CORS_ALLOWED_ORIGINS` | Comma-separated allowlist of origins for the API (e.g. `https://rottenbik.es,https://app.rottenbik.es`). When unset, falls back to the local dev UI origins. | `http://localhost:8081,http://localhost:8080` |
 | `UI_HOST` | Hostname for generating magic links. | `localhost` |
 | `UI_PORT` | Port for generating magic links. | `8081` |
