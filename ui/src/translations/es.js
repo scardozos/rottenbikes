@@ -72,7 +72,9 @@ export default {
 
     sort_most_reviewed: 'Más valoradas',
     sort_recent: 'Recientes',
+    sort_options_title: 'Opciones de Ordenación',
     my_reviews: 'Mis Reseñas',
+    must_be_logged_in_to_view_reviews: 'Debes iniciar sesión para ver tus reseñas.',
     trend_stable: 'Estable',
     trend_improving: 'Mejorando',
     trend_degrading: 'Degradando',
@@ -102,7 +104,6 @@ export default {
     delete_account_error: "Error al eliminar la cuenta.",
     deleting: "Eliminando...",
     delete: "Eliminar",
-    cancel: "Cancelar",
     bike_description: "Una bicicleta {type} para explorar.",
     no_reviews: 'Aún no hay reseñas.',
     just_now: 'ahora',
@@ -171,6 +172,10 @@ export default {
     update_review_button: 'Actualizar Reseña',
     review_updated_success: '¡Reseña actualizada con éxito!',
     failed_update_review: 'Error al actualizar la reseña.',
+    delete_review_title: 'Eliminar Reseña',
+    delete_review_confirm: '¿Estás seguro de que quieres eliminar esta reseña?',
+    review_deleted_success: 'Reseña eliminada con éxito',
+    failed_delete_review: 'Error al eliminar la reseña.',
     session_expired: 'Tu sesión ha caducado. Por favor, inicia sesión de nuevo.',
 
     // Subcategory Info

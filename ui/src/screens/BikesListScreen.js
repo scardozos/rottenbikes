@@ -6,6 +6,8 @@ import { AuthContext } from '../context/AuthContext';
 import { ThemeContext } from '../context/ThemeContext';
 import { LanguageContext } from '../context/LanguageContext';
 import SortDropdown from '../components/SortDropdown';
+import { isNumeric } from '../utils/validation';
+import { uniqueBy } from '../utils/reviews';
 
 const BikesListScreen = ({ navigation }) => {
     const [bikes, setBikes] = useState([]);
@@ -45,8 +47,7 @@ const BikesListScreen = ({ navigation }) => {
             } else {
                 setBikes(prev => {
                     const combined = [...prev, ...data];
-                    const unique = combined.filter((v, i, a) => a.findIndex(t => (t.numerical_id === v.numerical_id)) === i);
-                    return unique;
+                    return uniqueBy(combined, (v) => v.numerical_id);
                 });
             }
         } catch (e) {
@@ -93,9 +94,9 @@ const BikesListScreen = ({ navigation }) => {
     // Kept for manual search creation if needed, though mostly handled in Home now.
     // Users can still search list here.
     const handleCreateSearchBike = () => {
-        const isNumeric = /^\d+$/.test(searchQuery);
+        const numeric = isNumeric(searchQuery);
         const params = {};
-        if (isNumeric) {
+        if (numeric) {
             params.initialNumericalId = searchQuery;
         } else {
             params.initialHashId = searchQuery;

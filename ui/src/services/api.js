@@ -1,5 +1,6 @@
 import axios from 'axios';
 import storage from '../utils/storage';
+import { formatRetryAfter } from '../utils/rate-limit';
 
 const API_URL = window.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_API_URL || (__DEV__ ? 'http://localhost:8080' : '');
 
@@ -32,15 +33,10 @@ api.interceptors.response.use(
             DeviceEventEmitter.emit('session_expired');
         } else if (error.response && error.response.status === 429) {
             const retryAfter = error.response.headers['retry-after'];
-            if (retryAfter) {
-                // If it's a number of seconds
-                const seconds = parseInt(retryAfter, 10);
-                if (!isNaN(seconds)) {
-                    const minutes = Math.ceil(seconds / 60);
-                    if (error.response.data) {
-                        error.response.data.error = `${error.response.data.error || 'Rate limited'}. Please try again in ${minutes} minute(s).`;
-                    }
-                }
+            const baseError = error.response.data?.error || 'Rate limited';
+            const message = formatRetryAfter(retryAfter, baseError);
+            if (message && error.response.data) {
+                error.response.data.error = message;
             }
         }
         return Promise.reject(error);

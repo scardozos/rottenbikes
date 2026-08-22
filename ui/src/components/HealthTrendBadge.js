@@ -2,6 +2,7 @@ import React, { useContext } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { ThemeContext } from '../context/ThemeContext';
 import { LanguageContext } from '../context/LanguageContext';
+import { computeTrend } from '../utils/ratings';
 
 const HealthTrendBadge = ({ aggregates, subcategory = 'overall' }) => {
     const { theme } = useContext(ThemeContext);
@@ -16,19 +17,16 @@ const HealthTrendBadge = ({ aggregates, subcategory = 'overall' }) => {
     // We need at least w1 and w2 to compare trends
     if (w1 == null || w2 == null) return null;
 
-    let trend = 'stable';
+    const trend = computeTrend(w1, w2);
     let icon = '➡️';
     let color = theme.colors.subtext;
     let label = t('trend_stable') || 'Stable';
 
-    // Simple trend logic
-    if (w1 > w2 + 0.2) {
-        trend = 'improving';
+    if (trend === 'improving') {
         icon = '↗️';
         color = '#2ecc71'; // Green
         label = t('trend_improving') || 'Improving';
-    } else if (w1 < w2 - 0.2) {
-        trend = 'degrading';
+    } else if (trend === 'degrading') {
         icon = '↘️';
         color = '#e74c3c'; // Red
         label = t('trend_degrading') || 'Degrading';

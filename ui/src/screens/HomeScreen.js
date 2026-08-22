@@ -9,6 +9,7 @@ import { AuthContext } from '../context/AuthContext';
 import { useSession } from '../context/SessionContext';
 import { LanguageContext } from '../context/LanguageContext';
 import { Scanner } from '../components/Scanner';
+import { isNumeric } from '../utils/validation';
 
 let WebScanner;
 
@@ -71,7 +72,7 @@ const HomeScreen = ({ navigation }) => {
         if (!manualId.trim()) return;
 
         // Basic numerical validation
-        if (!/^\d+$/.test(manualId)) {
+        if (!isNumeric(manualId)) {
             showToast(t('invalid_numerical_id'), "error");
             return;
         }
