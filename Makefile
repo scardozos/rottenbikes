@@ -12,7 +12,7 @@ endif
 
 MIGRATIONS_DIR := internal/db/migrations
 
-.PHONY: db-up db-migrate-up db-migrate-down db-reset run test build lint fmt build-and-push
+.PHONY: db-up db-migrate-up db-migrate-down db-reset run test test-go test-ui build lint fmt build-and-push
 
 db-up:
 	@echo "Starting local PostgreSQL..."
@@ -63,6 +63,15 @@ build:
 test:
 	@echo "Running tests..."
 	@HCAPTCHA_SECRET= go test ./...
+	@$(MAKE) test-ui
+
+test-go:
+	@echo "Running Go tests..."
+	@HCAPTCHA_SECRET= go test ./...
+
+test-ui:
+	@echo "Running UI tests..."
+	@cd ui && node scripts/run-tests.js
 
 fmt:
 	@echo "Formatting code..."

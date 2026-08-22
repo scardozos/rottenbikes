@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import storage from '../utils/storage';
+import { interpolate } from '../utils/i18n';
 
 import ca from '../translations/ca';
 import es from '../translations/es';
@@ -43,11 +44,8 @@ export const LanguageProvider = ({ children }) => {
     };
 
     const t = (key, params = {}) => {
-        let text = translations[language][key] || key;
-        Object.keys(params).forEach(param => {
-            text = text.replace(`{${param}}`, params[param]);
-        });
-        return text;
+        const text = translations[language][key] || key;
+        return interpolate(text, params);
     };
 
     return (

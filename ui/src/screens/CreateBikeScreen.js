@@ -6,6 +6,7 @@ import { ThemeContext } from '../context/ThemeContext';
 import { LanguageContext } from '../context/LanguageContext';
 
 import { useSession } from '../context/SessionContext';
+import { isValidNumericalId, isValidHashId } from '../utils/validation';
 
 const CreateBikeScreen = ({ route, navigation }) => {
     const { initialNumericalId, initialHashId } = route.params || {};
@@ -29,14 +30,14 @@ const CreateBikeScreen = ({ route, navigation }) => {
         setLoading(true);
 
         const numId = String(numericalId).trim();
-        if (!/^\d{4,5}$/.test(numId)) {
+        if (!isValidNumericalId(numId)) {
             showToast(t('invalid_numerical_id'), "error");
             setLoading(false);
             return;
         }
 
         const hId = hashId.trim();
-        if (hId !== '' && !/^[a-zA-Z0-9]+$/.test(hId)) {
+        if (!isValidHashId(hId)) {
             showToast(t('invalid_hash_id'), "error");
             setLoading(false);
             return;

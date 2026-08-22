@@ -72,7 +72,9 @@ export default {
 
     sort_most_reviewed: 'Més valorades',
     sort_recent: 'Recents',
+    sort_options_title: 'Opcions d\'Ordenació',
     my_reviews: 'Les Meves Ressenyes',
+    must_be_logged_in_to_view_reviews: 'Has d\'iniciar sessió per veure les teves ressenyes.',
     trend_stable: 'Estable',
     trend_improving: 'Millorant',
     trend_degrading: 'Degradant',
@@ -102,7 +104,6 @@ export default {
     delete_account_error: "Error en eliminar el compte.",
     deleting: "Eliminant...",
     delete: "Eliminar",
-    cancel: "Cancel·lar",
     bike_description: "Una bicicleta {type} per explorar.",
     no_reviews: 'Encara no hi ha ressenyes.',
     just_now: 'ara mateix',
@@ -171,6 +172,10 @@ export default {
     update_review_button: 'Actualitzar Ressenya',
     review_updated_success: 'Ressenya actualitzada correctament!',
     failed_update_review: 'Error en actualitzar la ressenya.',
+    delete_review_title: 'Eliminar Ressenya',
+    delete_review_confirm: 'Estàs segur que vols eliminar aquesta ressenya?',
+    review_deleted_success: 'Ressenya eliminada correctament',
+    failed_delete_review: 'Error en eliminar la ressenya.',
     session_expired: 'La teva sessió ha caducat. Si us plau, inicia sessió de nou.',
 
     // Subcategory Info

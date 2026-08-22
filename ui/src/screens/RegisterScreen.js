@@ -6,6 +6,7 @@ import { ThemeContext } from '../context/ThemeContext';
 import { LanguageContext } from '../context/LanguageContext';
 import HCaptchaView from '../components/HCaptchaView';
 import { useToast } from '../context/ToastContext';
+import { isValidUsername, isValidEmail } from '../utils/validation';
 
 const RegisterScreen = ({ navigation }) => {
   const [username, setUsername] = useState('');
@@ -49,14 +50,12 @@ const RegisterScreen = ({ navigation }) => {
     }
 
     // Validate username (alphanumeric and dots only)
-    const usernameRegex = /^[a-zA-Z0-9.]+$/;
-    if (!usernameRegex.test(username)) {
+    if (!isValidUsername(username)) {
       setUsernameError(t('username_invalid'));
       return;
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!isValidEmail(email)) {
       setEmailError(t('email_invalid'));
       return;
     }

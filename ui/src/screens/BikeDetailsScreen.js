@@ -12,13 +12,8 @@ import { useToast } from '../context/ToastContext';
 
 import ReviewItem from '../components/ReviewItem';
 import HealthTrendBadge from '../components/HealthTrendBadge';
-
-const getBorderColor = (rating) => {
-    if (rating == null) return 'transparent';
-    if (rating >= 4) return '#2ecc71'; // Green
-    if (rating >= 3) return '#f1c40f'; // Yellow
-    return '#e74c3c'; // Red
-};
+import { getBorderColor } from '../utils/ratings';
+import { sortReviews, getPreviewReviews } from '../utils/reviews';
 
 const BikeDetailsScreen = ({ route, navigation }) => {
     const params = route.params || {};
@@ -289,22 +284,10 @@ const BikeDetailsScreen = ({ route, navigation }) => {
         );
     };
 
-    const getSortedReviews = () => {
-        return [...reviews].sort((a, b) => {
-            let diff = 0;
-            if (sortBy === 'date') {
-                diff = new Date(a.created_at) - new Date(b.created_at);
-            } else {
-                diff = (a.ratings?.overall || 0) - (b.ratings?.overall || 0);
-            }
-            return sortOrder === 'asc' ? diff : -diff;
-        });
-    }
+    const getSortedReviews = () => sortReviews(reviews, sortBy, sortOrder);
 
     // Default view shows only top 3, always sorted by date (newest)
-    const previewReviews = [...reviews]
-        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-        .slice(0, 3);
+    const previewReviews = getPreviewReviews(reviews, 3);
 
     const activeAgg = aggregates.find(a => a.subcategory === 'overall' && a.window === timeWindow);
     const activeRating = activeAgg ? activeAgg.average_rating : null;

@@ -72,7 +72,9 @@ export default {
 
     sort_most_reviewed: 'Most Reviewed',
     sort_recent: 'Recent',
+    sort_options_title: 'Sort Options',
     my_reviews: 'My Reviews',
+    must_be_logged_in_to_view_reviews: 'You must be logged in to view your reviews.',
     trend_stable: 'Stable',
     trend_improving: 'Improving',
     trend_degrading: 'Degrading',
@@ -170,6 +172,10 @@ export default {
     update_review_button: 'Update Review',
     review_updated_success: 'Review updated successfully!',
     failed_update_review: 'Failed to update review.',
+    delete_review_title: 'Delete Review',
+    delete_review_confirm: 'Are you sure you want to delete this review?',
+    review_deleted_success: 'Review deleted successfully',
+    failed_delete_review: 'Failed to delete review.',
     session_expired: 'Your session has expired. Please log in again.',
 
     // Subcategory Info
