@@ -17,6 +17,9 @@ type Service interface {
 	CheckMagicLinkStatus(ctx context.Context, token string) (string, error)
 	DeletePoster(ctx context.Context, posterID int64, deleteContent bool) error
 
+	// Infrastructure
+	HealthCheck(ctx context.Context) error
+
 	// Bike
 	ListBikes(ctx context.Context, searchQuery, sortBy string, limit, offset int) ([]Bike, error)
 	CreateBike(ctx context.Context, numericalID string, hashID *string, isElectric bool, creatorID int64) (*Bike, error)
@@ -90,6 +93,12 @@ func (s *service) CheckMagicLinkStatus(ctx context.Context, token string) (strin
 
 func (s *service) DeletePoster(ctx context.Context, posterID int64, deleteContent bool) error {
 	return s.store.DeletePoster(ctx, posterID, deleteContent)
+}
+
+// Infrastructure
+
+func (s *service) HealthCheck(ctx context.Context) error {
+	return s.store.db.PingContext(ctx)
 }
 
 // Bike

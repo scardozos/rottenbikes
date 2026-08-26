@@ -32,7 +32,7 @@ const HealthTrendBadge = ({ aggregates, subcategory = 'overall' }) => {
         label = t('trend_degrading') || 'Degrading';
     }
 
-    const styles = createStyles(theme);
+    const styles = React.useMemo(() => createStyles(theme), [theme]);
 
     return (
         <View style={[styles.badge, { borderColor: color, backgroundColor: color + '1A' }]}>

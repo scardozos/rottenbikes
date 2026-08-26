@@ -157,7 +157,7 @@ const HomeScreen = ({ navigation }) => {
         }
     };
 
-    const stylesInternal = createStyles(theme);
+    const stylesInternal = React.useMemo(() => createStyles(theme), [theme]);
 
     // Naive check for mobile browser agent
     const isMobileWeb = Platform.OS === 'web' && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);

@@ -17,6 +17,7 @@ const MyReviewsScreen = ({ navigation }) => {
     const [hasMore, setHasMore] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [expandedReviews, setExpandedReviews] = useState(new Set());
+    const [error, setError] = useState(false);
 
     const { theme } = useContext(ThemeContext);
     const { t } = useContext(LanguageContext);
@@ -51,8 +52,12 @@ const MyReviewsScreen = ({ navigation }) => {
             }
             
             setHasMore(fetchedReviews.length === REVIEWS_LIMIT);
+            setError(false);
         } catch (e) {
             console.log('Failed to fetch my reviews:', e);
+            if (isRefresh || reviews.length === 0) {
+                setError(true);
+            }
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -79,7 +84,17 @@ const MyReviewsScreen = ({ navigation }) => {
         }
     };
 
-    const styles = createStyles(theme);
+    const styles = React.useMemo(() => createStyles(theme), [theme]);
+
+    const renderItem = useCallback(({ item }) => (
+        <ReviewItem
+            item={item}
+            isExpanded={expandedReviews.has(item.review_id)}
+            onToggle={() => toggleReview(item.review_id)}
+            onEdit={() => navigation.navigate('BikesList', { screen: 'UpdateReview', params: { reviewId: item.review_id } })}
+            showBikeId={true}
+        />
+    ), [expandedReviews, toggleReview, navigation]);
 
     if (loading && !refreshing && reviews.length === 0) {
         return (
@@ -102,15 +117,7 @@ const MyReviewsScreen = ({ navigation }) => {
             <FlatList
                 data={reviews}
                 keyExtractor={(item) => item.review_id.toString()}
-                renderItem={({ item }) => (
-                    <ReviewItem
-                        item={item}
-                        isExpanded={expandedReviews.has(item.review_id)}
-                        onToggle={() => toggleReview(item.review_id)}
-                        onEdit={() => navigation.navigate('BikesList', { screen: 'UpdateReview', params: { reviewId: item.review_id } })}
-                        showBikeId={true}
-                    />
-                )}
+                renderItem={renderItem}
                 contentContainerStyle={styles.listContent}
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />
@@ -118,9 +125,26 @@ const MyReviewsScreen = ({ navigation }) => {
                 onEndReached={loadMore}
                 onEndReachedThreshold={0.5}
                 ListEmptyComponent={
-                    <Text style={styles.emptyText}>{t('no_reviews') || 'No reviews found.'}</Text>
+                    error ? (
+                        <View style={[styles.container, styles.centered]}>
+                            <Text style={{ color: theme.colors.error, marginBottom: 20 }}>{t('error')}</Text>
+                            <Button title={t('retry') || 'Retry'} onPress={() => fetchReviews(true)} color={theme.colors.primary} />
+                        </View>
+                    ) : (
+                        <View style={[styles.container, styles.centered]}>
+                            <Text style={styles.emptyText}>{t('no_reviews') || 'No reviews found.'}</Text>
+                        </View>
+                    )
                 }
                 ListFooterComponent={() => {
+                    if (error && reviews.length > 0) {
+                        return (
+                            <View style={{ marginVertical: 15, alignItems: 'center' }}>
+                                <Text style={{ color: theme.colors.error, marginBottom: 10 }}>{t('error')}</Text>
+                                <Button title={t('retry') || 'Retry'} onPress={() => fetchReviews(false)} color={theme.colors.primary} />
+                            </View>
+                        );
+                    }
                     if (loadingMore) {
                         return <ActivityIndicator size="small" color={theme.colors.primary} style={{ marginVertical: 15 }} />;
                     }

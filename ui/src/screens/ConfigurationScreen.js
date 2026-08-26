@@ -16,7 +16,7 @@ const ConfigurationScreen = ({ navigation }) => {
     const [deleteContent, setDeleteContent] = useState(false);
     const { showToast } = useToast();
 
-    const styles = createStyles(theme);
+    const styles = React.useMemo(() => createStyles(theme), [theme]);
 
     const handleDeleteAccount = async () => {
         if (confirmUsername !== username) return;

@@ -66,7 +66,7 @@ const CreateBikeScreen = ({ route, navigation }) => {
         }
     };
 
-    const styles = createStyles(theme);
+    const styles = React.useMemo(() => createStyles(theme), [theme]);
 
     return (
         <ErrorBoundary>

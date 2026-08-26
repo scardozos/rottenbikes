@@ -226,4 +226,12 @@ export default {
     accuracy_text: 'Users are trusted to input accurate data. If we detect false or misleading information, your account may be deleted.',
     i_agree_to: 'I agree to the',
     must_accept_terms: 'You must accept the Terms & Privacy Policy to register.',
+    create_new_bike: "Create new bike #{numerical_id}",
+    edit_review: "Edit review",
+    no_more_bikes: "No more bikes",
+    polling_timeout: "Waiting for confirmation timed out.",
+    resend_link: "Resend Link",
+    retry: "Retry",
+    review_by: "Review by",
+    stars: "stars",
 };

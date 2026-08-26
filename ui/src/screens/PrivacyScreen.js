@@ -6,7 +6,7 @@ import { LanguageContext } from '../context/LanguageContext';
 const PrivacyScreen = ({ navigation }) => {
     const { theme } = useContext(ThemeContext);
     const { t } = useContext(LanguageContext);
-    const styles = createStyles(theme);
+    const styles = React.useMemo(() => createStyles(theme), [theme]);
 
     const handleLinkPress = (url) => {
         if (Platform.OS === 'web') {

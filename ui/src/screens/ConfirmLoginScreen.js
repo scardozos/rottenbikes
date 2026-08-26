@@ -59,7 +59,7 @@ const ConfirmLoginScreen = ({ route, navigation }) => {
         }
     };
 
-    const styles = createStyles(theme);
+    const styles = React.useMemo(() => createStyles(theme), [theme]);
 
     if (status === 'ready') {
         return (

@@ -44,7 +44,7 @@ export const ReviewForm = ({
         setModalVisible(true);
     };
 
-    const styles = createStyles(theme);
+    const styles = React.useMemo(() => createStyles(theme), [theme]);
 
     return (
         <KeyboardAvoidingView

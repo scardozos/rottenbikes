@@ -5,25 +5,32 @@ import { LanguageContext } from '../context/LanguageContext';
 import { AuthContext } from '../context/AuthContext';
 import { getRelativeTime } from '../utils/time';
 
-const ReviewItem = ({ item, isExpanded, onToggle, onEdit, showBikeId }) => {
+const ReviewItem = React.memo(({ item, isExpanded, onToggle, onEdit, showBikeId }) => {
     const { theme } = useContext(ThemeContext);
     const { t } = useContext(LanguageContext);
     const { userId } = useContext(AuthContext);
 
     const subRatings = item.ratings ? Object.entries(item.ratings).filter(([key]) => key !== 'overall') : [];
-    const styles = createStyles(theme);
+    const styles = React.useMemo(() => createStyles(theme), [theme]);
 
     return (
         <TouchableOpacity
             style={styles.reviewItem}
             onPress={onToggle}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: isExpanded }}
+            accessibilityLabel={`${t('review_by')} ${item.poster_username || t('anonymous')}. ${item.ratings?.overall || 0} ${t('stars')}.`}
         >
             <View style={styles.reviewHeader}>
                 <Text style={styles.rating}>{'⭐'.repeat(item.ratings?.overall || 0)}</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     {item.poster_id === userId && onEdit && (
-                        <TouchableOpacity onPress={onEdit}>
+                        <TouchableOpacity 
+                            onPress={onEdit}
+                            accessibilityRole="button"
+                            accessibilityLabel={t('edit_review')}
+                        >
                             <Text style={{ color: theme.colors.primary, marginRight: 10, fontWeight: 'bold' }}>{t('edit')}</Text>
                         </TouchableOpacity>
                     )}
@@ -56,7 +63,7 @@ const ReviewItem = ({ item, isExpanded, onToggle, onEdit, showBikeId }) => {
             </View>
         </TouchableOpacity>
     );
-};
+});
 
 const createStyles = (theme) => StyleSheet.create({
     reviewItem: { padding: 10, borderBottomWidth: 1, borderBottomColor: theme.colors.border, marginBottom: 10 },

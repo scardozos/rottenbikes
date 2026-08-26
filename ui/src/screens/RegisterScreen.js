@@ -25,11 +25,22 @@ const RegisterScreen = ({ navigation }) => {
   // Replace with your real sitekey
   const HCAPTCHA_SITEKEY = (typeof window !== 'undefined' && window.EXPO_PUBLIC_HCAPTCHA_SITEKEY) || process.env.EXPO_PUBLIC_HCAPTCHA_SITEKEY;
 
+  const [pollingTimeout, setPollingTimeout] = useState(false);
+
   useEffect(() => {
     let interval;
-    // Polling MUST only take place if it happens from within the mobile application, not the web.
+    let attempts = 0;
+    const maxAttempts = 24; // 2 minutes at 5s intervals
+
     if (step === 2 && pendingMagicToken && Platform.OS !== 'web') {
+      setPollingTimeout(false);
       interval = setInterval(async () => {
+        attempts++;
+        if (attempts >= maxAttempts) {
+            clearInterval(interval);
+            setPollingTimeout(true);
+            return;
+        }
         const confirmed = await checkLoginStatus(pendingMagicToken);
         if (confirmed) {
           clearInterval(interval);
@@ -39,7 +50,7 @@ const RegisterScreen = ({ navigation }) => {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [step, pendingMagicToken]);
+  }, [step, pendingMagicToken, checkLoginStatus]);
 
   const handleRegister = () => {
     setEmailError('');
@@ -74,6 +85,7 @@ const RegisterScreen = ({ navigation }) => {
       const mToken = await register(username, email, token);
       setPendingMagicToken(mToken);
       setStep(2);
+      setPollingTimeout(false);
       setShowCaptcha(false);
     } catch (e) {
       console.log("Registration failed error:", e);
@@ -84,7 +96,7 @@ const RegisterScreen = ({ navigation }) => {
     }
   };
 
-  const styles = createStyles(theme);
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
 
   return (
     <KeyboardAvoidingView
@@ -178,6 +190,14 @@ const RegisterScreen = ({ navigation }) => {
             {t('magic_link_sent', { email })}.{'\n\n'}
             {t('check_email')}
           </Text>
+          {pollingTimeout && (
+            <View style={{ marginBottom: 20 }}>
+                <Text style={{ textAlign: 'center', color: theme.colors.error, marginBottom: 10 }}>
+                    {t('polling_timeout') || 'Waiting for confirmation timed out.'}
+                </Text>
+                <Button title={t('resend_link') || 'Resend Link'} onPress={handleRegister} color={theme.colors.primary} />
+            </View>
+          )}
           <Button title={t('back')} onPress={() => setStep(1)} color={theme.colors.subtext} />
         </>
       )}

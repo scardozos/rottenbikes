@@ -27,6 +27,13 @@ func main() {
 	// Serve static files from ui/dist, but intercept index.html to inject env vars
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
+
+		if path == "/healthz" {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("ok"))
+			return
+		}
+
 		if path == "/" || path == "/index.html" {
 			serveIndex(w)
 			return

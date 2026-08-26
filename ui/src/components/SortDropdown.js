@@ -14,7 +14,7 @@ const SortDropdown = ({ selectedSort, onSortChange }) => {
     const { t } = useContext(LanguageContext);
     const [modalVisible, setModalVisible] = useState(false);
 
-    const styles = createStyles(theme);
+    const styles = React.useMemo(() => createStyles(theme), [theme]);
 
     const selectedOption = SORT_OPTIONS.find(o => o.value === selectedSort) || SORT_OPTIONS[0];
 

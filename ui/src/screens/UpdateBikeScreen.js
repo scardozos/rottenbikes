@@ -17,7 +17,7 @@ const UpdateBikeScreen = ({ route, navigation }) => {
     const { validatedBikeId } = useSession();
 
     // Initialize styles first
-    const styles = createStyles(theme);
+    const styles = React.useMemo(() => createStyles(theme), [theme]);
 
 
     const [bike, setBike] = useState(null);

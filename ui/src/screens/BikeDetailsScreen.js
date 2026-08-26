@@ -90,7 +90,7 @@ const BikeDetailsScreen = ({ route, navigation }) => {
 
     const { theme } = useContext(ThemeContext);
 
-    const toggleReview = (reviewId, context) => {
+    const toggleReview = useCallback((reviewId, context) => {
         const key = `${reviewId}-${context}`;
         setExpandedReviews(prev => {
             const newSet = new Set(prev);
@@ -101,7 +101,7 @@ const BikeDetailsScreen = ({ route, navigation }) => {
             }
             return newSet;
         });
-    };
+    }, []);
 
 
 
@@ -191,7 +191,7 @@ const BikeDetailsScreen = ({ route, navigation }) => {
         }, [route.params, bike.numerical_id, fetchData])
     );
 
-    const styles = createStyles(theme);
+    const styles = React.useMemo(() => createStyles(theme), [theme]);
 
     const renderHeader = () => (
         <View>
@@ -267,7 +267,7 @@ const BikeDetailsScreen = ({ route, navigation }) => {
         </View>
     );
 
-    const renderReviewItem = ({ item }, context) => {
+    const renderReviewItem = useCallback(({ item }, context) => {
         const key = `${item.review_id}-${context}`;
         const isExpanded = expandedReviews.has(key);
 
@@ -282,12 +282,12 @@ const BikeDetailsScreen = ({ route, navigation }) => {
                 }}
             />
         );
-    };
+    }, [expandedReviews, toggleReview, closeModal, navigation]);
 
-    const getSortedReviews = () => sortReviews(reviews, sortBy, sortOrder);
+    const sortedReviews = React.useMemo(() => sortReviews(reviews, sortBy, sortOrder), [reviews, sortBy, sortOrder]);
 
     // Default view shows only top 3, always sorted by date (newest)
-    const previewReviews = getPreviewReviews(reviews, 3);
+    const previewReviews = React.useMemo(() => getPreviewReviews(reviews, 3), [reviews]);
 
     const activeAgg = aggregates.find(a => a.subcategory === 'overall' && a.window === timeWindow);
     const activeRating = activeAgg ? activeAgg.average_rating : null;
@@ -388,7 +388,7 @@ const BikeDetailsScreen = ({ route, navigation }) => {
                         </View>
 
                         <FlatList
-                            data={getSortedReviews()}
+                            data={sortedReviews}
                             keyExtractor={item => item.review_id ? 'modal-' + item.review_id.toString() : Math.random().toString()}
                             renderItem={(props) => renderReviewItem(props, 'modal')}
                             contentContainerStyle={{ paddingBottom: 40 }}

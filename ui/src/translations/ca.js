@@ -226,4 +226,12 @@ export default {
     accuracy_text: 'Confiem que els usuaris introdueixen dades precises. Si detectem informació falsa o enganyosa, el teu compte pot ser eliminat.',
     i_agree_to: 'Accepto la',
     must_accept_terms: 'Has d\'acceptar els Termes i la Política de Privadesa per registrar-te.',
+    create_new_bike: "Crear nova bicicleta #{numerical_id}",
+    edit_review: "Editar ressenya",
+    no_more_bikes: "No hi ha més bicicletes",
+    polling_timeout: "El temps d'espera per a confirmació ha caducat.",
+    resend_link: "Tornar a enviar l'enllaç",
+    retry: "Tornar a provar",
+    review_by: "Ressenya per",
+    stars: "estrelles",
 };

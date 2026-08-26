@@ -26,6 +26,7 @@ type MockService struct {
 	GetReviewWithRatingsByIDFunc     func(ctx context.Context, reviewID int64) (*domain.ReviewWithRatings, error)
 	DeleteReviewFunc                 func(ctx context.Context, reviewID int64, posterID int64) error
 	ListReviewsWithRatingsByUserFunc func(ctx context.Context, posterID int64, limit, offset int) ([]domain.ReviewWithRatings, error)
+	HealthCheckFunc                  func(ctx context.Context) error
 }
 
 func (m *MockService) Register(ctx context.Context, username, email string) (string, string, error) {
@@ -114,4 +115,11 @@ func (m *MockService) GetReviewWithRatingsByID(ctx context.Context, reviewID int
 
 func (m *MockService) DeleteReview(ctx context.Context, reviewID int64, posterID int64) error {
 	return m.DeleteReviewFunc(ctx, reviewID, posterID)
+}
+
+func (m *MockService) HealthCheck(ctx context.Context) error {
+	if m.HealthCheckFunc != nil {
+		return m.HealthCheckFunc(ctx)
+	}
+	return nil
 }

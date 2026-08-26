@@ -17,6 +17,7 @@ const BikesListScreen = ({ navigation }) => {
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [hasMore, setHasMore] = useState(true);
+    const [error, setError] = useState(false);
     const { theme } = useContext(ThemeContext);
     const { t } = useContext(LanguageContext);
 
@@ -50,8 +51,12 @@ const BikesListScreen = ({ navigation }) => {
                     return uniqueBy(combined, (v) => v.numerical_id);
                 });
             }
+            setError(false);
         } catch (e) {
             console.error('Fetch bikes error:', e);
+            if (isRefresh || bikes.length === 0) {
+                setError(true);
+            }
         } finally {
             setLoading(false);
             setLoadingMore(false);
@@ -72,9 +77,9 @@ const BikesListScreen = ({ navigation }) => {
         return () => clearTimeout(timeoutId);
     }, [searchQuery]);
 
-    const styles = createStyles(theme);
+    const styles = React.useMemo(() => createStyles(theme), [theme]);
 
-    const renderItem = ({ item }) => (
+    const renderItem = useCallback(({ item }) => (
         <TouchableOpacity
             style={styles.item}
             onPress={() => navigation.navigate('BikeDetails', { bikeId: item.numerical_id })}
@@ -89,7 +94,7 @@ const BikesListScreen = ({ navigation }) => {
             </View>
             <Text style={styles.subText}>{item.hash_id}</Text>
         </TouchableOpacity>
-    );
+    ), [styles, navigation]);
 
     // Kept for manual search creation if needed, though mostly handled in Home now.
     // Users can still search list here.
@@ -129,24 +134,57 @@ const BikesListScreen = ({ navigation }) => {
                     keyExtractor={item => item.numerical_id.toString()}
                     renderItem={renderItem}
                     onEndReached={() => {
-                        fetchBikes(false);
+                        if (!loadingMore && hasMore && !error) {
+                            fetchBikes(false);
+                        }
                     }}
                     onEndReachedThreshold={0.5}
                     onRefresh={() => fetchBikes(true)}
                     refreshing={loading}
                     ListFooterComponent={() => {
+                        if (error && bikes.length > 0) {
+                            return (
+                                <View style={{ marginVertical: 15, alignItems: 'center' }}>
+                                    <Text style={{ color: theme.colors.error, marginBottom: 10 }}>{t('error')}</Text>
+                                    <Button title={t('retry') || 'Retry'} onPress={() => fetchBikes(false)} color={theme.colors.primary} />
+                                </View>
+                            );
+                        }
                         if (loadingMore) {
                             return <ActivityIndicator size="small" color={theme.colors.primary} style={{ marginVertical: 15 }} />;
                         }
+                        if (!hasMore && bikes.length > 0) {
+                            return <Text style={styles.endText}>{t('no_more_bikes')}</Text>;
+                        }
                         return null;
                     }}
-                    ListEmptyComponent={
-                        <View style={styles.emptyContainer}>
-                            <Text style={styles.emptyText}>
-                                {searchQuery ? t('no_bikes_found', { query: searchQuery }) : t('no_bikes_available')}
-                            </Text>
-                        </View>
-                    }
+                    ListEmptyComponent={() => {
+                        if (error) {
+                            return (
+                                <View style={{ alignItems: 'center', marginTop: 50 }}>
+                                    <Text style={{ color: theme.colors.error, marginBottom: 20 }}>{t('error')}</Text>
+                                    <Button title={t('retry') || 'Retry'} onPress={() => fetchBikes(true)} color={theme.colors.primary} />
+                                </View>
+                            );
+                        }
+                        if (!loading) {
+                            return (
+                                <View style={styles.emptyContainer}>
+                                    <Text style={styles.emptyText}>
+                                        {searchQuery ? t('no_bikes_found', { query: searchQuery }) : t('no_bikes_available')}
+                                    </Text>
+                                    {isNumeric(searchQuery) && (
+                                        <TouchableOpacity style={{ marginTop: 20 }} onPress={handleCreateSearchBike}>
+                                            <Text style={{ color: theme.colors.primary, fontSize: 16 }}>
+                                                {t('create_new_bike', { numerical_id: searchQuery })}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
+                            );
+                        }
+                        return null;
+                    }}
                 />
             )}
         </View>

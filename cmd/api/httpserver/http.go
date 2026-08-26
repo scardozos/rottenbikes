@@ -33,9 +33,22 @@ func New(service domain.Service, sender email.EmailSender, addr string) (*HTTPSe
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		// Simplified health check
+		// Simplified health check for liveness
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
+	})
+
+	mux.HandleFunc("/readyz", func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		defer cancel()
+		if err := s.service.HealthCheck(ctx); err != nil {
+			log.Error().Err(err).Msg("readiness check failed")
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = w.Write([]byte("unavailable"))
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ready"))
 	})
 
 	// Auth endpoints (public)

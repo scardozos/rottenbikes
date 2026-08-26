@@ -32,9 +32,18 @@ const Toast = ({ message, type = 'success', onClose, duration = 4000 }) => {
     if (type === 'info') backgroundColor = '#3498db';
 
     return (
-        <Animated.View style={[styles.container, { opacity, backgroundColor }]}>
+        <Animated.View 
+            style={[styles.container, { opacity, backgroundColor }]}
+            accessibilityLiveRegion="assertive"
+            accessibilityRole="alert"
+        >
             <Text style={styles.message}>{message}</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <TouchableOpacity 
+                onPress={onClose} 
+                style={styles.closeButton}
+                accessibilityRole="button"
+                accessibilityLabel="Close notification"
+            >
                 <Text style={styles.closeText}>✕</Text>
             </TouchableOpacity>
         </Animated.View>

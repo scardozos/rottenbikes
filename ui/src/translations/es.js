@@ -226,4 +226,12 @@ export default {
     accuracy_text: 'Confiamos en que los usuarios introducen datos precisos. Si detectamos información falsa o engañosa, tu cuenta puede ser eliminada.',
     i_agree_to: 'Acepto la',
     must_accept_terms: 'Debes aceptar los Términos y la Política de Privacidad para registrarte.',
+    create_new_bike: "Crear nueva bicicleta #{numerical_id}",
+    edit_review: "Editar reseña",
+    no_more_bikes: "No hay más bicicletas",
+    polling_timeout: "El tiempo de espera para confirmación ha expirado.",
+    resend_link: "Reenviar enlace",
+    retry: "Reintentar",
+    review_by: "Reseña por",
+    stars: "estrellas",
 };
