@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext, useRef } from 'react';
+import React, { createContext, useState, useEffect, useContext, useRef, useMemo, useCallback } from 'react';
 import { Platform, DeviceEventEmitter } from 'react-native';
 import storage from '../utils/storage';
 import api from '../services/api';
@@ -26,11 +26,11 @@ export const AuthProvider = ({ children }) => {
     const { showToast } = useToast();
     const { t } = useContext(LanguageContext);
 
-    const fetchCurrentUser = async () => {
+    const fetchCurrentUser = useCallback(async () => {
         try {
             const res = await api.get('/auth/verify');
             if (res.data && res.data.poster_id) {
-                console.log('[AuthContext] Fetched current user:', res.data);
+                __DEV__ && console.log('[AuthContext] Fetched current user:', res.data);
                 setUserId(res.data.poster_id);
                 setUsername(res.data.username);
             }
@@ -40,11 +40,11 @@ export const AuthProvider = ({ children }) => {
                 // The global interceptor will catch this and emit session_expired
             }
         }
-    };
+    }, []);
 
-    const register = async (username, email, captcha) => {
+    const register = useCallback(async (username, email, captcha) => {
         try {
-            console.log(`Registering user: ${username} with email: ${email}`);
+            __DEV__ && console.log(`Registering user: ${username} with email: ${email}`);
             const data = {
                 username: username,
                 email: email,
@@ -62,11 +62,11 @@ export const AuthProvider = ({ children }) => {
             }
             throw e;
         }
-    };
+    }, []);
 
-    const requestLogin = async (identifier, captcha) => {
+    const requestLogin = useCallback(async (identifier, captcha) => {
         try {
-            console.log(`Requesting magic link for identifier: ${identifier}`);
+            __DEV__ && console.log(`Requesting magic link for identifier: ${identifier}`);
             const isEmail = identifier.includes('@');
             const data = {};
             if (isEmail) {
@@ -91,11 +91,11 @@ export const AuthProvider = ({ children }) => {
             }
             throw e;
         }
-    };
+    }, []);
 
-    const confirmAttempt = async (magicToken) => {
+    const confirmAttempt = useCallback(async (magicToken) => {
         try {
-            console.log(`Confirming magic link attempt (only) for token: ${magicToken}`);
+            __DEV__ && console.log(`Confirming magic link attempt (only) for token: ${magicToken}`);
             await api.get(`/auth/confirm/${magicToken}`);
             showToast(t('confirmation_successful'), 'success');
         } catch (e) {
@@ -105,15 +105,15 @@ export const AuthProvider = ({ children }) => {
             }
             throw e;
         }
-    };
+    }, [showToast, t]);
 
-    const completeLogin = async (magicToken) => {
+    const completeLogin = useCallback(async (magicToken) => {
         try {
-            console.log(`Exchanging magic token for API token...`);
+            __DEV__ && console.log(`Exchanging magic token for API token...`);
             const response = await api.get(`/auth/confirm/${magicToken}`);
             const { api_token } = response.data;
 
-            console.log(`Login confirmed, storing API token.`);
+            __DEV__ && console.log(`Login confirmed, storing API token.`);
             showToast(t('login_confirmed_success'), 'success');
             setUserToken(api_token);
             await storage.setItem('userToken', api_token);
@@ -125,9 +125,9 @@ export const AuthProvider = ({ children }) => {
             }
             throw e;
         }
-    };
+    }, [fetchCurrentUser, showToast, t]);
 
-    const checkLoginStatus = async (magicToken) => {
+    const checkLoginStatus = useCallback(async (magicToken) => {
         try {
             const response = await api.get(`/auth/poll?token=${magicToken}`);
             const { api_token } = response.data;
@@ -145,17 +145,17 @@ export const AuthProvider = ({ children }) => {
             return false;
         }
         return false;
-    };
+    }, [fetchCurrentUser, showToast, t]);
 
-    const logout = async () => {
+    const logout = useCallback(async () => {
         setUserToken(null);
         setUserId(null);
         setUsername(null);
         await storage.deleteItem('userToken');
         DeviceEventEmitter.emit('clear_session');
-    };
+    }, []);
 
-    const isLoggedIn = async () => {
+    const isLoggedIn = useCallback(async () => {
         try {
             let token = await storage.getItem('userToken');
             if (token) {
@@ -167,11 +167,11 @@ export const AuthProvider = ({ children }) => {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [fetchCurrentUser]);
 
     useEffect(() => {
         isLoggedIn();
-    }, []);
+    }, [isLoggedIn]);
 
     useEffect(() => {
         const sub = DeviceEventEmitter.addListener('session_expired', () => {
@@ -185,20 +185,34 @@ export const AuthProvider = ({ children }) => {
         return () => sub.remove();
     }, [logout, showToast, t]);
 
+    const contextValue = useMemo(() => ({
+        register,
+        requestLogin,
+        confirmAttempt,
+        completeLogin,
+        checkLoginStatus,
+        logout,
+        isLoading,
+        userToken,
+        userId,
+        username,
+        lastUsername
+    }), [
+        register,
+        requestLogin,
+        confirmAttempt,
+        completeLogin,
+        checkLoginStatus,
+        logout,
+        isLoading,
+        userToken,
+        userId,
+        username,
+        lastUsername
+    ]);
+
     return (
-        <AuthContext.Provider value={{
-            register,
-            requestLogin,
-            confirmAttempt,
-            completeLogin,
-            checkLoginStatus,
-            logout,
-            isLoading,
-            userToken,
-            userId,
-            username,
-            lastUsername
-        }}>
+        <AuthContext.Provider value={contextValue}>
             {children}
         </AuthContext.Provider>
     );

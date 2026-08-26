@@ -1,0 +1,7 @@
+.git
+ui/node_modules
+bin/
+.env*
+.scripts
+k8s
+*.md

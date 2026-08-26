@@ -53,6 +53,8 @@ func NewService(store *Store) Service {
 	return &service{store: store}
 }
 
+var validUsernameRegex = regexp.MustCompile(`^[a-zA-Z0-9.]+$`)
+
 // Auth
 
 func (s *service) Register(ctx context.Context, username, email string) (string, string, error) {
@@ -63,8 +65,7 @@ func (s *service) Register(ctx context.Context, username, email string) (string,
 	}
 
 	// Validate username format (alphanumeric and dots only)
-	validUsername := regexp.MustCompile(`^[a-zA-Z0-9.]+$`)
-	if !validUsername.MatchString(username) {
+	if !validUsernameRegex.MatchString(username) {
 		return "", "", fmt.Errorf("username can only contain letters, numbers and dots")
 	}
 

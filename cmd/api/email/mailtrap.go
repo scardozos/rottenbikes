@@ -2,10 +2,12 @@ package email
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type MailtrapSender struct {
@@ -51,7 +53,10 @@ func (s *MailtrapSender) SendEmail(to string, subject string, body string) error
 		return fmt.Errorf("failed to marshal mailtrap request: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", "https://send.api.mailtrap.io/api/send", bytes.NewBuffer(jsonBody))
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, "POST", "https://send.api.mailtrap.io/api/send", bytes.NewBuffer(jsonBody))
 	if err != nil {
 		return fmt.Errorf("failed to create mailtrap request: %w", err)
 	}
@@ -60,7 +65,8 @@ func (s *MailtrapSender) SendEmail(to string, subject string, body string) error
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to send mailtrap request: %w", err)
 	}

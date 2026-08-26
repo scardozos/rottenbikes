@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/lib/pq"
@@ -21,21 +20,7 @@ func (s *HTTPServer) handleListBikes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	limitVal := -1
-	offsetVal := -1
-	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
-		if val, err := strconv.Atoi(limitStr); err == nil && val >= 0 {
-			limitVal = val
-			if limitVal > 100 {
-				limitVal = 100 // Cap to prevent abuse
-			}
-		}
-	}
-	if offsetStr := r.URL.Query().Get("offset"); offsetStr != "" {
-		if val, err := strconv.Atoi(offsetStr); err == nil && val >= 0 {
-			offsetVal = val
-		}
-	}
+	limitVal, offsetVal := parsePagination(r, -1, 100)
 
 	searchQuery := r.URL.Query().Get("q")
 	sortBy := r.URL.Query().Get("sort")
@@ -155,12 +140,8 @@ type updateBikeRequest struct {
 }
 
 // PUT /bikes/{id} → update hash_id/is_electric
-func (s *HTTPServer) handleUpdateBike(w http.ResponseWriter, r *http.Request, bikeID string) {
-	if r.Method != http.MethodPut {
-		s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
+func (s *HTTPServer) handleUpdateBike(w http.ResponseWriter, r *http.Request) {
+	bikeID := r.PathValue("id")
 	if !isNumeric(bikeID) {
 		s.sendError(w, "invalid bike id", http.StatusBadRequest)
 		return
@@ -205,12 +186,8 @@ func (s *HTTPServer) handleUpdateBike(w http.ResponseWriter, r *http.Request, bi
 }
 
 // GET /bikes/{id} → single bike
-func (s *HTTPServer) handleGetBike(w http.ResponseWriter, r *http.Request, bikeID string) {
-	if r.Method != http.MethodGet {
-		s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
+func (s *HTTPServer) handleGetBike(w http.ResponseWriter, r *http.Request) {
+	bikeID := r.PathValue("id")
 	if !isNumeric(bikeID) {
 		s.sendError(w, "invalid bike id", http.StatusBadRequest)
 		return
@@ -235,12 +212,8 @@ func (s *HTTPServer) handleGetBike(w http.ResponseWriter, r *http.Request, bikeI
 }
 
 // DELETE /bikes/{id}
-func (s *HTTPServer) handleDeleteBike(w http.ResponseWriter, r *http.Request, bikeID string) {
-	if r.Method != http.MethodDelete {
-		s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
+func (s *HTTPServer) handleDeleteBike(w http.ResponseWriter, r *http.Request) {
+	bikeID := r.PathValue("id")
 	if !isNumeric(bikeID) {
 		s.sendError(w, "invalid bike id", http.StatusBadRequest)
 		return
@@ -269,32 +242,14 @@ func (s *HTTPServer) handleDeleteBike(w http.ResponseWriter, r *http.Request, bi
 }
 
 // GET /bikes/{id}/details → single bike + ratings + reviews
-func (s *HTTPServer) handleGetBikeDetails(w http.ResponseWriter, r *http.Request, bikeID string) {
-	if r.Method != http.MethodGet {
-		s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
+func (s *HTTPServer) handleGetBikeDetails(w http.ResponseWriter, r *http.Request) {
+	bikeID := r.PathValue("id")
 	if !isNumeric(bikeID) {
 		s.sendError(w, "invalid bike id", http.StatusBadRequest)
 		return
 	}
 
-	limitVal := -1
-	offsetVal := -1
-	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
-		if val, err := strconv.Atoi(limitStr); err == nil && val >= 0 {
-			limitVal = val
-			if limitVal > 100 {
-				limitVal = 100 // Cap to prevent abuse
-			}
-		}
-	}
-	if offsetStr := r.URL.Query().Get("offset"); offsetStr != "" {
-		if val, err := strconv.Atoi(offsetStr); err == nil && val >= 0 {
-			offsetVal = val
-		}
-	}
+	limitVal, offsetVal := parsePagination(r, -1, 100)
 
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
@@ -333,32 +288,14 @@ func isNumeric(s string) bool {
 }
 
 // GET /bikes/{id}/reviews → list reviews for a bike
-func (s *HTTPServer) handleListBikeReviews(w http.ResponseWriter, r *http.Request, bikeID string) {
-	if r.Method != http.MethodGet {
-		s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
+func (s *HTTPServer) handleListBikeReviews(w http.ResponseWriter, r *http.Request) {
+	bikeID := r.PathValue("id")
 	if !isNumeric(bikeID) {
 		s.sendError(w, "invalid bike id", http.StatusBadRequest)
 		return
 	}
 
-	limitVal := 20
-	offsetVal := 0
-	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
-		if val, err := strconv.Atoi(limitStr); err == nil && val > 0 {
-			limitVal = val
-			if limitVal > 100 {
-				limitVal = 100 // Cap to prevent abuse
-			}
-		}
-	}
-	if offsetStr := r.URL.Query().Get("offset"); offsetStr != "" {
-		if val, err := strconv.Atoi(offsetStr); err == nil && val >= 0 {
-			offsetVal = val
-		}
-	}
+	limitVal, offsetVal := parsePagination(r, 20, 100)
 
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()

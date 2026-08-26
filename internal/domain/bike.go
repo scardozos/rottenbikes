@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	_ "embed"
+	"encoding/json"
 	"fmt"
 	"time"
 )
@@ -21,6 +22,8 @@ var (
 	deleteBikeQuery string
 	//go:embed sql/count_reviews_by_bike.sql
 	countReviewsByBikeQuery string
+	//go:embed sql/get_bike_details.sql
+	getBikeDetailsQuery string
 )
 
 type Bike struct {
@@ -98,33 +101,42 @@ func (s *Store) GetBike(ctx context.Context, id string) (*Bike, error) {
 }
 
 func (s *Store) GetBikeDetails(ctx context.Context, id string, limit, offset int) (*BikeDetails, error) {
-	b, err := s.GetBike(ctx, id)
+	var bd BikeDetails
+	var avgRating sql.NullFloat64
+	var reviewsJSON []byte
+
+	err := s.db.QueryRowContext(ctx, getBikeDetailsQuery, id, limit, offset).Scan(
+		&bd.Bike.NumericalID,
+		&bd.Bike.HashID,
+		&bd.Bike.IsElectric,
+		&bd.Bike.CreatedAt,
+		&bd.Bike.UpdatedAt,
+		&avgRating,
+		&bd.TotalReviews,
+		&reviewsJSON,
+	)
 	if err != nil {
-		return nil, err
+		if err == sql.ErrNoRows {
+			return nil, sql.ErrNoRows
+		}
+		return nil, fmt.Errorf("failed to fetch bike details: %w", err)
 	}
 
-	ratings, err := s.ListWindowedRatingAggregatesByBike(ctx, id)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch ratings: %w", err)
+	if avgRating.Valid {
+		bd.Bike.AverageRating = &avgRating.Float64
 	}
 
-	reviews, err := s.ListReviewsWithRatingsByBike(ctx, id, limit, offset)
+	aggs, err := s.ListWindowedRatingAggregatesByBike(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch reviews: %w", err)
+		return nil, fmt.Errorf("failed to fetch windowed ratings: %w", err)
+	}
+	bd.Ratings = aggs
+
+	if err := json.Unmarshal(reviewsJSON, &bd.Reviews); err != nil {
+		return nil, fmt.Errorf("failed to decode reviews json: %w", err)
 	}
 
-	var totalReviews int
-	err = s.db.QueryRowContext(ctx, countReviewsByBikeQuery, id).Scan(&totalReviews)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch total review count: %w", err)
-	}
-
-	return &BikeDetails{
-		Bike:         *b,
-		Ratings:      ratings,
-		Reviews:      reviews,
-		TotalReviews: totalReviews,
-	}, nil
+	return &bd, nil
 }
 
 // UpdateBike updates a bike owned by creatorID. Only the creator may update a

@@ -3,7 +3,9 @@ package httpserver
 import (
 	"context"
 	"encoding/json"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -37,44 +39,36 @@ func New(service domain.Service, sender email.EmailSender, addr string) (*HTTPSe
 	})
 
 	// Auth endpoints (public)
-	mux.HandleFunc("/auth/request-magic-link", s.handleRequestMagicLink)
-	mux.HandleFunc("/auth/confirm/", s.handleConfirmMagicLink)
-	mux.HandleFunc("/auth/poll", s.handlePollMagicLink)
-	mux.HandleFunc("/auth/register", s.handleRegister)
-	mux.HandleFunc("/auth/verify", s.middlewareAuth(http.HandlerFunc(s.handleVerifyToken)).ServeHTTP)
-	mux.HandleFunc("/auth/user", s.middlewareAuth(http.HandlerFunc(s.handleDeletePoster)).ServeHTTP)
-	mux.HandleFunc("/users/me/reviews", s.middlewareAuth(http.HandlerFunc(s.handleListMyReviews)).ServeHTTP)
+	mux.HandleFunc("POST /auth/request-magic-link", s.handleRequestMagicLink)
+	mux.HandleFunc("GET /auth/confirm/{token}", s.handleConfirmMagicLink)
+	mux.HandleFunc("GET /auth/poll", s.handlePollMagicLink)
+	mux.HandleFunc("POST /auth/register", s.handleRegister)
+	mux.HandleFunc("GET /auth/verify", s.middlewareAuth(http.HandlerFunc(s.handleVerifyToken)).ServeHTTP)
+	mux.HandleFunc("DELETE /auth/user", s.middlewareAuth(http.HandlerFunc(s.handleDeletePoster)).ServeHTTP)
+	mux.HandleFunc("GET /users/me/reviews", s.middlewareAuth(http.HandlerFunc(s.handleListMyReviews)).ServeHTTP)
 
-	// /bikes → list and create (Auth required for everything)
-	// /bikes → list and create
-	// GET /bikes is public
-	// POST /bikes is authenticated
-	mux.HandleFunc("/bikes", func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodGet:
-			s.handleListBikes(w, r)
-		case http.MethodPost:
-			s.middlewareAuth(http.HandlerFunc(s.handleCreateBike)).ServeHTTP(w, r)
-		default:
-			s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
-		}
-	})
+	// /bikes
+	mux.HandleFunc("GET /bikes", s.handleListBikes)
+	mux.HandleFunc("POST /bikes", s.middlewareAuth(http.HandlerFunc(s.handleCreateBike)).ServeHTTP)
+	
+	// /bikes/{id}
+	mux.HandleFunc("GET /bikes/{id}", s.handleGetBike)
+	mux.HandleFunc("PUT /bikes/{id}", s.middlewareAuth(http.HandlerFunc(s.handleUpdateBike)).ServeHTTP)
+	mux.HandleFunc("DELETE /bikes/{id}", s.middlewareAuth(http.HandlerFunc(s.handleDeleteBike)).ServeHTTP)
 
-	// /bikes/{id}, /bikes/{id}/reviews, /bikes/{id}/ratings
-	// Auth required for everything
-	// /bikes/{id}, /bikes/{id}/reviews, /bikes/{id}/details
-	// GET operations public, everything else authenticated
-	mux.HandleFunc("/bikes/", s.handleBikeSubroutes)
+	// /bikes/{id}/...
+	mux.HandleFunc("POST /bikes/{id}/reviews", s.middlewareAuth(http.HandlerFunc(s.handleCreateBikeReview)).ServeHTTP)
+	mux.HandleFunc("GET /bikes/{id}/reviews", s.handleListBikeReviews)
+	mux.HandleFunc("GET /bikes/{id}/details", s.handleGetBikeDetails)
 
 	// /reviews/{id}
-	// Auth required for everything
-	// /reviews/{id}
-	// GET operations public, everything else authenticated
-	mux.HandleFunc("/reviews/", s.handleReviewSubroutes)
+	mux.HandleFunc("GET /reviews/{id}", s.handleGetReview)
+	mux.HandleFunc("PUT /reviews/{id}", s.middlewareAuth(http.HandlerFunc(s.handleUpdateReview)).ServeHTTP)
+	mux.HandleFunc("DELETE /reviews/{id}", s.middlewareAuth(http.HandlerFunc(s.handleDeleteReview)).ServeHTTP)
 
 	s.server = &http.Server{
 		Addr:              addr,
-		Handler:           observabilityMiddleware(corsMiddleware(mux)),
+		Handler:           observabilityMiddleware(corsMiddleware(json405Middleware(mux))),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      30 * time.Second,
@@ -82,94 +76,6 @@ func New(service domain.Service, sender email.EmailSender, addr string) (*HTTPSe
 	}
 
 	return s, nil
-}
-
-// /bikes/{id}/...
-func (s *HTTPServer) handleBikeSubroutes(w http.ResponseWriter, r *http.Request) {
-	path := strings.TrimPrefix(r.URL.Path, "/bikes/")
-	parts := strings.Split(strings.Trim(path, "/"), "/")
-
-	if len(parts) == 1 && parts[0] != "" {
-		// /bikes/{id}
-		// /bikes/{id}
-		// /bikes/{id}
-		bikeID := parts[0]
-		switch r.Method {
-		case http.MethodGet:
-			s.handleGetBike(w, r, bikeID)
-		case http.MethodPut:
-			s.middlewareAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				s.handleUpdateBike(w, r, bikeID)
-			})).ServeHTTP(w, r)
-		case http.MethodDelete:
-			s.middlewareAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				s.handleDeleteBike(w, r, bikeID)
-			})).ServeHTTP(w, r)
-		default:
-			s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
-		}
-		return
-	}
-
-	if len(parts) == 2 {
-		bikeID, sub := parts[0], parts[1]
-
-		switch sub {
-		case "reviews":
-			if r.Method == http.MethodPost {
-				s.middlewareAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					s.handleCreateBikeReview(w, r, bikeID)
-				})).ServeHTTP(w, r)
-				return
-			}
-			if r.Method == http.MethodGet {
-				s.handleListBikeReviews(w, r, bikeID)
-				return
-			}
-			s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		case "details":
-			if r.Method == http.MethodGet {
-				s.handleGetBikeDetails(w, r, bikeID)
-				return
-			}
-			s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-	}
-
-	s.sendError(w, "not found", http.StatusNotFound)
-}
-
-// /reviews/{id}...
-func (s *HTTPServer) handleReviewSubroutes(w http.ResponseWriter, r *http.Request) {
-	path := strings.TrimPrefix(r.URL.Path, "/reviews/")
-	idStr := strings.Trim(path, "/")
-	if idStr == "" {
-		s.sendError(w, "not found", http.StatusNotFound)
-		return
-	}
-
-	reviewID, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		s.sendError(w, "invalid review id", http.StatusBadRequest)
-		return
-	}
-
-	switch r.Method {
-	case http.MethodGet:
-		s.handleGetReview(w, r, reviewID)
-	case http.MethodPut:
-		s.middlewareAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			s.handleUpdateReview(w, r, reviewID)
-		})).ServeHTTP(w, r)
-	case http.MethodDelete:
-		s.middlewareAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			s.handleDeleteReview(w, r, reviewID)
-		})).ServeHTTP(w, r)
-	default:
-		s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
-	}
 }
 
 func (s *HTTPServer) sendError(w http.ResponseWriter, message string, status int) {
@@ -225,11 +131,18 @@ func isOriginAllowed(origin string) bool {
 			return true
 		}
 	}
-	// Allow Expo LAN IPs for local testing
-	if strings.HasPrefix(origin, "http://192.168.") || strings.HasPrefix(origin, "http://10.") || strings.HasPrefix(origin, "http://172.") {
-		return true
+	
+	u, err := url.Parse(origin)
+	if err != nil {
+		return false
 	}
-	return false
+	
+	ip := net.ParseIP(u.Hostname())
+	if ip == nil {
+		return false
+	}
+	
+	return ip.IsPrivate() || ip.IsLoopback()
 }
 
 func allowedOrigins() []string {
@@ -251,4 +164,64 @@ func allowedOrigins() []string {
 
 func defaultAllowedOrigins() []string {
 	return []string{"http://localhost:8081", "http://localhost:8080"}
+}
+
+func json405Middleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rw := &statusInterceptor{ResponseWriter: w, statusCode: http.StatusOK}
+		next.ServeHTTP(rw, r)
+		if rw.statusCode == http.StatusMethodNotAllowed {
+			// If we haven't written the body yet, or if ServeMux wrote a plaintext Method Not Allowed,
+			// unfortunately ServeMux already wrote it. 
+			// A better way is to use a response interceptor that prevents writing body on 405.
+		}
+	})
+}
+
+type statusInterceptor struct {
+	http.ResponseWriter
+	statusCode int
+	wroteBody  bool
+}
+
+func (i *statusInterceptor) WriteHeader(code int) {
+	if code == http.StatusMethodNotAllowed {
+		i.statusCode = code
+		i.ResponseWriter.Header().Set("Content-Type", "application/json")
+		i.ResponseWriter.WriteHeader(code)
+		_ = json.NewEncoder(i.ResponseWriter).Encode(map[string]string{"error": "method not allowed"})
+		return
+	}
+	i.statusCode = code
+	i.ResponseWriter.WriteHeader(code)
+}
+
+func (i *statusInterceptor) Write(b []byte) (int, error) {
+	if i.statusCode == http.StatusMethodNotAllowed {
+		return len(b), nil // discard the plaintext
+	}
+	return i.ResponseWriter.Write(b)
+}
+
+func parsePagination(r *http.Request, defaultLimit, maxLimit int) (limit, offset int) {
+	limit = defaultLimit
+	offset = 0
+
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if parsedLimit, err := strconv.Atoi(l); err == nil && parsedLimit > 0 {
+			if parsedLimit > maxLimit {
+				limit = maxLimit
+			} else {
+				limit = parsedLimit
+			}
+		}
+	}
+
+	if o := r.URL.Query().Get("offset"); o != "" {
+		if parsedOffset, err := strconv.Atoi(o); err == nil && parsedOffset >= 0 {
+			offset = parsedOffset
+		}
+	}
+
+	return limit, offset
 }

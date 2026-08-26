@@ -22,7 +22,7 @@ func TestCheckMagicLinkStatus(t *testing.T) {
 	t.Run("confirmed_returns_api_token", func(t *testing.T) {
 		// The poll token is stored hashed, so the store hashes the incoming
 		// token before lookup.
-		mock.ExpectQuery("SELECT api_token FROM magic_links").
+		mock.ExpectQuery("WITH target AS").
 			WithArgs(HashToken(pollToken)).
 			WillReturnRows(sqlmock.NewRows([]string{"api_token"}).AddRow("returned-api-token"))
 
@@ -42,7 +42,7 @@ func TestCheckMagicLinkStatus(t *testing.T) {
 
 	t.Run("not_confirmed_returns_empty", func(t *testing.T) {
 		// No row: link not consumed yet, expired, or poll token unknown.
-		mock.ExpectQuery("SELECT api_token FROM magic_links").
+		mock.ExpectQuery("WITH target AS").
 			WithArgs(HashToken(pollToken)).
 			WillReturnError(sql.ErrNoRows)
 
@@ -60,7 +60,7 @@ func TestCheckMagicLinkStatus(t *testing.T) {
 		// A client that only holds the emailed MAGIC token (not the poll token)
 		// hashes to a different value, which the poll column does not match.
 		magicToken := "the-emailed-magic-token"
-		mock.ExpectQuery("SELECT api_token FROM magic_links").
+		mock.ExpectQuery("WITH target AS").
 			WithArgs(HashToken(magicToken)).
 			WillReturnError(sql.ErrNoRows)
 
@@ -76,7 +76,7 @@ func TestCheckMagicLinkStatus(t *testing.T) {
 
 	t.Run("db_error_propagates", func(t *testing.T) {
 		boom := errors.New("connection lost")
-		mock.ExpectQuery("SELECT api_token FROM magic_links").
+		mock.ExpectQuery("WITH target AS").
 			WithArgs(HashToken(pollToken)).
 			WillReturnError(boom)
 

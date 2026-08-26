@@ -91,10 +91,10 @@ func TestHandleRegister(t *testing.T) {
 		},
 		RegisterFunc: func(ctx context.Context, username, eml string) (string, string, error) {
 			if eml == "taken@example.com" {
-				return "", "", errors.New("email already exists")
+				return "", "", domain.ErrEmailExists
 			}
 			if eml == "baduser@example.com" {
-				return "", "", errors.New("username already exists")
+				return "", "", domain.ErrUsernameExists
 			}
 			if eml == "dbfail@example.com" {
 				return "", "", errors.New("db error")

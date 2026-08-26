@@ -9,8 +9,9 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
+
+	"github.com/lib/pq"
 )
 
 var (
@@ -133,6 +134,11 @@ func (s *Store) CreateMagicLink(ctx context.Context, identifier string) (magicTo
 	return magicToken, pollToken, userEmail, nil
 }
 
+var (
+	ErrEmailExists    = errors.New("email already exists")
+	ErrUsernameExists = errors.New("username already exists")
+)
+
 func (s *Store) Register(ctx context.Context, username, email string) (string, string, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -147,11 +153,14 @@ func (s *Store) Register(ctx context.Context, username, email string) (string, s
 	// Create poster
 	err = tx.QueryRowContext(ctx, createPosterQuery, email, username).Scan(&posterID, &apiToken, &apiTokenExpires)
 	if err != nil {
-		if strings.Contains(err.Error(), "posters_email_key") {
-			return "", "", fmt.Errorf("email already exists")
-		}
-		if strings.Contains(err.Error(), "posters_username_key") {
-			return "", "", fmt.Errorf("username already exists")
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
+			if pqErr.Constraint == "posters_email_key" {
+				return "", "", ErrEmailExists
+			}
+			if pqErr.Constraint == "posters_username_key" {
+				return "", "", ErrUsernameExists
+			}
 		}
 		return "", "", fmt.Errorf("insert poster: %w", err)
 	}

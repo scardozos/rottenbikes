@@ -19,7 +19,7 @@ const LoginScreen = ({ navigation }) => {
     const { lastUsername } = useContext(AuthContext);
 
     // Replace with your real sitekey
-    const HCAPTCHA_SITEKEY = window.EXPO_PUBLIC_HCAPTCHA_SITEKEY || process.env.EXPO_PUBLIC_HCAPTCHA_SITEKEY;
+    const HCAPTCHA_SITEKEY = (typeof window !== 'undefined' && window.EXPO_PUBLIC_HCAPTCHA_SITEKEY) || process.env.EXPO_PUBLIC_HCAPTCHA_SITEKEY;
 
     useEffect(() => {
         // Pre-fill username if session expired and standard identifier is empty

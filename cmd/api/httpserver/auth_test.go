@@ -172,8 +172,8 @@ func TestHandleConfirmMagicLink(t *testing.T) {
 
 		srv.server.Handler.ServeHTTP(w, req)
 
-		if w.Code != http.StatusBadRequest {
-			t.Errorf("expected status 400, got %d", w.Code)
+		if w.Code != http.StatusNotFound {
+			t.Errorf("expected status 404, got %d", w.Code)
 		}
 	})
 }

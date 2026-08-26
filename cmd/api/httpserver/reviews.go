@@ -28,12 +28,8 @@ type createReviewRequest struct {
 }
 
 // POST /bikes/{id}/reviews → create a review with optional subcategory ratings
-func (s *HTTPServer) handleCreateBikeReview(w http.ResponseWriter, r *http.Request, bikeID string) {
-	if r.Method != http.MethodPost {
-		s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
+func (s *HTTPServer) handleCreateBikeReview(w http.ResponseWriter, r *http.Request) {
+	bikeID := r.PathValue("id")
 	var req createReviewRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		s.sendError(w, "invalid JSON", http.StatusBadRequest)
@@ -85,9 +81,11 @@ func (s *HTTPServer) handleCreateBikeReview(w http.ResponseWriter, r *http.Reque
 }
 
 // PUT /reviews/{id}
-func (s *HTTPServer) handleUpdateReview(w http.ResponseWriter, r *http.Request, reviewID int64) {
-	if r.Method != http.MethodPut {
-		s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
+func (s *HTTPServer) handleUpdateReview(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	reviewID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		s.sendError(w, "invalid review id", http.StatusBadRequest)
 		return
 	}
 
@@ -106,7 +104,7 @@ func (s *HTTPServer) handleUpdateReview(w http.ResponseWriter, r *http.Request, 
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
-	err := s.service.UpdateReviewWithRatings(ctx, domain.UpdateReviewInput{
+	err = s.service.UpdateReviewWithRatings(ctx, domain.UpdateReviewInput{
 		ReviewID:   reviewID,
 		PosterID:   posterID,
 		Comment:    req.Comment,
@@ -132,9 +130,11 @@ func (s *HTTPServer) handleUpdateReview(w http.ResponseWriter, r *http.Request, 
 }
 
 // GET /reviews/{id} → single review with ratings
-func (s *HTTPServer) handleGetReview(w http.ResponseWriter, r *http.Request, reviewID int64) {
-	if r.Method != http.MethodGet {
-		s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
+func (s *HTTPServer) handleGetReview(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	reviewID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		s.sendError(w, "invalid review id", http.StatusBadRequest)
 		return
 	}
 
@@ -163,9 +163,11 @@ type deleteReviewRequest struct {
 }
 
 // DELETE /reviews/{id}
-func (s *HTTPServer) handleDeleteReview(w http.ResponseWriter, r *http.Request, reviewID int64) {
-	if r.Method != http.MethodDelete {
-		s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
+func (s *HTTPServer) handleDeleteReview(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	reviewID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		s.sendError(w, "invalid review id", http.StatusBadRequest)
 		return
 	}
 
@@ -210,18 +212,7 @@ func (s *HTTPServer) handleListMyReviews(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Parse pagination
-	limit := 20
-	offset := 0
-	if l := r.URL.Query().Get("limit"); l != "" {
-		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 {
-			limit = parsed
-		}
-	}
-	if o := r.URL.Query().Get("offset"); o != "" {
-		if parsed, err := strconv.Atoi(o); err == nil && parsed >= 0 {
-			offset = parsed
-		}
-	}
+	limit, offset := parsePagination(r, 20, 100)
 
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()

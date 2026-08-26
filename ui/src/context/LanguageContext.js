@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useMemo, useCallback } from 'react';
 import storage from '../utils/storage';
 import { interpolate } from '../utils/i18n';
 
@@ -32,7 +32,7 @@ export const LanguageProvider = ({ children }) => {
         loadLanguage();
     }, []);
 
-    const changeLanguage = async (lang) => {
+    const changeLanguage = useCallback(async (lang) => {
         if (!translations[lang]) return;
         setLanguage(lang);
 
@@ -41,15 +41,17 @@ export const LanguageProvider = ({ children }) => {
         } catch (e) {
             console.warn("Failed to save language preference", e);
         }
-    };
+    }, []);
 
-    const t = (key, params = {}) => {
+    const t = useCallback((key, params = {}) => {
         const text = translations[language][key] || key;
         return interpolate(text, params);
-    };
+    }, [language]);
+
+    const contextValue = useMemo(() => ({ language, changeLanguage, t }), [language, changeLanguage, t]);
 
     return (
-        <LanguageContext.Provider value={{ language, changeLanguage, t }}>
+        <LanguageContext.Provider value={contextValue}>
             {children}
         </LanguageContext.Provider>
     );

@@ -57,7 +57,7 @@ func (s *HTTPServer) handleRegister(w http.ResponseWriter, r *http.Request) {
 
 	magicToken, pollToken, err := s.service.Register(r.Context(), req.Username, req.Email)
 	if err != nil {
-		if strings.Contains(err.Error(), "email already exists") || strings.Contains(err.Error(), "username already exists") {
+		if errors.Is(err, domain.ErrEmailExists) || errors.Is(err, domain.ErrUsernameExists) {
 			s.sendError(w, err.Error(), http.StatusConflict)
 			return
 		}

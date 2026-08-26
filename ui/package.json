@@ -8,7 +8,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "test": "node scripts/run-tests.js",
-    "test:translations": "node scripts/tests/translations.test.js"
+    "test:translations": "node scripts/tests/translations.test.js",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@react-navigation/bottom-tabs": "^7.9.0",
@@ -30,5 +31,13 @@
     "react-native-web": "^0.21.0",
     "react-native-webview": "13.15.0"
   },
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "eslint": "^9.39.5",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-native": "^5.0.0",
+    "prettier": "^3.9.6"
+  }
 }

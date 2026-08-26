@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -76,11 +77,14 @@ func serveIndex(w http.ResponseWriter) {
 	apiUrl := os.Getenv("EXPO_PUBLIC_API_URL")
 	sitekey := os.Getenv("EXPO_PUBLIC_HCAPTCHA_SITEKEY")
 
+	apiUrlBytes, _ := json.Marshal(apiUrl)
+	sitekeyBytes, _ := json.Marshal(sitekey)
+
 	// Inject environment variables as a script tag
 	// We only inject variables prefixed with EXPO_PUBLIC_ for security
 	envScript := "<script>\n"
-	envScript += "  window.EXPO_PUBLIC_API_URL = " + quote(apiUrl) + ";\n"
-	envScript += "  window.EXPO_PUBLIC_HCAPTCHA_SITEKEY = " + quote(sitekey) + ";\n"
+	envScript += "  window.EXPO_PUBLIC_API_URL = " + string(apiUrlBytes) + ";\n"
+	envScript += "  window.EXPO_PUBLIC_HCAPTCHA_SITEKEY = " + string(sitekeyBytes) + ";\n"
 	envScript += "</script>\n"
 
 	html := string(data)
@@ -90,11 +94,4 @@ func serveIndex(w http.ResponseWriter) {
 
 	w.Header().Set("Content-Type", "text/html")
 	w.Write([]byte(html))
-}
-
-func quote(s string) string {
-	if s == "" {
-		return "undefined"
-	}
-	return "'" + s + "'"
 }

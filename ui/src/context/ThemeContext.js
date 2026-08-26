@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useMemo } from 'react';
 import storage from '../utils/storage';
 import { useColorScheme } from 'react-native';
 
@@ -78,9 +78,11 @@ export const ThemeProvider = ({ children }) => {
     };
 
     const theme = themes[themeName];
+    
+    const contextValue = useMemo(() => ({ theme, themeName, toggleTheme, isDark: themeName === 'dark' }), [theme, themeName]);
 
     return (
-        <ThemeContext.Provider value={{ theme, themeName, toggleTheme, isDark: themeName === 'dark' }}>
+        <ThemeContext.Provider value={contextValue}>
             {children}
         </ThemeContext.Provider>
     );

@@ -85,6 +85,8 @@ lint:
 	else \
 		echo "golangci-lint not installed, skipping advanced linting."; \
 	fi
+	@echo "Linting UI..."
+	@cd ui && npm run lint
 
 build-and-push:
 	@if [ -z "$(IP)" ]; then \

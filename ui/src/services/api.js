@@ -2,10 +2,11 @@ import axios from 'axios';
 import storage from '../utils/storage';
 import { formatRetryAfter } from '../utils/rate-limit';
 
-const API_URL = window.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_API_URL || (__DEV__ ? 'http://localhost:8080' : '');
+const API_URL = (typeof window !== 'undefined' && window.EXPO_PUBLIC_API_URL) || process.env.EXPO_PUBLIC_API_URL || (__DEV__ ? 'http://localhost:8080' : '');
 
 const api = axios.create({
     baseURL: API_URL,
+    timeout: 15000,
     headers: {
         'Content-Type': 'application/json',
     },

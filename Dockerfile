@@ -4,13 +4,13 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN go build -o api ./cmd/api/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o api ./cmd/api/main.go
 
 FROM alpine:latest AS api
-RUN adduser -D -g '' appuser
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup -u 1000
 WORKDIR /app
-COPY --from=api-builder /app/api .
-USER appuser
+COPY --from=api-builder --chown=appuser:appgroup /app/api .
+USER 1000:1000
 EXPOSE 8080
 CMD ["./api"]
 
@@ -27,13 +27,13 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN go build -o web ./cmd/web/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o web ./cmd/web/main.go
 
 FROM alpine:latest AS ui
-RUN adduser -D -g '' appuser
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup -u 1000
 WORKDIR /app
-COPY --from=ui-server-builder /app/web .
-COPY --from=ui-builder /app/dist ./ui/dist
-USER appuser
+COPY --from=ui-server-builder --chown=appuser:appgroup /app/web .
+COPY --from=ui-builder --chown=appuser:appgroup /app/dist ./ui/dist
+USER 1000:1000
 EXPOSE 8081
 CMD ["./web"]
