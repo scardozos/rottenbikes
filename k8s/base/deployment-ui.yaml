@@ -35,23 +35,23 @@ spec:
             drop:
               - ALL
         ports:
-        - containerPort: 8081
+        - containerPort: 8080
         livenessProbe:
           httpGet:
             path: /healthz
-            port: 8081
+            port: 8080
           initialDelaySeconds: 5
           periodSeconds: 10
         readinessProbe:
           httpGet:
             path: /healthz
-            port: 8081
+            port: 8080
           initialDelaySeconds: 5
           periodSeconds: 10
         startupProbe:
           httpGet:
             path: /healthz
-            port: 8081
+            port: 8080
           failureThreshold: 30
           periodSeconds: 5
         env:
