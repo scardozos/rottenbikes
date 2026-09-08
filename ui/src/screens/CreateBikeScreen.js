@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, Switch, Alert } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Switch, Alert } from 'react-native';
+import Button from '../components/Button';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { ThemeContext } from '../context/ThemeContext';
@@ -106,11 +107,12 @@ const CreateBikeContent = ({ theme, styles, numericalId, setNumericalId, hashId,
             />
         </View>
 
-        <Button title={t('create_bike_btn')} onPress={handleSubmit} disabled={loading} color={theme.colors.primary} />
+        <Button title={t('create_bike_btn')} onPress={handleSubmit} disabled={loading} loading={loading} variant="primary" />
     </View>
 );
 
 class ErrorBoundary extends React.Component {
+    static contextType = ThemeContext;
     constructor(props) {
         super(props);
         this.state = { hasError: false, error: null };
@@ -122,8 +124,9 @@ class ErrorBoundary extends React.Component {
         console.error("CreateBike ErrorBoundary:", error, errorInfo);
     }
     render() {
+        const theme = this.context?.theme;
         if (this.state.hasError) {
-            return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><Text style={{ color: 'red' }}>Error: {this.state.error?.toString()}</Text></View>;
+            return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><Text style={{ color: theme?.colors?.error || '#EF4444' }}>Error: {this.state.error?.toString()}</Text></View>;
         }
         return this.props.children;
     }

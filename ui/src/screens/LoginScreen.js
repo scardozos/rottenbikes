@@ -1,5 +1,6 @@
 import React, { useContext, useState, useEffect } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, ActivityIndicator, Platform, Modal, Alert, KeyboardAvoidingView } from 'react-native';
+import { View, Text, TextInput, StyleSheet, ActivityIndicator, Platform, Modal, Alert, KeyboardAvoidingView } from 'react-native';
+import Button from '../components/Button';
 import HCaptchaView from '../components/HCaptchaView';
 import { AuthContext } from '../context/AuthContext';
 import { ThemeContext } from '../context/ThemeContext';
@@ -105,7 +106,7 @@ const LoginScreen = ({ navigation }) => {
                     {loading ? (
                         <ActivityIndicator size="large" color={theme.colors.primary} />
                     ) : (
-                        <Button title={t('get_magic_link')} onPress={handleRequestLink} color={theme.colors.primary} />
+                        <Button title={t('get_magic_link')} onPress={handleRequestLink} variant="primary" />
                     )}
 
                     <Modal visible={showCaptcha} animationType="slide">
@@ -126,7 +127,7 @@ const LoginScreen = ({ navigation }) => {
                                 }}
                             />
                             <View style={{ marginTop: 40, paddingHorizontal: 20 }}>
-                                <Button title={t('cancel')} onPress={() => setShowCaptcha(false)} color={theme.colors.error} />
+                                <Button title={t('cancel')} onPress={() => setShowCaptcha(false)} variant="danger" />
                             </View>
                         </View>
                     </Modal>
@@ -142,10 +143,10 @@ const LoginScreen = ({ navigation }) => {
                             <Text style={{ textAlign: 'center', color: theme.colors.error, marginBottom: 10 }}>
                                 {t('polling_timeout') || 'Waiting for confirmation timed out.'}
                             </Text>
-                            <Button title={t('resend_link') || 'Resend Link'} onPress={handleRequestLink} color={theme.colors.primary} />
+                            <Button title={t('resend_link') || 'Resend Link'} onPress={handleRequestLink} variant="primary" />
                         </View>
                     )}
-                    <Button title={t('back')} onPress={() => setStep(1)} color={theme.colors.subtext} />
+                    <Button title={t('back')} onPress={() => setStep(1)} variant="ghost" />
                 </>
             )}
 
@@ -153,7 +154,7 @@ const LoginScreen = ({ navigation }) => {
                 <Button
                     title={t('register')}
                     onPress={() => navigation.navigate('Register')}
-                    color={theme.colors.secondary}
+                    variant="secondary"
                 />
             </View>
         </KeyboardAvoidingView>

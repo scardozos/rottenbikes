@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, Switch, ScrollView, Modal, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Switch, ScrollView, Modal, ActivityIndicator } from 'react-native';
+import Button from '../components/Button';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { ThemeContext } from '../context/ThemeContext';
@@ -105,7 +106,7 @@ const UpdateBikeScreen = ({ route, navigation }) => {
 
                 <View style={styles.labelRow}>
                     <Text style={styles.label}>{t('hash_id_input_label')}</Text>
-                    <Button title={t('scan')} onPress={() => setShowScanner(true)} color={theme.colors.primary} />
+                    <Button title={t('scan')} onPress={() => setShowScanner(true)} variant="primary" size="sm" />
                 </View>
 
                 <TextInput
@@ -139,7 +140,8 @@ const UpdateBikeScreen = ({ route, navigation }) => {
                     title={t('update_bike_btn')}
                     onPress={handleSubmit}
                     disabled={submitting || !confirmed}
-                    color={theme.colors.primary}
+                    loading={submitting}
+                    variant="primary"
                 />
             </ScrollView>
 

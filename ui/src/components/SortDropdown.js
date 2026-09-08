@@ -3,6 +3,8 @@ import { View, Text, TouchableOpacity, StyleSheet, Modal, FlatList } from 'react
 import { ThemeContext } from '../context/ThemeContext';
 import { LanguageContext } from '../context/LanguageContext';
 
+import Icon from './Icon';
+
 const SORT_OPTIONS = [
     { value: 'recent', labelKey: 'sort_recent' },
     { value: 'rating', labelKey: 'sort_rating' },
@@ -22,7 +24,7 @@ const SortDropdown = ({ selectedSort, onSortChange }) => {
         <View style={styles.container}>
             <TouchableOpacity style={styles.button} onPress={() => setModalVisible(true)}>
                 <Text style={styles.buttonText}>{t('sort_by_label')}: {t(selectedOption.labelKey) || selectedOption.labelKey}</Text>
-                <Text style={styles.arrow}>▼</Text>
+                <Icon name="chevron-down" size={16} color={theme.colors.subtext} />
             </TouchableOpacity>
 
             <Modal visible={modalVisible} transparent={true} animationType="fade">
@@ -43,7 +45,7 @@ const SortDropdown = ({ selectedSort, onSortChange }) => {
                                     <Text style={[styles.optionText, selectedSort === item.value && styles.selectedOptionText]}>
                                         {t(item.labelKey) || item.labelKey}
                                     </Text>
-                                    {selectedSort === item.value && <Text style={styles.selectedCheck}>✓</Text>}
+                                    {selectedSort === item.value && <Icon name="checkmark" size={18} color={theme.colors.primary} />}
                                 </TouchableOpacity>
                             )}
                         />

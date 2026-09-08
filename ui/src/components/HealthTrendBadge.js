@@ -4,13 +4,15 @@ import { ThemeContext } from '../context/ThemeContext';
 import { LanguageContext } from '../context/LanguageContext';
 import { computeTrend } from '../utils/ratings';
 
+import Icon from './Icon';
+
 const HealthTrendBadge = ({ aggregates, subcategory = 'overall' }) => {
     const { theme } = useContext(ThemeContext);
     const { t } = useContext(LanguageContext);
+    const styles = React.useMemo(() => createStyles(theme), [theme]);
 
     if (!aggregates || aggregates.length === 0) return null;
 
-    const overall = aggregates.find(a => a.subcategory === subcategory && a.window === 'overall')?.average_rating;
     const w2 = aggregates.find(a => a.subcategory === subcategory && a.window === '2w')?.average_rating;
     const w1 = aggregates.find(a => a.subcategory === subcategory && a.window === '1w')?.average_rating;
 
@@ -18,25 +20,23 @@ const HealthTrendBadge = ({ aggregates, subcategory = 'overall' }) => {
     if (w1 == null || w2 == null) return null;
 
     const trend = computeTrend(w1, w2);
-    let icon = '➡️';
+    let iconName = 'arrow-forward';
     let color = theme.colors.subtext;
     let label = t('trend_stable') || 'Stable';
 
     if (trend === 'improving') {
-        icon = '↗️';
-        color = '#2ecc71'; // Green
+        iconName = 'trending-up';
+        color = theme.colors.success;
         label = t('trend_improving') || 'Improving';
     } else if (trend === 'degrading') {
-        icon = '↘️';
-        color = '#e74c3c'; // Red
+        iconName = 'trending-down';
+        color = theme.colors.danger || theme.colors.error;
         label = t('trend_degrading') || 'Degrading';
     }
 
-    const styles = React.useMemo(() => createStyles(theme), [theme]);
-
     return (
         <View style={[styles.badge, { borderColor: color, backgroundColor: color + '1A' }]}>
-            <Text style={styles.icon}>{icon}</Text>
+            <Icon name={iconName} size={14} color={color} style={styles.icon} />
             <Text style={[styles.label, { color }]}>{label}</Text>
         </View>
     );

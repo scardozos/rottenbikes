@@ -1,5 +1,6 @@
 import React, { useEffect, useContext, useState } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet, Button, Platform } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet, Platform } from 'react-native';
+import Button from '../components/Button';
 import { AuthContext } from '../context/AuthContext';
 import { ThemeContext } from '../context/ThemeContext';
 import { LanguageContext } from '../context/LanguageContext';
@@ -67,10 +68,10 @@ const ConfirmLoginScreen = ({ route, navigation }) => {
                 <Text style={styles.title}>{t('finish_login')}</Text>
                 <Text style={styles.text}>{t('click_to_complete')}</Text>
                 <View style={{ marginTop: 20, width: '100%' }}>
-                    <Button title={t('confirm_login_btn')} onPress={handleConfirm} disabled={submitting} color={theme.colors.primary} />
+                    <Button title={t('confirm_login_btn')} onPress={handleConfirm} disabled={submitting} loading={submitting} variant="primary" />
                 </View>
-                <View style={{ marginTop: 10 }}>
-                    <Button title={t('cancel')} onPress={() => navigation.navigate('Public', { screen: 'Login' })} color={theme.colors.subtext} disabled={submitting} />
+                <View style={{ marginTop: 10, width: '100%' }}>
+                    <Button title={t('cancel')} onPress={() => navigation.navigate('Public', { screen: 'Login' })} variant="ghost" disabled={submitting} />
                 </View>
             </View>
         );
@@ -88,8 +89,8 @@ const ConfirmLoginScreen = ({ route, navigation }) => {
     if (status === 'error') {
         return (
             <View style={styles.container}>
-                <Text style={[styles.text, { color: theme.colors.error }]}>{errorMsg}</Text>
-                <Button title={t('back_to_login')} onPress={() => navigation.navigate('Public', { screen: 'Login' })} color={theme.colors.primary} />
+                <Text style={[styles.text, { color: theme.colors.error, marginBottom: 20 }]}>{errorMsg}</Text>
+                <Button title={t('back_to_login')} onPress={() => navigation.navigate('Public', { screen: 'Login' })} variant="primary" />
             </View>
         );
     }
@@ -106,13 +107,13 @@ const ConfirmLoginScreen = ({ route, navigation }) => {
                         : t('redirecting')}
                 </Text>
                 {isCrossDevice && (
-                    <View style={{ marginTop: 20 }}>
+                    <View style={{ marginTop: 20, width: '100%' }}>
                         <Button
                             title={t('continue_to_app')}
                             onPress={() => {
                                 navigation.replace('Main');
                             }}
-                            color={theme.colors.primary}
+                            variant="primary"
                         />
                     </View>
                 )}

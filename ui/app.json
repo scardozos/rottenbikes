@@ -15,7 +15,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.cauliflowersonglemonsorganization.rottenbikes"
+      "bundleIdentifier": "com.cauliflowersonglemonsorganization.rottenbikes",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Allow RottenBikes to access your camera to scan bike QR codes."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -32,7 +35,14 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-secure-store"
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow RottenBikes to access your camera to scan bike QR codes."
+        }
+      ],
+      "expo-secure-store",
+      "expo-status-bar"
     ],
     "extra": {
       "eas": {

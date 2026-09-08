@@ -1,7 +1,8 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useState, useCallback, useContext, useRef } from 'react';
 
-import { View, Text, StyleSheet, FlatList, Button, TouchableOpacity, Pressable, Animated, Dimensions, Easing, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Pressable, Animated, Dimensions, Easing, ActivityIndicator } from 'react-native';
+import Icon from '../components/Icon';
 
 import api from '../services/api';
 import { AuthContext } from '../context/AuthContext';
@@ -114,7 +115,6 @@ const BikeDetailsScreen = ({ route, navigation }) => {
 
     // Determine if review is allowed based on session context
     // Using string comparison to handle leading zeros
-    console.log('[BikeDetails] ValidatedID:', validatedBikeId, 'CurrentBikeID:', bike.numerical_id);
     const isReviewAllowed = validatedBikeId != null && String(validatedBikeId) === String(bike.numerical_id);
 
     const fetchData = useCallback(async (currentId) => {
@@ -242,7 +242,10 @@ const BikeDetailsScreen = ({ route, navigation }) => {
                             .map(agg => (
                                 <View key="overall" style={[styles.aggItem, styles.overallItem]}>
                                     <Text style={[styles.aggLabel, styles.overallLabel]}>{t('overall_rating')}</Text>
-                                    <Text style={[styles.aggValue, styles.overallValue]}>{agg.average_rating.toFixed(1)} ⭐</Text>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                        <Text style={[styles.aggValue, styles.overallValue]}>{agg.average_rating.toFixed(1)} </Text>
+                                        <Icon name="star" size={16} color={theme.colors.warning} />
+                                    </View>
                                     {timeWindow === 'overall' && <HealthTrendBadge aggregates={aggregates} subcategory="overall" />}
                                 </View>
                             ))
@@ -252,7 +255,10 @@ const BikeDetailsScreen = ({ route, navigation }) => {
                             .map(agg => (
                                 <View key={agg.subcategory} style={styles.aggItem}>
                                     <Text style={styles.aggLabel}>{t(agg.subcategory) || agg.subcategory.charAt(0).toUpperCase() + agg.subcategory.slice(1)}</Text>
-                                    <Text style={styles.aggValue}>{agg.average_rating.toFixed(1)} ⭐</Text>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                        <Text style={styles.aggValue}>{agg.average_rating.toFixed(1)} </Text>
+                                        <Icon name="star" size={14} color={theme.colors.warning} />
+                                    </View>
                                     {timeWindow === 'overall' && <HealthTrendBadge aggregates={aggregates} subcategory={agg.subcategory} />}
                                 </View>
                             ))}
@@ -362,7 +368,7 @@ const BikeDetailsScreen = ({ route, navigation }) => {
                         <View style={styles.modalHeader}>
                             <Text style={styles.subtitle}>{t('all_reviews')}</Text>
                             <TouchableOpacity onPress={closeModal} style={styles.closeButton}>
-                                <Text style={styles.closeButtonText}>✕</Text>
+                                <Icon name="close" size={24} color={theme.colors.text} />
                             </TouchableOpacity>
                         </View>
 
@@ -378,12 +384,10 @@ const BikeDetailsScreen = ({ route, navigation }) => {
                             </TouchableOpacity>
 
                             <TouchableOpacity
-                                style={styles.sortButton}
+                                style={[styles.sortButton, { flexDirection: 'row', alignItems: 'center' }]}
                                 onPress={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
                             >
-                                <Text style={styles.sortButtonText}>
-                                    {sortOrder === 'asc' ? '↑' : '↓'}
-                                </Text>
+                                <Icon name={sortOrder === 'asc' ? 'arrow-up' : 'arrow-down'} size={14} color={theme.colors.text} />
                             </TouchableOpacity>
                         </View>
 
@@ -418,8 +422,7 @@ const createStyles = (theme) => StyleSheet.create({
     aggregatesGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
     aggItem: { width: '48%', backgroundColor: theme.colors.inputBackground, padding: 10, borderRadius: 8, marginBottom: 10, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 },
     aggLabel: { fontSize: 14, color: theme.colors.subtext, marginBottom: 2 },
-    aggValue: { fontSize: 16, fontWeight: 'bold', color: '#f39c12' },
-    subtitle: { fontSize: 20, marginBottom: 10, fontWeight: '600', color: theme.colors.text },
+    aggValue: { fontSize: 16, fontWeight: 'bold', color: theme.colors.warning },
     subtitle: { fontSize: 20, marginBottom: 10, fontWeight: '600', color: theme.colors.text },
     emptyText: { color: theme.colors.subtext },
     updateLink: {
@@ -509,11 +512,6 @@ const createStyles = (theme) => StyleSheet.create({
     },
     closeButton: {
         padding: 5
-    },
-    closeButtonText: {
-        fontSize: 24,
-        color: theme.colors.text,
-        fontWeight: 'bold'
     },
     closeButtonText: {
         fontSize: 24,

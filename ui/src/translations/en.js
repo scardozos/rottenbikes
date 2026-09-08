@@ -39,6 +39,7 @@ export default {
     // HomeScreen
     camera_permission: 'We need your permission to show the camera',
     grant_permission: 'Grant Permission',
+    open_settings: 'Open Settings',
     scan_qr: 'Scan QR Code',
     enter_manual_id: 'Or enter Bike ID manually:',
     bike_id_placeholder: 'Bike ID (e.g. 123)',

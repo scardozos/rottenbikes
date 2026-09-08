@@ -39,6 +39,7 @@ export default {
     // HomeScreen
     camera_permission: 'Necessitem el teu permís per mostrar la càmera',
     grant_permission: 'Donar Permís',
+    open_settings: 'Obre la Configuració',
     scan_qr: 'Escaneja el codi QR',
     enter_manual_id: 'O introdueix la ID manualment:',
     bike_id_placeholder: 'ID de la Bicicleta (ex. 123)',

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, Alert, Modal, Platform, Switch, TouchableOpacity, KeyboardAvoidingView } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Alert, Modal, Platform, Switch, TouchableOpacity, KeyboardAvoidingView } from 'react-native';
+import Button from '../components/Button';
 import { WebView } from 'react-native-webview';
 import { AuthContext } from '../context/AuthContext';
 import { ThemeContext } from '../context/ThemeContext';
@@ -178,7 +179,7 @@ const RegisterScreen = ({ navigation }) => {
                 }}
               />
               <View style={{ marginTop: 40, paddingHorizontal: 20 }}>
-                <Button title={t('cancel')} onPress={() => setShowCaptcha(false)} color={theme.colors.error} />
+                <Button title={t('cancel')} onPress={() => setShowCaptcha(false)} variant="danger" />
               </View>
             </View>
           </Modal>
@@ -195,10 +196,10 @@ const RegisterScreen = ({ navigation }) => {
                 <Text style={{ textAlign: 'center', color: theme.colors.error, marginBottom: 10 }}>
                     {t('polling_timeout') || 'Waiting for confirmation timed out.'}
                 </Text>
-                <Button title={t('resend_link') || 'Resend Link'} onPress={handleRegister} color={theme.colors.primary} />
+                <Button title={t('resend_link') || 'Resend Link'} onPress={handleRegister} variant="primary" />
             </View>
           )}
-          <Button title={t('back')} onPress={() => setStep(1)} color={theme.colors.subtext} />
+          <Button title={t('back')} onPress={() => setStep(1)} variant="ghost" />
         </>
       )}
     </KeyboardAvoidingView>

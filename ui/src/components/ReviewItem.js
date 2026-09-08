@@ -4,6 +4,7 @@ import { ThemeContext } from '../context/ThemeContext';
 import { LanguageContext } from '../context/LanguageContext';
 import { AuthContext } from '../context/AuthContext';
 import { getRelativeTime } from '../utils/time';
+import Icon from './Icon';
 
 const ReviewItem = React.memo(({ item, isExpanded, onToggle, onEdit, showBikeId }) => {
     const { theme } = useContext(ThemeContext);
@@ -12,6 +13,7 @@ const ReviewItem = React.memo(({ item, isExpanded, onToggle, onEdit, showBikeId 
 
     const subRatings = item.ratings ? Object.entries(item.ratings).filter(([key]) => key !== 'overall') : [];
     const styles = React.useMemo(() => createStyles(theme), [theme]);
+    const overallScore = Math.max(0, Math.min(5, Math.round(item.ratings?.overall || 0)));
 
     return (
         <TouchableOpacity
@@ -23,7 +25,17 @@ const ReviewItem = React.memo(({ item, isExpanded, onToggle, onEdit, showBikeId 
             accessibilityLabel={`${t('review_by')} ${item.poster_username || t('anonymous')}. ${item.ratings?.overall || 0} ${t('stars')}.`}
         >
             <View style={styles.reviewHeader}>
-                <Text style={styles.rating}>{'⭐'.repeat(item.ratings?.overall || 0)}</Text>
+                <View style={styles.starsRow}>
+                    {[1, 2, 3, 4, 5].map((i) => (
+                        <Icon
+                            key={i}
+                            name={i <= overallScore ? 'star' : 'star-outline'}
+                            size={16}
+                            color={i <= overallScore ? theme.colors.warning : theme.colors.border}
+                            style={{ marginRight: 2 }}
+                        />
+                    ))}
+                </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     {item.poster_id === userId && onEdit && (
                         <TouchableOpacity 
@@ -36,7 +48,7 @@ const ReviewItem = React.memo(({ item, isExpanded, onToggle, onEdit, showBikeId 
                     )}
                     <Text style={styles.timeText}>{getRelativeTime(item.created_at, t)}</Text>
                     <View style={styles.dropdownButton}>
-                        <Text style={styles.dropdownArrow}>{isExpanded ? '▲' : '▼'}</Text>
+                        <Icon name={isExpanded ? 'chevron-up' : 'chevron-down'} size={14} color={theme.colors.subtext} />
                     </View>
                 </View>
             </View>
@@ -46,7 +58,8 @@ const ReviewItem = React.memo(({ item, isExpanded, onToggle, onEdit, showBikeId 
                     {subRatings.map(([key, score]) => (
                         <View key={key} style={styles.subRatingItem}>
                             <Text style={styles.subRatingText}>
-                                {t(key)}: <Text style={{ fontWeight: 'bold' }}>{score}⭐</Text>
+                                {t(key)}: <Text style={{ fontWeight: 'bold' }}>{score} </Text>
+                                <Icon name="star" size={12} color={theme.colors.warning} />
                             </Text>
                         </View>
                     ))}
@@ -68,6 +81,7 @@ const ReviewItem = React.memo(({ item, isExpanded, onToggle, onEdit, showBikeId 
 const createStyles = (theme) => StyleSheet.create({
     reviewItem: { padding: 10, borderBottomWidth: 1, borderBottomColor: theme.colors.border, marginBottom: 10 },
     reviewHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 },
+    starsRow: { flexDirection: 'row', alignItems: 'center' },
     timeText: { fontSize: 14, color: theme.colors.subtext },
     rating: { fontSize: 18, color: theme.colors.text },
     commentText: { color: theme.colors.text, marginTop: 5 },
@@ -83,5 +97,7 @@ const createStyles = (theme) => StyleSheet.create({
     subRatingItem: { width: '50%', paddingVertical: 2 },
     subRatingText: { fontSize: 12, color: theme.colors.subtext }
 });
+
+ReviewItem.displayName = 'ReviewItem';
 
 export default ReviewItem;

@@ -1,6 +1,6 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useEffect, useState, useContext, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Button, ActivityIndicator, TextInput } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, TextInput } from 'react-native';
 import api from '../services/api';
 import { AuthContext } from '../context/AuthContext';
 import { ThemeContext } from '../context/ThemeContext';
@@ -8,6 +8,8 @@ import { LanguageContext } from '../context/LanguageContext';
 import SortDropdown from '../components/SortDropdown';
 import { isNumeric } from '../utils/validation';
 import { uniqueBy } from '../utils/reviews';
+import Button from '../components/Button';
+import Icon from '../components/Icon';
 
 const BikesListScreen = ({ navigation }) => {
     const [bikes, setBikes] = useState([]);
@@ -85,16 +87,26 @@ const BikesListScreen = ({ navigation }) => {
             onPress={() => navigation.navigate('BikeDetails', { bikeId: item.numerical_id })}
         >
             <View style={styles.itemHeader}>
-                <Text style={styles.itemText}>
-                    #{item.numerical_id} {item.is_electric ? '⚡' : '🚲'}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Text style={styles.itemText}>
+                        #{item.numerical_id}{' '}
+                    </Text>
+                    <Icon
+                        name={item.is_electric ? 'flash' : 'bicycle'}
+                        size={20}
+                        color={item.is_electric ? theme.colors.warning : theme.colors.primary}
+                    />
+                </View>
                 {item.average_rating != null && (
-                    <Text style={styles.ratingBadge}>{item.average_rating.toFixed(1)} ⭐</Text>
+                    <View style={styles.ratingBadge}>
+                        <Text style={styles.ratingText}>{item.average_rating.toFixed(1)} </Text>
+                        <Icon name="star" size={16} color={theme.colors.warning} />
+                    </View>
                 )}
             </View>
             <Text style={styles.subText}>{item.hash_id}</Text>
         </TouchableOpacity>
-    ), [styles, navigation]);
+    ), [styles, navigation, theme]);
 
     // Kept for manual search creation if needed, though mostly handled in Home now.
     // Users can still search list here.
@@ -146,7 +158,7 @@ const BikesListScreen = ({ navigation }) => {
                             return (
                                 <View style={{ marginVertical: 15, alignItems: 'center' }}>
                                     <Text style={{ color: theme.colors.error, marginBottom: 10 }}>{t('error')}</Text>
-                                    <Button title={t('retry') || 'Retry'} onPress={() => fetchBikes(false)} color={theme.colors.primary} />
+                                    <Button title={t('retry') || 'Retry'} onPress={() => fetchBikes(false)} variant="primary" size="sm" />
                                 </View>
                             );
                         }
@@ -163,7 +175,7 @@ const BikesListScreen = ({ navigation }) => {
                             return (
                                 <View style={{ alignItems: 'center', marginTop: 50 }}>
                                     <Text style={{ color: theme.colors.error, marginBottom: 20 }}>{t('error')}</Text>
-                                    <Button title={t('retry') || 'Retry'} onPress={() => fetchBikes(true)} color={theme.colors.primary} />
+                                    <Button title={t('retry') || 'Retry'} onPress={() => fetchBikes(true)} variant="primary" />
                                 </View>
                             );
                         }
@@ -214,7 +226,8 @@ const createStyles = (theme) => StyleSheet.create({
     item: { padding: 20, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
     itemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     itemText: { fontSize: 24, fontWeight: 'bold', color: theme.colors.text },
-    ratingBadge: { fontSize: 20, fontWeight: 'bold', color: '#f39c12', backgroundColor: theme.colors.card, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, overflow: 'hidden' },
+    ratingBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.card, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, overflow: 'hidden' },
+    ratingText: { fontSize: 18, fontWeight: 'bold', color: theme.colors.warning },
     subText: { fontSize: 18, color: theme.colors.subtext, marginTop: 5 },
     emptyContainer: { alignItems: 'center', marginTop: 30 },
     emptyText: { fontSize: 18, color: theme.colors.subtext, marginBottom: 20 }

@@ -1,20 +1,24 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, TouchableOpacity, ScrollView, Modal, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Modal, KeyboardAvoidingView, Platform } from 'react-native';
+import Button from './Button';
+import Icon from './Icon';
 
 export const StarRating = ({ label, value, onValueChange, theme, styles, onInfoPress }) => (
     <View style={styles.ratingRow}>
         <View style={styles.labelRow}>
             <Text style={styles.ratingLabel}>{label}</Text>
             <TouchableOpacity onPress={onInfoPress} style={styles.infoButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                <Text style={[styles.infoIcon, { color: theme.colors.primary }]}>ⓘ</Text>
+                <Icon name="information-circle-outline" size={18} color={theme.colors.primary} />
             </TouchableOpacity>
         </View>
         <View style={styles.starsContainer}>
             {[1, 2, 3, 4, 5].map((star) => (
-                <TouchableOpacity key={star} onPress={() => onValueChange(star)}>
-                    <Text style={[styles.star, { color: star <= value ? '#f39c12' : theme.colors.border }]}>
-                        ★
-                    </Text>
+                <TouchableOpacity key={star} onPress={() => onValueChange(star)} style={{ padding: 4 }}>
+                    <Icon
+                        name={star <= value ? 'star' : 'star-outline'}
+                        size={32}
+                        color={star <= value ? theme.colors.warning : theme.colors.border}
+                    />
                 </TouchableOpacity>
             ))}
         </View>
@@ -70,7 +74,10 @@ export const ReviewForm = ({
 
                     <View style={styles.overallRow}>
                         <Text style={styles.overallLabel}>{t('overall_rating')}</Text>
-                        <Text style={styles.overallValue}>{overall !== null ? overall.toFixed(1) : '-'} ⭐</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Text style={styles.overallValue}>{overall !== null ? overall.toFixed(1) : '-'} </Text>
+                            <Icon name="star" size={24} color={theme.colors.warning} />
+                        </View>
                     </View>
                 </View>
 
@@ -86,14 +93,14 @@ export const ReviewForm = ({
                 />
 
                 <View style={styles.placeholderContainer}>
-                    <Text style={{ color: theme.colors.subtext }}>{t('image_upload_placeholder')}</Text>
-                    <Button title={t('select_image_mock')} onPress={() => { }} disabled />
+                    <Text style={{ color: theme.colors.subtext, marginBottom: 8 }}>{t('image_upload_placeholder')}</Text>
+                    <Button title={t('select_image_mock')} onPress={() => { }} disabled size="sm" variant="ghost" />
                 </View>
 
-                <Button title={submitButtonText} onPress={onSubmit} disabled={loading} color={theme.colors.primary} />
+                <Button title={submitButtonText} onPress={onSubmit} disabled={loading} loading={loading} variant="primary" />
                 {onDelete && (
                     <View style={{ marginTop: 10 }}>
-                        <Button title={t('delete')} onPress={onDelete} disabled={loading} color="red" />
+                        <Button title={t('delete')} onPress={onDelete} disabled={loading} variant="danger" />
                     </View>
                 )}
 
@@ -112,22 +119,28 @@ export const ReviewForm = ({
                                     <Text style={styles.modalDescription}>{t(activeCategory + '_desc')}</Text>
 
                                     <View style={styles.exampleContainer}>
-                                        <Text style={styles.exampleHeader}>5 ⭐</Text>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                                            <Text style={styles.exampleHeader}>5 </Text>
+                                            <Icon name="star" size={14} color={theme.colors.warning} />
+                                        </View>
                                         <Text style={styles.exampleText}>{t(activeCategory + '_5star')}</Text>
                                     </View>
 
                                     <View style={styles.exampleContainer}>
-                                        <Text style={styles.exampleHeader}>1 ⭐</Text>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                                            <Text style={styles.exampleHeader}>1 </Text>
+                                            <Icon name="star" size={14} color={theme.colors.warning} />
+                                        </View>
                                         <Text style={styles.exampleText}>{t(activeCategory + '_1star')}</Text>
                                     </View>
                                 </>
                             )}
-                            <TouchableOpacity
-                                style={[styles.button, styles.buttonClose]}
+                            <Button
+                                title={t('info_close')}
                                 onPress={() => setModalVisible(false)}
-                            >
-                                <Text style={styles.textStyle}>{t('info_close')}</Text>
-                            </TouchableOpacity>
+                                variant="primary"
+                                style={{ width: '100%', marginTop: 15 }}
+                            />
                         </View>
                     </View>
                 </Modal>
@@ -152,7 +165,7 @@ export const createStyles = (theme) => StyleSheet.create({
     ratingInput: { borderWidth: 1, borderColor: theme.colors.border, width: 50, textAlign: 'center', padding: 5, borderRadius: 4, backgroundColor: theme.colors.inputBackground },
     overallRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 15, borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: 10 },
     overallLabel: { fontSize: 18, fontWeight: 'bold', color: theme.colors.text },
-    overallValue: { fontSize: 28, fontWeight: 'bold', color: '#f39c12' },
+    overallValue: { fontSize: 28, fontWeight: 'bold', color: theme.colors.warning },
     label: { fontSize: 16, marginBottom: 5, fontWeight: 'bold', color: theme.colors.text },
     input: {
         borderColor: theme.colors.border,

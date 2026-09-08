@@ -1,5 +1,5 @@
 import React, { useState, useRef, useContext, useEffect } from 'react';
-import { Text, View, StyleSheet, Button, ActivityIndicator, Platform, Alert, TextInput, KeyboardAvoidingView, Pressable, Keyboard } from 'react-native';
+import { Text, View, StyleSheet, ActivityIndicator, Platform, Alert, TextInput, KeyboardAvoidingView, Pressable, Keyboard } from 'react-native';
 // Only import CameraView/Permissions for Native. Web uses html5-qrcode dynamically.
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import api from '../services/api';
@@ -10,6 +10,7 @@ import { useSession } from '../context/SessionContext';
 import { LanguageContext } from '../context/LanguageContext';
 import { Scanner } from '../components/Scanner';
 import { isNumeric } from '../utils/validation';
+import Button from '../components/Button';
 
 let WebScanner;
 
@@ -23,6 +24,7 @@ if (Platform.OS === 'web') {
 }
 
 class ErrorBoundary extends React.Component {
+    static contextType = ThemeContext;
     constructor(props) {
         super(props);
         this.state = { hasError: false, error: null };
@@ -34,11 +36,12 @@ class ErrorBoundary extends React.Component {
         console.error("Scanner ErrorBoundary:", error, errorInfo);
     }
     render() {
+        const theme = this.context?.theme;
         if (this.state.hasError) {
             return (
                 <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-                    <Text style={{ color: 'red', fontSize: 16, marginBottom: 10, textAlign: 'center' }}>Scanner Error</Text>
-                    <Text style={{ color: '#555', marginBottom: 20 }}>{this.state.error?.toString()}</Text>
+                    <Text style={{ color: theme?.colors?.error || '#EF4444', fontSize: 16, marginBottom: 10, textAlign: 'center' }}>Scanner Error</Text>
+                    <Text style={{ color: theme?.colors?.subtext || '#555', marginBottom: 20 }}>{this.state.error?.toString()}</Text>
                     <Button title="Retry" onPress={() => this.setState({ hasError: false })} />
                 </View>
             );
@@ -203,7 +206,7 @@ const HomeScreen = ({ navigation }) => {
                         onFocus={() => Platform.OS === 'web' && setIsInputActive(true)}
                         onBlur={() => Platform.OS === 'web' && setIsInputActive(false)}
                     />
-                    <Button title={t('go')} onPress={handleManualSubmit} color={theme.colors.primary} />
+                    <Button title={t('go')} onPress={handleManualSubmit} variant="primary" />
                 </View>
             </View>
         </KeyboardAvoidingView>

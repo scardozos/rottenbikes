@@ -1,7 +1,8 @@
 import React, { useContext } from 'react';
 import { NavigationContainer, DefaultTheme, DarkTheme, CommonActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { ActivityIndicator, View, Button, TouchableOpacity, Text } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
+import Icon from '../components/Icon';
 
 import { AuthContext } from '../context/AuthContext';
 import { ThemeContext } from '../context/ThemeContext';
@@ -149,22 +150,22 @@ const PublicHomeStackNavigator = () => {
 const getTabBarIcon = (route, focused, color, size) => {
     let iconName;
     if (route.name === 'Home') {
-        iconName = '🏠';
+        iconName = focused ? 'scan' : 'scan-outline';
     } else if (route.name === 'BikesList') {
-        iconName = '🚲';
+        iconName = focused ? 'bicycle' : 'bicycle-outline';
     } else if (route.name === 'MyReviews') {
-        iconName = '⭐';
+        iconName = focused ? 'star' : 'star-outline';
     } else if (route.name === 'Configuration') {
-        iconName = '⚙️';
+        iconName = focused ? 'settings' : 'settings-outline';
     }
-    return <Text style={{ fontSize: size, color: color }}>{iconName}</Text>;
+    return <Icon name={iconName} size={size} color={color} />;
 };
 
 // Reusable tab bar options
 const getTabScreenOptions = (theme) => ({ route }) => ({
     tabBarIcon: ({ focused, color, size }) => getTabBarIcon(route, focused, color, size),
     tabBarActiveTintColor: theme.colors.primary,
-    tabBarInactiveTintColor: 'gray',
+    tabBarInactiveTintColor: theme.colors.subtext,
     headerShown: false,
     tabBarStyle: {
         backgroundColor: theme.colors.card,
@@ -235,7 +236,7 @@ const MainTabs = () => {
 
     return (
         <Tab.Navigator screenOptions={getTabScreenOptions(theme)}>
-            <Tab.Screen name="Home" component={HomeStackNavigator} options={{ title: t('home'), tabBarIcon: ({ color, size }) => <Text style={{ fontSize: size, color: color }}>📷</Text> }} />
+            <Tab.Screen name="Home" component={HomeStackNavigator} options={{ title: t('home') }} />
             <Tab.Screen
                 name="BikesList"
                 component={BikesListStackNavigator}

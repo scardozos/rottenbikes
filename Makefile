@@ -51,8 +51,9 @@ db-seed:
 
 run: db-up db-migrate-up db-seed
 	@echo "Starting API and Expo..."
-	@(cd ui && npx expo start &)
+	@(cd ui && ELECTRON_DISABLE_SANDBOX=1 npx expo start &)
 	go run ./cmd/api
+
 
 build:
 	@echo "Building API server..."

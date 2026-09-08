@@ -5,6 +5,7 @@ import { ThemeContext } from '../context/ThemeContext';
 import { LanguageContext } from '../context/LanguageContext';
 import { AuthContext } from '../context/AuthContext';
 import ReviewItem from '../components/ReviewItem';
+import Button from '../components/Button';
 import { useFocusEffect } from '@react-navigation/native';
 
 const REVIEWS_LIMIT = 20;
@@ -128,7 +129,7 @@ const MyReviewsScreen = ({ navigation }) => {
                     error ? (
                         <View style={[styles.container, styles.centered]}>
                             <Text style={{ color: theme.colors.error, marginBottom: 20 }}>{t('error')}</Text>
-                            <Button title={t('retry') || 'Retry'} onPress={() => fetchReviews(true)} color={theme.colors.primary} />
+                            <Button title={t('retry') || 'Retry'} onPress={() => fetchReviews(true)} variant="primary" />
                         </View>
                     ) : (
                         <View style={[styles.container, styles.centered]}>
@@ -141,7 +142,7 @@ const MyReviewsScreen = ({ navigation }) => {
                         return (
                             <View style={{ marginVertical: 15, alignItems: 'center' }}>
                                 <Text style={{ color: theme.colors.error, marginBottom: 10 }}>{t('error')}</Text>
-                                <Button title={t('retry') || 'Retry'} onPress={() => fetchReviews(false)} color={theme.colors.primary} />
+                                <Button title={t('retry') || 'Retry'} onPress={() => fetchReviews(false)} variant="primary" size="sm" />
                             </View>
                         );
                     }
