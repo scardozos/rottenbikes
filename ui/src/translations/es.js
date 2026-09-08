@@ -39,6 +39,7 @@ export default {
     // HomeScreen
     camera_permission: 'Necesitamos tu permiso para mostrar la cámara',
     grant_permission: 'Dar Permiso',
+    open_settings: 'Abrir Configuración',
     scan_qr: 'Escanear código QR',
     enter_manual_id: 'O introduce la ID manualmente:',
     bike_id_placeholder: 'ID de la Bicicleta (ej. 123)',
@@ -89,8 +90,8 @@ export default {
     bike_title: 'Bicicleta #{numerical_id}',
     hash_id_label: 'ID Hash: {hash_id}',
     type_label: 'Tipo: {type}',
-    electric: 'Eléctrica ⚡',
-    mechanical: 'Mecánica 🚲',
+    electric: 'Eléctrica',
+    mechanical: 'Mecánica',
     average_ratings: 'Promedio de Valoraciones',
     reviews: 'Reseñas',
     write_review: "Escribir Reseña",

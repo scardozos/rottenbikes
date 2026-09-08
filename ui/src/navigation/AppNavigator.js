@@ -1,7 +1,8 @@
 import React, { useContext } from 'react';
 import { NavigationContainer, DefaultTheme, DarkTheme, CommonActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { ActivityIndicator, View, Button, TouchableOpacity, Text } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
+import Icon from '../components/Icon';
 
 import { AuthContext } from '../context/AuthContext';
 import { ThemeContext } from '../context/ThemeContext';
@@ -26,6 +27,7 @@ import { LanguageContext } from '../context/LanguageContext';
 const Stack = createNativeStackNavigator();
 const HomeStack = createNativeStackNavigator();
 const BikesListStack = createNativeStackNavigator();
+const MyReviewsStack = createNativeStackNavigator();
 const PublicHomeStack = createNativeStackNavigator(); // New stack for public home
 const Tab = createBottomTabNavigator();
 
@@ -52,7 +54,15 @@ const mainLinking = {
                             UpdateReview: 'reviews/:reviewId/edit',
                         }
                     },
-                    MyReviews: 'my-reviews',
+                    MyReviews: {
+                        screens: {
+                            MyReviewsList: 'my-reviews',
+                            BikeDetails: 'my-reviews/bikes/:bikeId',
+                            UpdateReview: 'my-reviews/reviews/:reviewId/edit',
+                            CreateReview: 'my-reviews/bikes/:bikeId/createReview',
+                            UpdateBike: 'my-reviews/bikes/:bikeId/update',
+                        }
+                    },
                     Configuration: 'config',
                 }
             },
@@ -149,22 +159,22 @@ const PublicHomeStackNavigator = () => {
 const getTabBarIcon = (route, focused, color, size) => {
     let iconName;
     if (route.name === 'Home') {
-        iconName = '🏠';
+        iconName = focused ? 'scan' : 'scan-outline';
     } else if (route.name === 'BikesList') {
-        iconName = '🚲';
+        iconName = focused ? 'bicycle' : 'bicycle-outline';
     } else if (route.name === 'MyReviews') {
-        iconName = '⭐';
+        iconName = focused ? 'star' : 'star-outline';
     } else if (route.name === 'Configuration') {
-        iconName = '⚙️';
+        iconName = focused ? 'settings' : 'settings-outline';
     }
-    return <Text style={{ fontSize: size, color: color }}>{iconName}</Text>;
+    return <Icon name={iconName} size={size} color={color} />;
 };
 
 // Reusable tab bar options
 const getTabScreenOptions = (theme) => ({ route }) => ({
     tabBarIcon: ({ focused, color, size }) => getTabBarIcon(route, focused, color, size),
     tabBarActiveTintColor: theme.colors.primary,
-    tabBarInactiveTintColor: 'gray',
+    tabBarInactiveTintColor: theme.colors.subtext,
     headerShown: false,
     tabBarStyle: {
         backgroundColor: theme.colors.card,
@@ -208,12 +218,65 @@ const getBikesListListeners = () => ({ navigation }) => ({
     },
 });
 
+// Listener to reset MyReviews stack
+const getMyReviewsListeners = () => ({ navigation }) => ({
+    tabPress: (e) => {
+        const state = navigation.getState();
+        if (state) {
+            const currentTabRoute = state.routes[state.index];
+            if (currentTabRoute.name === 'MyReviews') {
+                const nestedState = currentTabRoute.state;
+                if (nestedState && nestedState.routes && nestedState.routes.length > 0) {
+                    const routeIndex = nestedState.index ?? (nestedState.routes.length - 1);
+                    const currentRoute = nestedState.routes[routeIndex];
+                    if (currentRoute && currentRoute.name !== 'MyReviewsList') {
+                        e.preventDefault();
+                        navigation.dispatch({
+                            ...CommonActions.reset({
+                                index: state.index,
+                                routes: state.routes.map(r =>
+                                    r.name === 'MyReviews'
+                                        ? { name: 'MyReviews', state: { index: 0, routes: [{ name: 'MyReviewsList' }] } }
+                                        : r
+                                ),
+                            }),
+                        });
+                    }
+                }
+            }
+        }
+    },
+});
+
+const MyReviewsStackNavigator = () => {
+    const { theme } = useContext(ThemeContext);
+    const { t } = useContext(LanguageContext);
+    return (
+        <MyReviewsStack.Navigator
+            screenOptions={{
+                headerTitleStyle: { color: theme.colors.text },
+                headerTintColor: theme.colors.primary,
+                headerStyle: { backgroundColor: theme.colors.card },
+            }}
+        >
+            <MyReviewsStack.Screen name="MyReviewsList" component={MyReviewsScreen} options={{ title: t('my_reviews') }} />
+            <MyReviewsStack.Screen name="BikeDetails" component={BikeDetailsScreen} options={{ title: t('bike_details') }} />
+            <MyReviewsStack.Screen name="UpdateReview" component={UpdateReviewScreen} options={{ title: t('update_review_title') }} />
+            <MyReviewsStack.Screen name="CreateReview" component={CreateReviewScreen} options={{ title: t('write_review') }} />
+            <MyReviewsStack.Screen name="UpdateBike" component={UpdateBikeScreen} options={{ title: t('update_bike_title') }} />
+        </MyReviewsStack.Navigator>
+    );
+};
+
 const PublicTabs = () => {
     const { theme } = useContext(ThemeContext);
     const { t } = useContext(LanguageContext);
 
     return (
-        <Tab.Navigator screenOptions={getTabScreenOptions(theme)}>
+        <Tab.Navigator
+            backBehavior="history"
+            screenOptions={getTabScreenOptions(theme)}
+        >
             <Tab.Screen
                 name="Home"
                 component={PublicHomeStackNavigator}
@@ -234,25 +297,23 @@ const MainTabs = () => {
     const { t } = useContext(LanguageContext);
 
     return (
-        <Tab.Navigator screenOptions={getTabScreenOptions(theme)}>
-            <Tab.Screen name="Home" component={HomeStackNavigator} options={{ title: t('home'), tabBarIcon: ({ color, size }) => <Text style={{ fontSize: size, color: color }}>📷</Text> }} />
+        <Tab.Navigator
+            backBehavior="history"
+            screenOptions={getTabScreenOptions(theme)}
+        >
+            <Tab.Screen name="Home" component={HomeStackNavigator} options={{ title: t('home') }} />
             <Tab.Screen
                 name="BikesList"
                 component={BikesListStackNavigator}
                 options={{ title: t('browse_bikes') }}
                 listeners={getBikesListListeners()}
             />
-            <Tab.Screen name="MyReviews" component={MyReviewsScreen} options={{
-                title: t('my_reviews') || 'My Reviews',
-                headerShown: true,
-                headerTitleStyle: { color: theme.colors.text },
-                headerTintColor: theme.colors.primary,
-                headerStyle: {
-                    backgroundColor: theme.colors.card,
-                    borderBottomWidth: 1,
-                    borderBottomColor: theme.colors.border
-                }
-            }} />
+            <Tab.Screen
+                name="MyReviews"
+                component={MyReviewsStackNavigator}
+                options={{ title: t('my_reviews') }}
+                listeners={getMyReviewsListeners()}
+            />
             <Tab.Screen name="Configuration" component={ConfigurationScreen} options={{
                 title: t('settings'),
                 headerShown: true,

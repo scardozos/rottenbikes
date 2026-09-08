@@ -2,9 +2,9 @@
 
 export const TREND_THRESHOLD = 0.2;
 
-export const GOOD_COLOR = '#2ecc71'; // Green
-export const WARN_COLOR = '#f1c40f'; // Yellow
-export const BAD_COLOR = '#e74c3c'; // Red
+export const GOOD_COLOR = '#10B981'; // Emerald 500
+export const WARN_COLOR = '#F59E0B'; // Amber 500
+export const BAD_COLOR = '#EF4444'; // Red 500
 export const NEUTRAL_COLOR = 'transparent';
 
 // Returns a border color for a given aggregate rating.

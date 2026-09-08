@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useContext, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, RefreshControl } from 'react-native';
 import api from '../services/api';
 import { ThemeContext } from '../context/ThemeContext';
 import { LanguageContext } from '../context/LanguageContext';
 import { AuthContext } from '../context/AuthContext';
 import ReviewItem from '../components/ReviewItem';
+import Button from '../components/Button';
+import EmptyState from '../components/EmptyState';
 import { useFocusEffect } from '@react-navigation/native';
 
 const REVIEWS_LIMIT = 20;
@@ -91,8 +93,9 @@ const MyReviewsScreen = ({ navigation }) => {
             item={item}
             isExpanded={expandedReviews.has(item.review_id)}
             onToggle={() => toggleReview(item.review_id)}
-            onEdit={() => navigation.navigate('BikesList', { screen: 'UpdateReview', params: { reviewId: item.review_id } })}
+            onEdit={() => navigation.navigate('UpdateReview', { reviewId: item.review_id })}
             showBikeId={true}
+            onPressBike={() => navigation.navigate('BikeDetails', { bikeId: item.bike_numerical_id })}
         />
     ), [expandedReviews, toggleReview, navigation]);
 
@@ -106,8 +109,18 @@ const MyReviewsScreen = ({ navigation }) => {
 
     if (!userToken) {
         return (
-            <View style={[styles.container, styles.centered]}>
-                <Text style={styles.emptyText}>{t('must_be_logged_in_to_view_reviews') || 'You must be logged in to view your reviews.'}</Text>
+            <View style={styles.container}>
+                <EmptyState
+                    icon="lock-closed-outline"
+                    title={t('must_be_logged_in_to_view_reviews')}
+                    action={
+                        <Button
+                            title={t('login')}
+                            onPress={() => navigation.navigate('PublicHome', { screen: 'Login' })}
+                            variant="primary"
+                        />
+                    }
+                />
             </View>
         );
     }
@@ -119,6 +132,9 @@ const MyReviewsScreen = ({ navigation }) => {
                 keyExtractor={(item) => item.review_id.toString()}
                 renderItem={renderItem}
                 contentContainerStyle={styles.listContent}
+                contentInsetAdjustmentBehavior="never"
+                automaticallyAdjustContentInsets={false}
+                automaticallyAdjustsScrollIndicatorInsets={false}
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />
                 }
@@ -126,27 +142,44 @@ const MyReviewsScreen = ({ navigation }) => {
                 onEndReachedThreshold={0.5}
                 ListEmptyComponent={
                     error ? (
-                        <View style={[styles.container, styles.centered]}>
-                            <Text style={{ color: theme.colors.error, marginBottom: 20 }}>{t('error')}</Text>
-                            <Button title={t('retry') || 'Retry'} onPress={() => fetchReviews(true)} color={theme.colors.primary} />
-                        </View>
+                        <EmptyState
+                            icon="alert-circle-outline"
+                            title={t('error')}
+                            action={
+                                <Button
+                                    title={t('retry') || 'Retry'}
+                                    onPress={() => fetchReviews(true)}
+                                    variant="primary"
+                                    size="sm"
+                                />
+                            }
+                        />
                     ) : (
-                        <View style={[styles.container, styles.centered]}>
-                            <Text style={styles.emptyText}>{t('no_reviews') || 'No reviews found.'}</Text>
-                        </View>
+                        <EmptyState
+                            icon="star-outline"
+                            title={t('no_reviews')}
+                            action={
+                                <Button
+                                    title={t('browse_bikes')}
+                                    onPress={() => navigation.navigate('BikesList', { screen: 'BikesCatalog' })}
+                                    variant="primary"
+                                    size="sm"
+                                />
+                            }
+                        />
                     )
                 }
                 ListFooterComponent={() => {
                     if (error && reviews.length > 0) {
                         return (
-                            <View style={{ marginVertical: 15, alignItems: 'center' }}>
-                                <Text style={{ color: theme.colors.error, marginBottom: 10 }}>{t('error')}</Text>
-                                <Button title={t('retry') || 'Retry'} onPress={() => fetchReviews(false)} color={theme.colors.primary} />
+                            <View style={styles.footerAction}>
+                                <Text style={styles.errorText}>{t('error')}</Text>
+                                <Button title={t('retry') || 'Retry'} onPress={() => fetchReviews(false)} variant="primary" size="sm" />
                             </View>
                         );
                     }
                     if (loadingMore) {
-                        return <ActivityIndicator size="small" color={theme.colors.primary} style={{ marginVertical: 15 }} />;
+                        return <ActivityIndicator size="small" color={theme.colors.primary} style={styles.footerLoading} />;
                     }
                     return null;
                 }}
@@ -161,17 +194,25 @@ const createStyles = (theme) => StyleSheet.create({
         backgroundColor: theme.colors.background,
     },
     centered: {
+        flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
     },
     listContent: {
-        padding: 20,
-        paddingBottom: 40,
+        paddingHorizontal: theme?.metrics?.spacing?.lg || 16,
+        paddingTop: theme?.metrics?.spacing?.md || 12,
+        paddingBottom: theme?.metrics?.spacing?.xxl || 32,
     },
-    emptyText: {
-        color: theme.colors.subtext,
-        textAlign: 'center',
-        marginTop: 20,
+    footerAction: {
+        marginVertical: 15,
+        alignItems: 'center',
+    },
+    footerLoading: {
+        marginVertical: 15,
+    },
+    errorText: {
+        color: theme.colors.error,
+        marginBottom: 10,
     },
 });
 

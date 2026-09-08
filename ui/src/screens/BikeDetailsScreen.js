@@ -1,7 +1,8 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useState, useCallback, useContext, useRef } from 'react';
-
-import { View, Text, StyleSheet, FlatList, Button, TouchableOpacity, Pressable, Animated, Dimensions, Easing, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Pressable, Animated, Dimensions, Easing, ActivityIndicator } from 'react-native';
+import Icon from '../components/Icon';
+import Button from '../components/Button';
 
 import api from '../services/api';
 import { AuthContext } from '../context/AuthContext';
@@ -12,7 +13,6 @@ import { useToast } from '../context/ToastContext';
 
 import ReviewItem from '../components/ReviewItem';
 import HealthTrendBadge from '../components/HealthTrendBadge';
-import { getBorderColor } from '../utils/ratings';
 import { sortReviews, getPreviewReviews } from '../utils/reviews';
 
 const BikeDetailsScreen = ({ route, navigation }) => {
@@ -82,7 +82,7 @@ const BikeDetailsScreen = ({ route, navigation }) => {
         ]).start(() => {
             setIsModalRendered(false);
         });
-    }, []);
+    }, [slideAnim, fadeAnim]);
     const [expandedReviews, setExpandedReviews] = useState(new Set());
 
     // Ref to track if we need to set the default window (first load or bike switch)
@@ -103,18 +103,13 @@ const BikeDetailsScreen = ({ route, navigation }) => {
         });
     }, []);
 
-
-
-    const { userId, userToken } = useContext(AuthContext);
+    const { userToken } = useContext(AuthContext);
     const { validatedBikeId } = useSession();
     const { t } = useContext(LanguageContext);
     const { showToast } = useToast();
 
-
-
     // Determine if review is allowed based on session context
     // Using string comparison to handle leading zeros
-    console.log('[BikeDetails] ValidatedID:', validatedBikeId, 'CurrentBikeID:', bike.numerical_id);
     const isReviewAllowed = validatedBikeId != null && String(validatedBikeId) === String(bike.numerical_id);
 
     const fetchData = useCallback(async (currentId) => {
@@ -122,10 +117,7 @@ const BikeDetailsScreen = ({ route, navigation }) => {
         setReviewsOffset(0);
         setHasMoreReviews(true);
         try {
-            // Ensure we use the ID from params if available, otherwise fallback to state
             const targetId = currentId || bike.numerical_id;
-            console.log('[BikeDetails] Fetching details for:', targetId);
-
             const res = await api.get(`/bikes/${targetId}/details?limit=${REVIEWS_LIMIT}&offset=0`);
             const details = res.data;
 
@@ -146,7 +138,7 @@ const BikeDetailsScreen = ({ route, navigation }) => {
                 isFirstLoad.current = false;
             }
         } catch (e) {
-            console.log("Failed to fetch bike details", e);
+            console.error("Failed to fetch bike details", e);
         } finally {
             setLoading(false);
         }
@@ -157,7 +149,6 @@ const BikeDetailsScreen = ({ route, navigation }) => {
         setLoadingMoreReviews(true);
         try {
             const targetId = bike.numerical_id;
-            console.log('[BikeDetails] Fetching more reviews. Offset:', reviewsOffset);
             const res = await api.get(`/bikes/${targetId}/reviews?limit=${REVIEWS_LIMIT}&offset=${reviewsOffset}`);
             const newReviews = res.data?.reviews || [];
 
@@ -167,7 +158,7 @@ const BikeDetailsScreen = ({ route, navigation }) => {
             setReviews(prev => [...prev, ...newReviews]);
             setReviewsOffset(prev => prev + newReviews.length);
         } catch (e) {
-            console.log("Failed to fetch more reviews", e);
+            console.error("Failed to fetch more reviews", e);
         } finally {
             setLoadingMoreReviews(false);
         }
@@ -175,14 +166,11 @@ const BikeDetailsScreen = ({ route, navigation }) => {
 
     useFocusEffect(
         useCallback(() => {
-            // When screen focuses, check if params have changed
-            const params = route.params || {};
-            const newId = params.bikeId || (params.bike ? params.bike.numerical_id : null);
+            const currentRouteParams = route.params || {};
+            const newId = currentRouteParams.bikeId || (currentRouteParams.bike ? currentRouteParams.bike.numerical_id : null);
 
-            // Use String() for comparison
             if (newId && String(newId) !== String(bike.numerical_id)) {
-                console.log('[BikeDetails] Params changed, updating bike ID:', newId);
-                isFirstLoad.current = true; // Reset for new bike
+                isFirstLoad.current = true;
                 setBike(prev => ({ ...prev, numerical_id: String(newId) }));
                 fetchData(String(newId));
             } else {
@@ -193,77 +181,117 @@ const BikeDetailsScreen = ({ route, navigation }) => {
 
     const styles = React.useMemo(() => createStyles(theme), [theme]);
 
+    const activeAgg = aggregates.find(a => a.subcategory === 'overall' && a.window === timeWindow);
+    const overallRating = activeAgg ? activeAgg.average_rating : null;
+    const nonOverallAggs = aggregates.filter(agg => agg.subcategory !== 'overall' && agg.window === timeWindow);
+
     const renderHeader = () => (
-        <View>
-            <Text style={styles.title}>{t('bike_title', { numerical_id: bike.numerical_id })}</Text>
-            {isReviewAllowed && (
-                <Text
-                    style={styles.updateLink}
-                    onPress={() => navigation.navigate('UpdateBike', { bikeId: bike.numerical_id })}
-                >
-                    {t('incorrect_info_link')}
+        <View style={styles.headerContainer}>
+            {/* Bike Identity Card */}
+            <View style={styles.bikeCard}>
+                <View style={styles.bikeCardTop}>
+                    <Text style={styles.title}>{t('bike_title', { numerical_id: bike.numerical_id })}</Text>
+                    <View style={[styles.typeBadge, bike.is_electric ? styles.electricBadge : styles.mechanicalBadge]}>
+                        <Icon
+                            name={bike.is_electric ? 'flash' : 'bicycle'}
+                            size={14}
+                            color={bike.is_electric ? theme.colors.warning : theme.colors.primary}
+                        />
+                        <Text style={[styles.typeText, { color: bike.is_electric ? theme.colors.warning : theme.colors.primary }]}>
+                            {bike.is_electric ? t('electric') : t('mechanical')}
+                        </Text>
+                    </View>
+                </View>
+
+                <Text style={styles.hashText} numberOfLines={1} ellipsizeMode="middle">
+                    {t('hash_id_label', { hash_id: bike.hash_id || '—' })}
                 </Text>
-            )}
 
-            <Text style={styles.detail}>{t('hash_id_label', { hash_id: bike.hash_id || '-' })}</Text>
+                {isReviewAllowed && (
+                    <TouchableOpacity
+                        onPress={() => navigation.navigate('UpdateBike', { bikeId: bike.numerical_id })}
+                        style={styles.editLinkBtn}
+                        activeOpacity={0.7}
+                    >
+                        <Icon name="create-outline" size={14} color={theme.colors.primary} />
+                        <Text style={styles.updateLink}>{t('incorrect_info_link')}</Text>
+                    </TouchableOpacity>
+                )}
+            </View>
 
-            <Text style={styles.detail}>{t('type_label', { type: bike.is_electric ? t('electric') : t('mechanical') })}</Text>
+            {/* Hero Overall Rating Card */}
+            <View style={styles.heroCard}>
+                <Text style={styles.heroLabel}>{t('overall_rating')}</Text>
 
-            {aggregates.length > 0 && (
+                <View style={styles.heroContent}>
+                    {overallRating != null ? (
+                        <View style={styles.heroScoreRow}>
+                            <Text style={styles.heroScore}>{overallRating.toFixed(1)}</Text>
+                            <Icon name="star" size={36} color={theme.colors.warning} style={styles.heroStar} />
+                            {timeWindow === 'overall' && (
+                                <View style={styles.heroTrendContainer}>
+                                    <HealthTrendBadge aggregates={aggregates} subcategory="overall" />
+                                </View>
+                            )}
+                        </View>
+                    ) : (
+                        <Text style={styles.noRatingsText}>{t('no_reviews')}</Text>
+                    )}
+                </View>
+
+                {/* Time Window Tabs Under Rating Score */}
+                <View style={styles.tabContainer}>
+                    {['overall', '2w', '1w'].map((window) => (
+                        <TouchableOpacity
+                            key={window}
+                            style={[
+                                styles.tabButton,
+                                timeWindow === window && styles.activeTabButton
+                            ]}
+                            onPress={() => setTimeWindow(window)}
+                            activeOpacity={0.7}
+                            accessibilityRole="button"
+                            accessibilityState={{ selected: timeWindow === window }}
+                        >
+                            <Text style={[
+                                styles.tabText,
+                                timeWindow === window && styles.activeTabText
+                            ]}>
+                                {t(`window_${window}`)}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+            </View>
+
+            {/* Subcategory Uniform Grid */}
+            {nonOverallAggs.length > 0 && (
                 <View style={styles.aggregatesSection}>
-                    <View style={styles.aggregatesHeader}>
-                        <Text style={styles.subtitle}>{t('average_ratings')}</Text>
-                    </View>
-
-                    {/* Tabular Selector for Time Window */}
-                    <View style={styles.tabContainer}>
-                        {['overall', '2w', '1w'].map((window) => (
-                            <TouchableOpacity
-                                key={window}
-                                style={[
-                                    styles.tabButton,
-                                    timeWindow === window && styles.activeTabButton
-                                ]}
-                                onPress={() => setTimeWindow(window)}
-                            >
-                                <Text style={[
-                                    styles.tabText,
-                                    timeWindow === window && styles.activeTabText
-                                ]}>
-                                    {t(`window_${window}`)}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-
+                    <Text style={styles.sectionSubtitle}>{t('average_ratings')}</Text>
                     <View style={styles.aggregatesGrid}>
-                        {aggregates
-                            .filter(agg => agg.subcategory === 'overall' && agg.window === timeWindow)
-                            .map(agg => (
-                                <View key="overall" style={[styles.aggItem, styles.overallItem]}>
-                                    <Text style={[styles.aggLabel, styles.overallLabel]}>{t('overall_rating')}</Text>
-                                    <Text style={[styles.aggValue, styles.overallValue]}>{agg.average_rating.toFixed(1)} ⭐</Text>
-                                    {timeWindow === 'overall' && <HealthTrendBadge aggregates={aggregates} subcategory="overall" />}
+                        {nonOverallAggs.map(agg => (
+                            <View key={agg.subcategory} style={styles.aggItem}>
+                                <Text style={styles.aggLabel} numberOfLines={1}>
+                                    {t(agg.subcategory) || agg.subcategory.charAt(0).toUpperCase() + agg.subcategory.slice(1)}
+                                </Text>
+                                <View style={styles.aggValueRow}>
+                                    <Text style={styles.aggValue}>{agg.average_rating.toFixed(1)}</Text>
+                                    <Icon name="star" size={14} color={theme.colors.warning} />
+                                    {timeWindow === 'overall' && (
+                                        <View style={styles.tileTrend}>
+                                            <HealthTrendBadge aggregates={aggregates} subcategory={agg.subcategory} />
+                                        </View>
+                                    )}
                                 </View>
-                            ))
-                        }
-                        {aggregates
-                            .filter(agg => agg.subcategory !== 'overall' && agg.window === timeWindow)
-                            .map(agg => (
-                                <View key={agg.subcategory} style={styles.aggItem}>
-                                    <Text style={styles.aggLabel}>{t(agg.subcategory) || agg.subcategory.charAt(0).toUpperCase() + agg.subcategory.slice(1)}</Text>
-                                    <Text style={styles.aggValue}>{agg.average_rating.toFixed(1)} ⭐</Text>
-                                    {timeWindow === 'overall' && <HealthTrendBadge aggregates={aggregates} subcategory={agg.subcategory} />}
-                                </View>
-                            ))}
-                        {aggregates.filter(agg => agg.window === timeWindow).length === 0 && (
-                            <Text style={styles.noRatingsText}>{t('no_reviews')}</Text>
-                        )}
+                            </View>
+                        ))}
                     </View>
                 </View>
             )}
 
-            <Text style={styles.subtitle}>{t('reviews')}</Text>
+            <View style={styles.reviewsTitleRow}>
+                <Text style={styles.sectionSubtitle}>{t('reviews')}</Text>
+            </View>
         </View>
     );
 
@@ -277,7 +305,7 @@ const BikeDetailsScreen = ({ route, navigation }) => {
                 isExpanded={isExpanded}
                 onToggle={() => toggleReview(item.review_id, context)}
                 onEdit={() => {
-                    closeModal(); // Close modal if navigating
+                    closeModal();
                     navigation.navigate('UpdateReview', { reviewId: item.review_id });
                 }}
             />
@@ -285,70 +313,62 @@ const BikeDetailsScreen = ({ route, navigation }) => {
     }, [expandedReviews, toggleReview, closeModal, navigation]);
 
     const sortedReviews = React.useMemo(() => sortReviews(reviews, sortBy, sortOrder), [reviews, sortBy, sortOrder]);
-
-    // Default view shows only top 3, always sorted by date (newest)
     const previewReviews = React.useMemo(() => getPreviewReviews(reviews, 3), [reviews]);
-
-    const activeAgg = aggregates.find(a => a.subcategory === 'overall' && a.window === timeWindow);
-    const activeRating = activeAgg ? activeAgg.average_rating : null;
-    const dynamicBorderColor = getBorderColor(activeRating);
 
     return (
         <View style={styles.container}>
-            <View style={[
-                styles.contentWrapper,
-                activeRating != null && { borderWidth: 2, borderColor: dynamicBorderColor, borderRadius: 12, margin: 12 }
-            ]}>
-                <FlatList
-                    ListHeaderComponent={renderHeader}
-                    data={previewReviews}
-                    keyExtractor={item => item.review_id ? item.review_id.toString() : Math.random().toString()}
-                    renderItem={(props) => renderReviewItem(props, 'preview')}
-                    ListFooterComponent={
-                        reviews.length === 0 ? (
-                            <Text style={styles.emptyText}>{t('no_reviews')}</Text>
-                        ) : (reviews.length > 3 || hasMoreReviews) ? (
-                            <TouchableOpacity style={styles.seeAllButton} onPress={openModal}>
-                                <Text style={styles.seeAllText}>
-                                    {t('see_all_reviews', { count: totalReviews })}
-                                </Text>
-                            </TouchableOpacity>
-                        ) : null
-                    }
-                    contentContainerStyle={{ paddingBottom: 20 }}
-                />
-
-                {/* Only show "Write a Review" if validated in current session */}
-                {/* Show "Write a Review" for everyone, but redirect if not allowed */}
-                <View style={styles.footerButton}>
-                    <TouchableOpacity
-                        style={[
-                            styles.actionButton,
-                            (!isReviewAllowed) && styles.disabledActionButton
-                        ]}
-                        onPress={() => {
-                            if (!userToken) {
-                                showToast(t('login_to_review_toast'), 'info');
-                                navigation.navigate('Home');
-                                return;
-                            }
-                            if (!isReviewAllowed) {
-                                showToast(t('scan_to_review_toast'), 'info');
-                                navigation.navigate('Home');
-                                return;
-                            }
-                            navigation.navigate('CreateReview', { bikeId: bike.numerical_id });
-                        }}
-                        activeOpacity={0.8}
-                    >
-                        <Text style={[styles.actionButtonText, (!isReviewAllowed) && styles.disabledActionButtonText]}>
-                            {t('write_review')}
-                        </Text>
-                    </TouchableOpacity>
+            {loading && !bike.created_at ? (
+                <View style={styles.centerLoading}>
+                    <ActivityIndicator size="large" color={theme.colors.primary} />
                 </View>
-            </View>
+            ) : (
+                <View style={styles.mainContent}>
+                    <FlatList
+                        ListHeaderComponent={renderHeader}
+                        data={previewReviews}
+                        keyExtractor={item => item.review_id ? item.review_id.toString() : Math.random().toString()}
+                        renderItem={(props) => renderReviewItem(props, 'preview')}
+                        contentContainerStyle={styles.scrollList}
+                        ListFooterComponent={
+                            reviews.length === 0 ? (
+                                <Text style={styles.emptyText}>{t('no_reviews')}</Text>
+                            ) : (reviews.length > 3 || hasMoreReviews) ? (
+                                <Button
+                                    title={t('see_all_reviews', { count: totalReviews })}
+                                    onPress={openModal}
+                                    variant="ghost"
+                                    style={styles.seeAllButton}
+                                />
+                            ) : null
+                        }
+                    />
 
-            {/* Custom Modal for All Reviews (Absolute Positioned View) */}
+                    {/* Bottom CTA Button */}
+                    <View style={styles.footerContainer}>
+                        <Button
+                            title={t('write_review')}
+                            onPress={() => {
+                                if (!userToken) {
+                                    showToast(t('login_to_review_toast'), 'info');
+                                    navigation.navigate('Home');
+                                    return;
+                                }
+                                if (!isReviewAllowed) {
+                                    showToast(t('scan_to_review_toast'), 'info');
+                                    navigation.navigate('Home');
+                                    return;
+                                }
+                                navigation.navigate('CreateReview', { bikeId: bike.numerical_id });
+                            }}
+                            variant={isReviewAllowed ? 'primary' : 'ghost'}
+                            size="lg"
+                            disabled={!isReviewAllowed && !userToken}
+                        />
+                    </View>
+                </View>
+            )}
+
+            {/* Custom Bottom Sheet Modal for All Reviews */}
             {isModalRendered && (
                 <View style={styles.customModalOverlay}>
                     <Pressable onPress={closeModal} style={StyleSheet.absoluteFill}>
@@ -359,31 +379,53 @@ const BikeDetailsScreen = ({ route, navigation }) => {
                         styles.modalContent,
                         { transform: [{ translateY: slideAnim }] }
                     ]}>
+                        {/* Drag Handle Indicator */}
+                        <View style={styles.dragHandleContainer}>
+                            <View style={styles.dragHandle} />
+                        </View>
+
                         <View style={styles.modalHeader}>
-                            <Text style={styles.subtitle}>{t('all_reviews')}</Text>
+                            <Text style={styles.modalTitle}>{t('all_reviews')}</Text>
                             <TouchableOpacity onPress={closeModal} style={styles.closeButton}>
-                                <Text style={styles.closeButtonText}>✕</Text>
+                                <Icon name="close" size={24} color={theme.colors.text} />
                             </TouchableOpacity>
                         </View>
 
-                        {/* Sorting Controls Inside Modal */}
-                        <View style={{ flexDirection: 'row', marginBottom: 15, justifyContent: 'flex-start', gap: 10 }}>
+                        {/* Sorting Chips Row */}
+                        <View style={styles.modalSortRow}>
                             <TouchableOpacity
-                                style={styles.sortButton}
-                                onPress={() => setSortBy(prev => prev === 'date' ? 'rating' : 'date')}
+                                style={[styles.modalSortChip, sortBy === 'date' && styles.modalSortChipActive]}
+                                onPress={() => setSortBy('date')}
                             >
-                                <Text style={styles.sortButtonText}>
-                                    {t('sort_by_label')}: {sortBy === 'date' ? t('sort_date') : t('sort_rating')}
+                                <Icon
+                                    name="time-outline"
+                                    size={14}
+                                    color={sortBy === 'date' ? (theme.colors.buttonText || '#FFFFFF') : theme.colors.subtext}
+                                />
+                                <Text style={[styles.modalSortText, sortBy === 'date' && styles.modalSortTextActive]}>
+                                    {t('sort_date')}
                                 </Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity
-                                style={styles.sortButton}
+                                style={[styles.modalSortChip, sortBy === 'rating' && styles.modalSortChipActive]}
+                                onPress={() => setSortBy('rating')}
+                            >
+                                <Icon
+                                    name="star-outline"
+                                    size={14}
+                                    color={sortBy === 'rating' ? (theme.colors.buttonText || '#FFFFFF') : theme.colors.subtext}
+                                />
+                                <Text style={[styles.modalSortText, sortBy === 'rating' && styles.modalSortTextActive]}>
+                                    {t('sort_rating')}
+                                </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={styles.modalOrderToggle}
                                 onPress={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
                             >
-                                <Text style={styles.sortButtonText}>
-                                    {sortOrder === 'asc' ? '↑' : '↓'}
-                                </Text>
+                                <Icon name={sortOrder === 'asc' ? 'arrow-up' : 'arrow-down'} size={16} color={theme.colors.text} />
                             </TouchableOpacity>
                         </View>
 
@@ -391,7 +433,7 @@ const BikeDetailsScreen = ({ route, navigation }) => {
                             data={sortedReviews}
                             keyExtractor={item => item.review_id ? 'modal-' + item.review_id.toString() : Math.random().toString()}
                             renderItem={(props) => renderReviewItem(props, 'modal')}
-                            contentContainerStyle={{ paddingBottom: 40 }}
+                            contentContainerStyle={styles.modalListContent}
                             onEndReached={fetchMoreReviews}
                             onEndReachedThreshold={0.5}
                             ListFooterComponent={() => {
@@ -409,65 +451,215 @@ const BikeDetailsScreen = ({ route, navigation }) => {
 };
 
 const createStyles = (theme) => StyleSheet.create({
-    container: { flex: 1, backgroundColor: theme.colors.background }, // Removed padding
-    contentWrapper: { flex: 1, padding: 20 }, // Added content wrapper with padding
-    title: { fontSize: 24, fontWeight: 'bold', marginBottom: 10, color: theme.colors.text },
-    detail: { fontSize: 16, marginBottom: 5, color: theme.colors.text },
-    // reviewsSection: { flex: 1, marginTop: 20 }, // Removed as now part of FlatList custom header
-    aggregatesSection: { marginTop: 20, backgroundColor: theme.colors.card, padding: 15, borderRadius: 10, marginBottom: 20 },
-    aggregatesGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-    aggItem: { width: '48%', backgroundColor: theme.colors.inputBackground, padding: 10, borderRadius: 8, marginBottom: 10, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 },
-    aggLabel: { fontSize: 14, color: theme.colors.subtext, marginBottom: 2 },
-    aggValue: { fontSize: 16, fontWeight: 'bold', color: '#f39c12' },
-    subtitle: { fontSize: 20, marginBottom: 10, fontWeight: '600', color: theme.colors.text },
-    subtitle: { fontSize: 20, marginBottom: 10, fontWeight: '600', color: theme.colors.text },
-    emptyText: { color: theme.colors.subtext },
-    updateLink: {
-        fontSize: 14,
-        color: theme.colors.primary,
-        marginBottom: 10,
-        textDecorationLine: 'underline'
+    container: {
+        flex: 1,
+        backgroundColor: theme.colors.background,
     },
-    // reviewsHeader removed as unused
-    sortContainer: {
-        flexDirection: 'row',
-        gap: 8
+    mainContent: {
+        flex: 1,
     },
-    sortButton: {
-        paddingVertical: 6,
-        paddingHorizontal: 12,
-        borderRadius: 20,
-        backgroundColor: theme.colors.card,
-        borderWidth: 1,
-        borderColor: theme.colors.border
+    scrollList: {
+        paddingHorizontal: theme?.metrics?.spacing?.lg || 16,
+        paddingTop: theme?.metrics?.spacing?.md || 12,
+        paddingBottom: theme?.metrics?.spacing?.xl || 24,
     },
-    sortButtonText: {
-        fontSize: 14,
-        color: theme.colors.text,
-        fontWeight: '500'
+    headerContainer: {
+        marginBottom: theme?.metrics?.spacing?.md || 12,
     },
-    footerButton: {
-        marginTop: 10,
-        paddingTop: 10,
-        borderTopWidth: 1,
-        borderTopColor: theme.colors.border
-    },
-    seeAllButton: {
-        padding: 15,
-        backgroundColor: theme.colors.card,
-        borderRadius: 8,
+    centerLoading: {
+        flex: 1,
+        justifyContent: 'center',
         alignItems: 'center',
-        marginTop: 10,
-        marginBottom: 20,
-        borderWidth: 1,
-        borderColor: theme.colors.border
     },
-    seeAllText: {
+    bikeCard: {
+        backgroundColor: theme.colors.card,
+        borderRadius: theme?.metrics?.radii?.lg || 16,
+        padding: theme?.metrics?.spacing?.lg || 16,
+        marginBottom: theme?.metrics?.spacing?.md || 12,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        ...(theme?.shadows?.sm || {}),
+    },
+    bikeCardTop: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    title: {
+        fontSize: theme?.typography?.h2?.fontSize || 24,
+        fontWeight: 'bold',
+        color: theme.colors.text,
+    },
+    typeBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: theme?.metrics?.radii?.pill || 9999,
+    },
+    electricBadge: {
+        backgroundColor: theme.colors.warning + '18',
+    },
+    mechanicalBadge: {
+        backgroundColor: theme.colors.primary + '18',
+    },
+    typeText: {
+        fontSize: 12,
+        fontWeight: '600',
+        marginLeft: 4,
+    },
+    hashText: {
+        fontSize: 13,
+        color: theme.colors.subtext,
+    },
+    editLinkBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginTop: 10,
+        paddingTop: 8,
+        borderTopWidth: 1,
+        borderTopColor: theme.colors.border,
+        alignSelf: 'stretch',
+    },
+    updateLink: {
+        fontSize: 13,
+        color: theme.colors.primary,
+        fontWeight: '500',
+        flexShrink: 1,
+    },
+    heroCard: {
+        backgroundColor: theme.colors.card,
+        borderRadius: theme?.metrics?.radii?.lg || 16,
+        padding: theme?.metrics?.spacing?.lg || 16,
+        marginBottom: theme?.metrics?.spacing?.md || 12,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        ...(theme?.shadows?.sm || {}),
+    },
+    heroLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: theme.colors.subtext,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        marginBottom: 6,
+    },
+    heroContent: {
+        alignItems: 'flex-start',
+        marginBottom: 14,
+    },
+    heroScoreRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    heroScore: {
+        fontSize: 42,
+        fontWeight: 'bold',
+        color: theme.colors.text,
+        letterSpacing: -1,
+    },
+    heroStar: {
+        marginLeft: 8,
+    },
+    heroTrendContainer: {
+        marginLeft: 12,
+    },
+    noRatingsText: {
+        color: theme.colors.subtext,
+        fontSize: 15,
+        marginVertical: 6,
+    },
+    tabContainer: {
+        flexDirection: 'row',
+        width: '100%',
+        backgroundColor: theme.colors.inputBackground,
+        borderRadius: theme?.metrics?.radii?.pill || 9999,
+        padding: 3,
+    },
+    tabButton: {
+        flex: 1,
+        paddingVertical: 7,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: theme?.metrics?.radii?.pill || 9999,
+    },
+    activeTabButton: {
+        backgroundColor: theme.colors.card,
+        ...(theme?.shadows?.sm || {}),
+    },
+    tabText: {
+        fontSize: 13,
+        color: theme.colors.subtext,
+        fontWeight: '500',
+    },
+    activeTabText: {
         color: theme.colors.primary,
         fontWeight: 'bold',
-        fontSize: 16
     },
-    // New / Updated styles for Custom Modal
+    aggregatesSection: {
+        marginBottom: theme?.metrics?.spacing?.md || 12,
+    },
+    sectionSubtitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: theme.colors.text,
+        marginBottom: theme?.metrics?.spacing?.sm || 8,
+    },
+    aggregatesGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+        rowGap: 10,
+    },
+    aggItem: {
+        width: '48.5%',
+        backgroundColor: theme.colors.card,
+        padding: 12,
+        borderRadius: theme?.metrics?.radii?.md || 12,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+    },
+    aggLabel: {
+        fontSize: 13,
+        color: theme.colors.subtext,
+        fontWeight: '500',
+        marginBottom: 6,
+    },
+    aggValueRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    aggValue: {
+        fontSize: 17,
+        fontWeight: 'bold',
+        color: theme.colors.text,
+        marginRight: 4,
+    },
+    tileTrend: {
+        marginLeft: 'auto',
+    },
+    reviewsTitleRow: {
+        marginTop: 6,
+    },
+    emptyText: {
+        color: theme.colors.subtext,
+        textAlign: 'center',
+        marginVertical: 20,
+        fontSize: 14,
+    },
+    seeAllButton: {
+        marginTop: 10,
+        marginBottom: 20,
+    },
+    footerContainer: {
+        paddingHorizontal: theme?.metrics?.spacing?.lg || 16,
+        paddingVertical: theme?.metrics?.spacing?.md || 12,
+        backgroundColor: theme.colors.card,
+        borderTopWidth: 1,
+        borderTopColor: theme.colors.border,
+    },
     customModalOverlay: {
         position: 'absolute',
         top: 0,
@@ -476,7 +668,6 @@ const createStyles = (theme) => StyleSheet.create({
         right: 0,
         zIndex: 1000,
         justifyContent: 'flex-end',
-        elevation: 20,
     },
     customModalBackdrop: {
         position: 'absolute',
@@ -488,121 +679,80 @@ const createStyles = (theme) => StyleSheet.create({
     },
     modalContent: {
         backgroundColor: theme.colors.background,
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        height: '80%', // Bottom sheet taking 80% screen height
-        padding: 20,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5
+        borderTopLeftRadius: theme?.metrics?.radii?.xl || 24,
+        borderTopRightRadius: theme?.metrics?.radii?.xl || 24,
+        height: '80%',
+        paddingHorizontal: theme?.metrics?.spacing?.lg || 16,
+        paddingBottom: theme?.metrics?.spacing?.lg || 16,
+        ...(theme?.shadows?.lg || {}),
+    },
+    dragHandleContainer: {
+        alignItems: 'center',
+        paddingVertical: 10,
+    },
+    dragHandle: {
+        width: 40,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: theme.colors.border,
     },
     modalHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 20,
+        paddingBottom: 12,
         borderBottomWidth: 1,
         borderBottomColor: theme.colors.border,
-        paddingBottom: 15
+        marginBottom: 12,
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: theme.colors.text,
     },
     closeButton: {
-        padding: 5
+        padding: 4,
     },
-    closeButtonText: {
-        fontSize: 24,
-        color: theme.colors.text,
-        fontWeight: 'bold'
-    },
-    closeButtonText: {
-        fontSize: 24,
-        color: theme.colors.text,
-        fontWeight: 'bold'
-    },
-    actionButton: {
-        backgroundColor: theme.colors.primary,
-        paddingVertical: 12,
-        borderRadius: 8,
-        alignItems: 'center',
-        justifyContent: 'center'
-    },
-    disabledActionButton: {
-        backgroundColor: theme.colors.primary,
-        opacity: 0.5
-    },
-    actionButtonText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: 'bold'
-    },
-    disabledActionButtonText: {
-        color: '#FFFFFF',
-        opacity: 0.8
-    },
-    aggregatesHeader: {
+    modalSortRow: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 10
+        gap: 8,
+        marginBottom: 14,
     },
-    // New tab styles
-    tabContainer: {
+    modalSortChip: {
         flexDirection: 'row',
-        backgroundColor: theme.colors.inputBackground,
-        borderRadius: 8,
-        padding: 2,
-        marginBottom: 15
-    },
-    tabButton: {
-        flex: 1,
-        paddingVertical: 8,
         alignItems: 'center',
-        borderRadius: 6
-    },
-    activeTabButton: {
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: theme?.metrics?.radii?.pill || 9999,
         backgroundColor: theme.colors.card,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 1,
-        elevation: 1
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        gap: 6,
     },
-    tabText: {
-        fontSize: 14,
-        color: theme.colors.subtext,
-        fontWeight: '500'
-    },
-    activeTabText: {
-        color: theme.colors.primary,
-        fontWeight: 'bold'
-    },
-    noRatingsText: {
-        width: '100%',
-        textAlign: 'center',
-        color: theme.colors.subtext,
-        fontStyle: 'italic',
-        marginTop: 10
-    },
-    overallItem: {
-        width: '100%',
-        marginBottom: 10,
-        backgroundColor: theme.colors.card,
-        borderWidth: 2,
+    modalSortChipActive: {
+        backgroundColor: theme.colors.primary,
         borderColor: theme.colors.primary,
-        shadowColor: theme.colors.primary,
-        shadowOpacity: 0.2,
-        elevation: 4
     },
-    overallLabel: {
-        fontSize: 16,
+    modalSortText: {
+        fontSize: 13,
+        color: theme.colors.subtext,
+        fontWeight: '500',
+    },
+    modalSortTextActive: {
+        color: theme.colors.buttonText || '#FFFFFF',
         fontWeight: 'bold',
-        color: theme.colors.text
     },
-    overallValue: {
-        fontSize: 24,
-        marginTop: 5
-    }
+    modalOrderToggle: {
+        padding: 8,
+        borderRadius: theme?.metrics?.radii?.pill || 9999,
+        backgroundColor: theme.colors.card,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+    },
+    modalListContent: {
+        paddingBottom: 40,
+    },
 });
 
 export default BikeDetailsScreen;

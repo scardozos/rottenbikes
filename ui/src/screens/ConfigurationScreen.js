@@ -1,5 +1,5 @@
 import React, { useContext, useState } from 'react';
-import { View, ScrollView, Text, Switch, StyleSheet, Button, TouchableOpacity, Modal, TextInput, Alert, Platform } from 'react-native';
+import { View, ScrollView, Text, Switch, StyleSheet, TouchableOpacity, Modal, TextInput, Alert, Platform } from 'react-native';
 import { ThemeContext } from '../context/ThemeContext';
 import { AuthContext } from '../context/AuthContext';
 import { LanguageContext } from '../context/LanguageContext';

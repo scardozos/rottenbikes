@@ -1,51 +1,16 @@
 import React, { useState, useRef, useContext, useEffect } from 'react';
-import { Text, View, StyleSheet, Button, ActivityIndicator, Platform, Alert, TextInput, KeyboardAvoidingView, Pressable, Keyboard } from 'react-native';
-// Only import CameraView/Permissions for Native. Web uses html5-qrcode dynamically.
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { Text, View, StyleSheet, Platform, Alert, KeyboardAvoidingView, Pressable, Keyboard } from 'react-native';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { ThemeContext } from '../context/ThemeContext';
-import { AuthContext } from '../context/AuthContext';
 import { useSession } from '../context/SessionContext';
 import { LanguageContext } from '../context/LanguageContext';
 import { Scanner } from '../components/Scanner';
 import { isNumeric } from '../utils/validation';
-
-let WebScanner;
-
-if (Platform.OS === 'web') {
-    try {
-        const scannerLib = require('@yudiel/react-qr-scanner');
-        WebScanner = scannerLib.Scanner;
-    } catch (e) {
-        console.warn("Failed to load @yudiel/react-qr-scanner", e);
-    }
-}
-
-class ErrorBoundary extends React.Component {
-    constructor(props) {
-        super(props);
-        this.state = { hasError: false, error: null };
-    }
-    static getDerivedStateFromError(error) {
-        return { hasError: true, error };
-    }
-    componentDidCatch(error, errorInfo) {
-        console.error("Scanner ErrorBoundary:", error, errorInfo);
-    }
-    render() {
-        if (this.state.hasError) {
-            return (
-                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-                    <Text style={{ color: 'red', fontSize: 16, marginBottom: 10, textAlign: 'center' }}>Scanner Error</Text>
-                    <Text style={{ color: '#555', marginBottom: 20 }}>{this.state.error?.toString()}</Text>
-                    <Button title="Retry" onPress={() => this.setState({ hasError: false })} />
-                </View>
-            );
-        }
-        return this.props.children;
-    }
-}
+import Button from '../components/Button';
+import Input from '../components/Input';
+import Icon from '../components/Icon';
+import ErrorBoundary from '../components/ErrorBoundary';
 
 const HomeScreen = ({ navigation }) => {
     const { theme } = useContext(ThemeContext);
@@ -71,24 +36,19 @@ const HomeScreen = ({ navigation }) => {
     const handleManualSubmit = async () => {
         if (!manualId.trim()) return;
 
-        // Basic numerical validation
-        if (!isNumeric(manualId)) {
+        if (!isNumeric(manualId.trim())) {
             showToast(t('invalid_numerical_id'), "error");
             return;
         }
 
-        const bikeId = manualId;
+        const bikeId = manualId.trim();
 
         try {
-            // Verify bike exists before validating session
             await api.get(`/bikes/${bikeId}/details`);
-            console.log('[HomeScreen] Manual Submit & Verified:', bikeId);
             validateBike(bikeId);
             navigation.navigate('BikesList', { screen: 'BikeDetails', params: { bikeId } });
             setManualId('');
         } catch (e) {
-            console.log('[HomeScreen] Bike lookup error:', e);
-
             if (e.response && e.response.status === 404) {
                 if (Platform.OS === 'web') {
                     const create = window.confirm(`Bike #${bikeId} not found. Would you like to create it?`);
@@ -134,7 +94,6 @@ const HomeScreen = ({ navigation }) => {
                     const create = window.confirm(`No bike found with Hash ID: ${data}. Create it?`);
                     if (create) {
                         navigation.navigate('BikesList', { screen: 'CreateBike', params: { initialHashId: data } });
-                        // Don't reset isScanning here so it doesn't immediately scan again if they navigate back
                     } else {
                         isScanning.current = false;
                     }
@@ -150,7 +109,6 @@ const HomeScreen = ({ navigation }) => {
                 }
             }
         } catch (e) {
-            console.error("error during scan lookup", e);
             const errMsg = e.response?.data?.error || t('scan_lookup_failed');
             showToast(errMsg, "error");
             isScanning.current = false;
@@ -159,7 +117,6 @@ const HomeScreen = ({ navigation }) => {
 
     const stylesInternal = React.useMemo(() => createStyles(theme), [theme]);
 
-    // Naive check for mobile browser agent
     const isMobileWeb = Platform.OS === 'web' && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     const showCamera = (Platform.OS !== 'web' || isMobileWeb);
     const shouldRenderCamera = showCamera && !isInputActive;
@@ -167,10 +124,10 @@ const HomeScreen = ({ navigation }) => {
     const content = (
         <KeyboardAvoidingView
             style={stylesInternal.container}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
         >
-            {/* Camera Area - Top 70% (Only on Mobile App or Mobile Web) */}
+            {/* Camera Area - Top Portion */}
             {showCamera ? (
                 <View style={stylesInternal.cameraContainer}>
                     {shouldRenderCamera ? (
@@ -178,32 +135,55 @@ const HomeScreen = ({ navigation }) => {
                             <Scanner onScan={handleScanSuccess} theme={theme} t={t} />
                         </ErrorBoundary>
                     ) : (
-                        <View style={{ flex: 1, backgroundColor: 'black', justifyContent: 'center', alignItems: 'center' }}>
-                            <Text style={{ color: 'gray' }}>{t('scanner_paused') || "Scanner Paused"}</Text>
+                        <View style={stylesInternal.scannerPaused}>
+                            <Icon name="camera-reverse-outline" size={40} color={theme.colors.subtext} />
+                            <Text style={stylesInternal.scannerPausedText}>{t('scanner_paused') || "Scanner Paused"}</Text>
                         </View>
                     )}
                 </View>
             ) : (
-                <View style={{ flex: 1, backgroundColor: theme.colors.background }} />
+                <View style={stylesInternal.desktopPlaceholder}>
+                    <View style={stylesInternal.desktopIconCircle}>
+                        <Icon name="qr-code-outline" size={56} color={theme.colors.primary} />
+                    </View>
+                    <Text style={stylesInternal.desktopTitle}>{t('scan_qr') || "Scan Bike QR Code"}</Text>
+                    <Text style={stylesInternal.desktopSubtitle}>
+                        Use a mobile device camera to scan, or look up by bike number below.
+                    </Text>
+                </View>
             )}
 
-            {/* Manual Input Area - Bottom 30% */}
-            <View style={stylesInternal.inputContainer}>
-                <Text style={stylesInternal.inputLabel}>{t('enter_manual_id')}</Text>
-                <View style={stylesInternal.inputRow}>
-                    <TextInput
-                        style={stylesInternal.input}
-                        placeholder={t('bike_id_placeholder')}
-                        placeholderTextColor={theme.colors.placeholder}
-                        keyboardType="numeric"
-                        value={manualId}
-                        onChangeText={setManualId}
-                        returnKeyType="done"
-                        onSubmitEditing={handleManualSubmit}
-                        onFocus={() => Platform.OS === 'web' && setIsInputActive(true)}
-                        onBlur={() => Platform.OS === 'web' && setIsInputActive(false)}
-                    />
-                    <Button title={t('go')} onPress={handleManualSubmit} color={theme.colors.primary} />
+            {/* Manual Input Section - Styled Clean Card */}
+            <View style={stylesInternal.cardWrapper}>
+                <View style={stylesInternal.card}>
+                    <View style={stylesInternal.cardHeader}>
+                        <Icon name="keypad-outline" size={20} color={theme.colors.primary} />
+                        <Text style={stylesInternal.cardTitle}>{t('enter_manual_id')}</Text>
+                    </View>
+
+                    <View style={stylesInternal.inputRow}>
+                        <View style={stylesInternal.inputFlex}>
+                            <Input
+                                placeholder={t('bike_id_placeholder')}
+                                keyboardType="numeric"
+                                value={manualId}
+                                onChangeText={setManualId}
+                                returnKeyType="done"
+                                onSubmitEditing={handleManualSubmit}
+                                onFocus={() => Platform.OS === 'web' && setIsInputActive(true)}
+                                onBlur={() => Platform.OS === 'web' && setIsInputActive(false)}
+                                containerStyle={{ marginBottom: 0 }}
+                                leftIcon={<Icon name="bicycle-outline" size={18} color={theme.colors.subtext} />}
+                            />
+                        </View>
+                        <Button
+                            title={t('go')}
+                            onPress={handleManualSubmit}
+                            variant="primary"
+                            size="md"
+                            style={stylesInternal.goButton}
+                        />
+                    </View>
                 </View>
             </View>
         </KeyboardAvoidingView>
@@ -223,74 +203,91 @@ const HomeScreen = ({ navigation }) => {
 const createStyles = (theme) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: theme.colors.background
+        backgroundColor: theme.colors.background,
     },
     cameraContainer: {
-        flex: 2, // Takes up ~66% of screen
-        backgroundColor: 'black',
-        overflow: 'hidden'
+        flex: 1,
+        backgroundColor: '#000000',
+        overflow: 'hidden',
     },
-    inputContainer: {
-        flex: 1, // Takes up ~33% of screen
-        backgroundColor: theme.colors.card,
-        padding: 20,
+    scannerPaused: {
+        flex: 1,
+        backgroundColor: '#000000',
         justifyContent: 'center',
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        // On desktop web without camera, let it center or fill nicely?
-        // Current layout: Camera (flex 2) + Input (flex 1).
-        // If Camera is hidden (replaced by empty view), Input stays at bottom.
-        // It's acceptable for now to keep consistent layout.
-        ...Platform.select({
-            ios: {
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: -2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 5,
-            },
-            android: {
-                elevation: 10,
-            },
-        }),
+        alignItems: 'center',
+        gap: 10,
     },
-    inputLabel: {
-        fontSize: 16,
+    scannerPausedText: {
+        color: theme.colors.subtext,
+        fontSize: 15,
+    },
+    desktopPlaceholder: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 30,
+        backgroundColor: theme.colors.background,
+    },
+    desktopIconCircle: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        backgroundColor: theme.colors.primary + '18',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 20,
+    },
+    desktopTitle: {
+        fontSize: 22,
         fontWeight: 'bold',
-        marginBottom: 10,
-        color: theme.colors.text
+        color: theme.colors.text,
+        marginBottom: 8,
+        textAlign: 'center',
+    },
+    desktopSubtitle: {
+        fontSize: 15,
+        color: theme.colors.subtext,
+        textAlign: 'center',
+        maxWidth: 380,
+        lineHeight: 22,
+    },
+    cardWrapper: {
+        paddingHorizontal: theme?.metrics?.spacing?.lg || 16,
+        paddingVertical: theme?.metrics?.spacing?.md || 14,
+        backgroundColor: theme.colors.background,
+        borderTopWidth: 1,
+        borderTopColor: theme.colors.border,
+    },
+    card: {
+        backgroundColor: theme.colors.card,
+        borderRadius: theme?.metrics?.radii?.lg || 16,
+        padding: theme?.metrics?.spacing?.lg || 16,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        ...(theme?.shadows?.sm || {}),
+    },
+    cardHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 12,
+    },
+    cardTitle: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: theme.colors.text,
     },
     inputRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 10
+        gap: 10,
     },
-    input: {
+    inputFlex: {
         flex: 1,
-        height: 50,
-        borderColor: theme.colors.border,
-        borderWidth: 1,
-        borderRadius: 8,
-        paddingHorizontal: 15,
-        marginRight: 10,
-        backgroundColor: theme.colors.inputBackground,
-        fontSize: 18,
-        color: theme.colors.text
     },
-    scannerMessageContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center'
+    goButton: {
+        minWidth: 70,
     },
-    message: {
-        textAlign: 'center',
-        padding: 20,
-        color: theme.colors.text,
-        fontSize: 16
-    },
-    nativeCameraContainer: {
-        flex: 1,
-        width: '100%'
-    }
 });
 
 export default HomeScreen;

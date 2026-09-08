@@ -39,6 +39,7 @@ export default {
     // HomeScreen
     camera_permission: 'We need your permission to show the camera',
     grant_permission: 'Grant Permission',
+    open_settings: 'Open Settings',
     scan_qr: 'Scan QR Code',
     enter_manual_id: 'Or enter Bike ID manually:',
     bike_id_placeholder: 'Bike ID (e.g. 123)',
@@ -89,8 +90,8 @@ export default {
     bike_title: 'Bike #{numerical_id}',
     hash_id_label: 'Hash ID: {hash_id}',
     type_label: 'Type: {type}',
-    electric: 'Electric ⚡',
-    mechanical: 'Mechanical 🚲',
+    electric: 'Electric',
+    mechanical: 'Mechanical',
     average_ratings: 'Average Ratings',
     reviews: 'Reviews',
     write_review: 'Write a Review',

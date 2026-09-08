@@ -1,5 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, Button } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import { ThemeContext } from '../context/ThemeContext';
+import Button from './Button';
 
 class ErrorBoundary extends React.Component {
     constructor(props) {
@@ -16,11 +18,16 @@ class ErrorBoundary extends React.Component {
     }
 
     render() {
+        const theme = this.context?.theme;
+        const backgroundColor = theme?.colors?.background || '#FFFFFF';
+        const textColor = theme?.colors?.text || '#000000';
+        const errorColor = theme?.colors?.danger || theme?.colors?.error || '#EF4444';
+
         if (this.state.hasError) {
             return (
-                <View style={styles.container}>
-                    <Text style={styles.title}>Oops! Something went wrong.</Text>
-                    <Text style={styles.subtitle}>{this.state.error?.toString()}</Text>
+                <View style={[styles.container, { backgroundColor }]}>
+                    <Text style={[styles.title, { color: textColor }]}>Oops! Something went wrong.</Text>
+                    <Text style={[styles.subtitle, { color: errorColor }]}>{this.state.error?.toString()}</Text>
                     <Button title="Restart App" onPress={() => this.setState({ hasError: false })} />
                 </View>
             );
@@ -36,7 +43,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         padding: 20,
-        backgroundColor: '#fff',
     },
     title: {
         fontSize: 24,
@@ -45,10 +51,11 @@ const styles = StyleSheet.create({
     },
     subtitle: {
         fontSize: 16,
-        color: '#e74c3c',
         marginBottom: 20,
         textAlign: 'center',
     }
 });
+
+ErrorBoundary.contextType = ThemeContext;
 
 export default ErrorBoundary;

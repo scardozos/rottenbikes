@@ -1,25 +1,56 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, TouchableOpacity, ScrollView, Modal, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Modal, KeyboardAvoidingView, Platform } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import Button from './Button';
+import Icon from './Icon';
 
-export const StarRating = ({ label, value, onValueChange, theme, styles, onInfoPress }) => (
-    <View style={styles.ratingRow}>
-        <View style={styles.labelRow}>
-            <Text style={styles.ratingLabel}>{label}</Text>
-            <TouchableOpacity onPress={onInfoPress} style={styles.infoButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                <Text style={[styles.infoIcon, { color: theme.colors.primary }]}>ⓘ</Text>
-            </TouchableOpacity>
-        </View>
-        <View style={styles.starsContainer}>
-            {[1, 2, 3, 4, 5].map((star) => (
-                <TouchableOpacity key={star} onPress={() => onValueChange(star)}>
-                    <Text style={[styles.star, { color: star <= value ? '#f39c12' : theme.colors.border }]}>
-                        ★
-                    </Text>
+export const StarRating = ({ label, value, onValueChange, theme, styles, onInfoPress }) => {
+    const handleStarPress = (star) => {
+        if (Platform.OS !== 'web') {
+            try {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            } catch {
+                // Fallback silently if haptics unavailable
+            }
+        }
+        onValueChange(star);
+    };
+
+    return (
+        <View style={styles.ratingRow}>
+            <View style={styles.labelRow}>
+                <Text style={styles.ratingLabel}>{label}</Text>
+                <TouchableOpacity
+                    onPress={onInfoPress}
+                    style={styles.infoButton}
+                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${label} info`}
+                >
+                    <Icon name="information-circle-outline" size={18} color={theme.colors.primary} />
                 </TouchableOpacity>
-            ))}
+            </View>
+            <View style={styles.starsContainer}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                    <TouchableOpacity
+                        key={star}
+                        onPress={() => handleStarPress(star)}
+                        style={styles.starTouchTarget}
+                        hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${star} star`}
+                    >
+                        <Icon
+                            name={star <= value ? 'star' : 'star-outline'}
+                            size={34}
+                            color={star <= value ? theme.colors.warning : theme.colors.border}
+                        />
+                    </TouchableOpacity>
+                ))}
+            </View>
         </View>
-    </View>
-);
+    );
+};
 
 export const ReviewForm = ({
     title,
@@ -48,8 +79,8 @@ export const ReviewForm = ({
 
     return (
         <KeyboardAvoidingView
-            style={{ flex: 1, backgroundColor: theme.colors.background }}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.keyboardAvoid}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
         >
             <ScrollView
@@ -59,8 +90,8 @@ export const ReviewForm = ({
             >
                 {title && <Text style={styles.title}>{title}</Text>}
 
-                <View style={styles.ratingsContainer}>
-                    <Text style={styles.subtitle}>{t('ratings')}</Text>
+                <View style={styles.ratingsCard}>
+                    <Text style={styles.cardHeader}>{t('ratings')}</Text>
                     <View style={styles.divider} />
                     <StarRating label={t('breaks')} value={breaks || 0} onValueChange={setBreaks} theme={theme} styles={styles} onInfoPress={() => handleInfoPress('breaks')} />
                     <StarRating label={t('seat')} value={seat || 0} onValueChange={setSeat} theme={theme} styles={styles} onInfoPress={() => handleInfoPress('seat')} />
@@ -70,32 +101,47 @@ export const ReviewForm = ({
 
                     <View style={styles.overallRow}>
                         <Text style={styles.overallLabel}>{t('overall_rating')}</Text>
-                        <Text style={styles.overallValue}>{overall !== null ? overall.toFixed(1) : '-'} ⭐</Text>
+                        <View style={styles.overallValueGroup}>
+                            <Text style={styles.overallValue}>{overall !== null ? overall.toFixed(1) : '-'} </Text>
+                            <Icon name="star" size={26} color={theme.colors.warning} />
+                        </View>
                     </View>
                 </View>
 
-                <Text style={styles.label}>{t('comment')}</Text>
-                <TextInput
-                    placeholder={t('write_review_placeholder')}
-                    placeholderTextColor={theme.colors.placeholder}
-                    style={[styles.input, { height: 120 }]}
-                    value={comment}
-                    onChangeText={setComment}
-                    multiline
-                    textAlignVertical="top"
-                />
-
-                <View style={styles.placeholderContainer}>
-                    <Text style={{ color: theme.colors.subtext }}>{t('image_upload_placeholder')}</Text>
-                    <Button title={t('select_image_mock')} onPress={() => { }} disabled />
+                <View style={styles.commentSection}>
+                    <Text style={styles.inputLabel}>{t('comment')}</Text>
+                    <TextInput
+                        placeholder={t('write_review_placeholder')}
+                        placeholderTextColor={theme.colors.placeholder}
+                        style={styles.textArea}
+                        value={comment}
+                        onChangeText={setComment}
+                        multiline
+                        textAlignVertical="top"
+                    />
                 </View>
 
-                <Button title={submitButtonText} onPress={onSubmit} disabled={loading} color={theme.colors.primary} />
-                {onDelete && (
-                    <View style={{ marginTop: 10 }}>
-                        <Button title={t('delete')} onPress={onDelete} disabled={loading} color="red" />
-                    </View>
-                )}
+                <View style={styles.actionsContainer}>
+                    <Button
+                        title={submitButtonText}
+                        onPress={onSubmit}
+                        disabled={loading}
+                        loading={loading}
+                        variant="primary"
+                        size="lg"
+                        style={styles.fullWidth}
+                    />
+                    {onDelete && (
+                        <Button
+                            title={t('delete')}
+                            onPress={onDelete}
+                            disabled={loading}
+                            variant="danger"
+                            size="md"
+                            style={[styles.fullWidth, styles.deleteBtn]}
+                        />
+                    )}
+                </View>
 
                 {/* Info Modal */}
                 <Modal
@@ -112,22 +158,29 @@ export const ReviewForm = ({
                                     <Text style={styles.modalDescription}>{t(activeCategory + '_desc')}</Text>
 
                                     <View style={styles.exampleContainer}>
-                                        <Text style={styles.exampleHeader}>5 ⭐</Text>
+                                        <View style={styles.exampleHeaderRow}>
+                                            <Text style={styles.exampleHeader}>5 </Text>
+                                            <Icon name="star" size={14} color={theme.colors.warning} />
+                                        </View>
                                         <Text style={styles.exampleText}>{t(activeCategory + '_5star')}</Text>
                                     </View>
 
                                     <View style={styles.exampleContainer}>
-                                        <Text style={styles.exampleHeader}>1 ⭐</Text>
+                                        <View style={styles.exampleHeaderRow}>
+                                            <Text style={styles.exampleHeader}>1 </Text>
+                                            <Icon name="star" size={14} color={theme.colors.warning} />
+                                        </View>
                                         <Text style={styles.exampleText}>{t(activeCategory + '_1star')}</Text>
                                     </View>
                                 </>
                             )}
-                            <TouchableOpacity
-                                style={[styles.button, styles.buttonClose]}
+                            <Button
+                                title={t('info_close')}
                                 onPress={() => setModalVisible(false)}
-                            >
-                                <Text style={styles.textStyle}>{t('info_close')}</Text>
-                            </TouchableOpacity>
+                                variant="primary"
+                                size="md"
+                                style={styles.modalCloseBtn}
+                            />
                         </View>
                     </View>
                 </Modal>
@@ -137,114 +190,180 @@ export const ReviewForm = ({
 };
 
 export const createStyles = (theme) => StyleSheet.create({
-    container: { padding: 20, paddingBottom: 60, backgroundColor: theme.colors.background },
-    title: { fontSize: 24, marginBottom: 20, textAlign: 'center', color: theme.colors.text },
-    subtitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 5, color: theme.colors.text },
-    divider: { height: 1, backgroundColor: theme.colors.border, marginBottom: 15 },
-    ratingsContainer: { marginBottom: 20, padding: 15, backgroundColor: theme.colors.card, borderRadius: 8 },
-    ratingRow: { marginBottom: 15 },
-    labelRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 5 },
-    ratingLabel: { fontSize: 16, fontWeight: '600', color: theme.colors.text, marginRight: 8 },
-    infoButton: { padding: 2 },
-    infoIcon: { fontSize: 16 },
-    starsContainer: { flexDirection: 'row' },
-    star: { fontSize: 40, paddingHorizontal: 2 },
-    ratingInput: { borderWidth: 1, borderColor: theme.colors.border, width: 50, textAlign: 'center', padding: 5, borderRadius: 4, backgroundColor: theme.colors.inputBackground },
-    overallRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 15, borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: 10 },
-    overallLabel: { fontSize: 18, fontWeight: 'bold', color: theme.colors.text },
-    overallValue: { fontSize: 28, fontWeight: 'bold', color: '#f39c12' },
-    label: { fontSize: 16, marginBottom: 5, fontWeight: 'bold', color: theme.colors.text },
-    input: {
-        borderColor: theme.colors.border,
-        borderWidth: 1,
-        marginBottom: 20,
-        paddingHorizontal: 12,
-        paddingVertical: 12,
-        borderRadius: 8,
-        backgroundColor: theme.colors.inputBackground,
-        fontSize: 16,
-        color: theme.colors.text
+    keyboardAvoid: {
+        flex: 1,
+        backgroundColor: theme.colors.background,
     },
-    placeholderContainer: {
+    container: {
+        padding: theme?.metrics?.spacing?.lg || 16,
+        paddingBottom: theme?.metrics?.spacing?.xxl || 40,
+    },
+    title: {
+        fontSize: theme?.typography?.h2?.fontSize || 24,
+        fontWeight: 'bold',
+        marginBottom: theme?.metrics?.spacing?.lg || 16,
+        textAlign: 'center',
+        color: theme.colors.text,
+    },
+    cardHeader: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        marginBottom: 8,
+        color: theme.colors.text,
+    },
+    divider: {
+        height: 1,
+        backgroundColor: theme.colors.border,
+        marginBottom: 16,
+    },
+    ratingsCard: {
+        marginBottom: theme?.metrics?.spacing?.lg || 16,
+        padding: theme?.metrics?.spacing?.lg || 16,
+        backgroundColor: theme.colors.card,
+        borderRadius: theme?.metrics?.radii?.lg || 16,
         borderWidth: 1,
         borderColor: theme.colors.border,
-        borderStyle: 'dashed',
-        padding: 20,
+        ...(theme?.shadows?.sm || {}),
+    },
+    ratingRow: {
+        marginBottom: 16,
+    },
+    labelRow: {
+        flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 20,
-        borderRadius: 8
+        marginBottom: 8,
     },
-    // Modal Styles
+    ratingLabel: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: theme.colors.text,
+        marginRight: 6,
+    },
+    infoButton: {
+        padding: 4,
+    },
+    starsContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    starTouchTarget: {
+        minWidth: 44,
+        minHeight: 44,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    overallRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: theme.colors.border,
+        paddingTop: 14,
+    },
+    overallLabel: {
+        fontSize: 17,
+        fontWeight: 'bold',
+        color: theme.colors.text,
+    },
+    overallValueGroup: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    overallValue: {
+        fontSize: 26,
+        fontWeight: 'bold',
+        color: theme.colors.warning,
+    },
+    commentSection: {
+        marginBottom: theme?.metrics?.spacing?.lg || 16,
+    },
+    inputLabel: {
+        fontSize: 15,
+        marginBottom: 8,
+        fontWeight: '600',
+        color: theme.colors.text,
+    },
+    textArea: {
+        borderColor: theme.colors.border,
+        borderWidth: 1,
+        borderRadius: theme?.metrics?.radii?.md || 12,
+        backgroundColor: theme.colors.inputBackground,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        height: 120,
+        fontSize: 15,
+        color: theme.colors.text,
+    },
+    actionsContainer: {
+        marginTop: 8,
+        gap: 12,
+    },
+    fullWidth: {
+        width: '100%',
+    },
+    deleteBtn: {
+        marginTop: 4,
+    },
     centeredView: {
         flex: 1,
         justifyContent: "center",
         alignItems: "center",
-        backgroundColor: 'rgba(0,0,0,0.5)'
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        padding: 20,
     },
     modalView: {
-        width: '85%',
-        margin: 20,
+        width: '100%',
+        maxWidth: 400,
         backgroundColor: theme.colors.card,
-        borderRadius: 15,
-        padding: 25,
-        alignItems: "flex-start",
-        shadowColor: "#000",
-        shadowOffset: {
-            width: 0,
-            height: 2
-        },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-        elevation: 5
+        borderRadius: theme?.metrics?.radii?.lg || 16,
+        padding: theme?.metrics?.spacing?.xl || 24,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        ...(theme?.shadows?.lg || {}),
     },
     modalTitle: {
-        fontSize: 20,
+        fontSize: 18,
         fontWeight: 'bold',
         marginBottom: 10,
         color: theme.colors.text,
-        alignSelf: 'center'
+        textAlign: 'center',
     },
     modalDescription: {
-        fontSize: 16,
-        marginBottom: 20,
+        fontSize: 15,
+        marginBottom: 16,
         color: theme.colors.text,
-        lineHeight: 22
+        lineHeight: 22,
     },
     exampleContainer: {
         width: '100%',
         marginBottom: 10,
-        padding: 10,
+        padding: 12,
         backgroundColor: theme.colors.background,
-        borderRadius: 8,
+        borderRadius: theme?.metrics?.radii?.sm || 8,
         borderLeftWidth: 4,
-        borderLeftColor: theme.colors.primary
+        borderLeftColor: theme.colors.primary,
+    },
+    exampleHeaderRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 4,
     },
     exampleHeader: {
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: 'bold',
         color: theme.colors.text,
-        marginBottom: 4
     },
     exampleText: {
-        fontSize: 14,
-        color: theme.colors.text,
-        fontStyle: 'italic'
+        fontSize: 13,
+        color: theme.colors.subtext,
+        fontStyle: 'italic',
     },
-    button: {
-        borderRadius: 10,
-        padding: 12,
-        elevation: 2,
-        marginTop: 15,
-        alignSelf: 'center',
-        width: '100%'
+    modalCloseBtn: {
+        width: '100%',
+        marginTop: 14,
     },
-    buttonClose: {
-        backgroundColor: theme.colors.primary,
-    },
-    textStyle: {
-        color: "white",
-        fontWeight: "bold",
-        textAlign: "center",
-        fontSize: 16
-    }
 });
+
+export default ReviewForm;
