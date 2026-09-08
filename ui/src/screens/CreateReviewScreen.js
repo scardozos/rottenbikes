@@ -31,21 +31,13 @@ const CreateReviewScreen = ({ route, navigation }) => {
     const [power, setPower] = useState(null);
     const [pedals, setPedals] = useState(null);
 
-    const [overall, setOverall] = useState(null);
     const [comment, setComment] = useState('');
     const [loading, setLoading] = useState(false);
 
-    // Auto-calculate overall
-    useEffect(() => {
-        const ratings = [breaks, seat, sturdiness, power, pedals].filter(r => r > 0);
-        if (ratings.length === 0) {
-            setOverall(null);
-            return;
-        }
-        const sum = ratings.reduce((a, b) => a + b, 0);
-        const avg = sum / ratings.length;
-        setOverall(avg);
-    }, [breaks, seat, sturdiness, power, pedals]);
+    const validRatings = [breaks, seat, sturdiness, power, pedals].filter(r => r !== null && r > 0);
+    const overall = validRatings.length > 0 ? validRatings.reduce((a, b) => a + b, 0) / validRatings.length : null;
+
+
 
     const handleSubmit = async () => {
         // Validate that at least one rating is provided

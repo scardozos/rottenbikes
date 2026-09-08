@@ -132,7 +132,7 @@ const RegisterScreen = ({ navigation }) => {
                             <View style={styles.checkboxContainer}>
                                 <Switch
                                     trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
-                                    thumbColor={acceptedTerms ? (theme.colors.buttonText || '#FFFFFF') : '#f4f3f4'}
+                                    thumbColor={theme.colors.buttonText}
                                     ios_backgroundColor={theme.colors.border}
                                     onValueChange={setAcceptedTerms}
                                     value={acceptedTerms}

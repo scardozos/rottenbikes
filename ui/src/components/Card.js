@@ -8,6 +8,7 @@ const Card = ({
     shadow = true,
     bordered = true,
     padding = 'md',
+    overflowHidden = false,
     ...rest
 }) => {
     const { theme } = useTheme();
@@ -27,6 +28,7 @@ const Card = ({
                     borderRadius: theme.metrics?.radii?.lg || 16,
                     padding: paddingValue,
                 },
+                overflowHidden && { overflow: 'hidden' },
                 bordered && {
                     borderWidth: 1,
                     borderColor: theme.colors.border,
@@ -44,7 +46,6 @@ const Card = ({
 const styles = StyleSheet.create({
     card: {
         width: '100%',
-        overflow: 'hidden',
     },
 });
 

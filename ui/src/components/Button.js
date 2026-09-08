@@ -38,12 +38,12 @@ const Button = ({
             case 'secondary':
                 return {
                     container: { backgroundColor: theme.colors.secondary },
-                    text: { color: theme.colors.buttonText || '#FFFFFF' },
+                    text: { color: theme.colors.buttonText },
                 };
             case 'danger':
                 return {
                     container: { backgroundColor: theme.colors.danger || theme.colors.error },
-                    text: { color: theme.colors.buttonText || '#FFFFFF' },
+                    text: { color: theme.colors.buttonText },
                 };
             case 'ghost':
                 return {

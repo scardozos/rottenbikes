@@ -19,23 +19,22 @@ const UpdateReviewScreen = ({ route, navigation }) => {
     const [power, setPower] = useState(0);
     const [pedals, setPedals] = useState(0);
 
-    const [overall, setOverall] = useState(null);
     const [comment, setComment] = useState('');
     const [loading, setLoading] = useState(true);
-    const [review, setReview] = useState(null);
+
+    const validRatings = [breaks, seat, sturdiness, power, pedals].filter(r => r > 0);
+    const overall = validRatings.length > 0 ? validRatings.reduce((a, b) => a + b, 0) / validRatings.length : null;
 
     useEffect(() => {
         const fetchReview = async () => {
             try {
                 const res = await api.get(`/reviews/${reviewId}`);
                 const data = res.data;
-                setReview(data);
                 setBreaks(data.ratings?.breaks || 0);
                 setSeat(data.ratings?.seat || 0);
                 setSturdiness(data.ratings?.sturdiness || 0);
                 setPower(data.ratings?.power || 0);
                 setPedals(data.ratings?.pedals || 0);
-                setOverall(data.ratings?.overall || null);
                 setComment(data.comment || '');
             } catch (e) {
                 console.error(e);
@@ -46,18 +45,7 @@ const UpdateReviewScreen = ({ route, navigation }) => {
             }
         };
         fetchReview();
-    }, [reviewId]);
-
-    // Auto-calculate overall
-    useEffect(() => {
-        const ratings = [breaks, seat, sturdiness, power, pedals].filter(r => r > 0);
-        if (ratings.length === 0) {
-            return;
-        }
-        const sum = ratings.reduce((a, b) => a + b, 0);
-        const avg = sum / ratings.length;
-        setOverall(avg);
-    }, [breaks, seat, sturdiness, power, pedals]);
+    }, [reviewId, navigation, showToast, t]);
 
     const handleSubmit = async () => {
         const ratings = [breaks, seat, sturdiness, power, pedals];

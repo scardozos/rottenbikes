@@ -149,8 +149,7 @@ export default {
     overall_rating: 'Valoración General:',
     comment: 'Comentario',
     write_review_placeholder: 'Escribe tu reseña...',
-    image_upload_placeholder: 'Marcador de Subida de Imágenes',
-    select_image_mock: 'Seleccionar Imagen (Simulado)',
+
     submit_review: 'Enviar Reseña',
     please_rate: 'Por favor valora al menos una categoría',
     invalid_numerical_id: 'El ID numérico debe tener entre 4 y 5 dígitos.',

@@ -24,6 +24,7 @@ const CreateBikeScreen = ({ route, navigation }) => {
     const [loading, setLoading] = useState(false);
 
     // Ensure we update state if params change while component is mounted (though usually it's a new mount)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     useEffect(() => {
         if (initialNumericalId) setNumericalId(initialNumericalId);
         if (initialHashId) setHashId(initialHashId);
@@ -103,7 +104,7 @@ const CreateBikeContent = ({ theme, styles, numericalId, setNumericalId, hashId,
                     value={isElectric}
                     onValueChange={setIsElectric}
                     trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
-                    thumbColor={isElectric ? (theme.colors.buttonText || '#FFFFFF') : '#f4f3f4'}
+                    thumbColor={theme.colors.buttonText}
                 />
             </View>
 

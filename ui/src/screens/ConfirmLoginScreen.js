@@ -26,6 +26,7 @@ const ConfirmLoginScreen = ({ route, navigation }) => {
         }
     }, [status, isCrossDevice, navigation]);
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     useEffect(() => {
         if (!token) {
             setStatus('error');
