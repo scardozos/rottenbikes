@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, TextInput, StyleSheet, Switch, Alert } from 'react-native';
+import { View, Text, StyleSheet, Switch, Alert } from 'react-native';
 import Button from '../components/Button';
+import Input from '../components/Input';
+import ErrorBoundary from '../components/ErrorBoundary';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { ThemeContext } from '../context/ThemeContext';
@@ -79,82 +81,76 @@ const CreateBikeScreen = ({ route, navigation }) => {
 const CreateBikeContent = ({ theme, styles, numericalId, setNumericalId, hashId, setHashId, isElectric, setIsElectric, loading, handleSubmit, t }) => (
     <View style={styles.container}>
         <Text style={styles.title}>{t('add_new_bike')}</Text>
+        <View style={styles.formCard}>
+            <Input
+                label={t('numerical_id')}
+                placeholder={t('numerical_id_placeholder')}
+                value={numericalId ? String(numericalId) : ''}
+                onChangeText={setNumericalId}
+                keyboardType="numeric"
+            />
 
-        <TextInput
-            placeholder={t('numerical_id_placeholder')}
-            placeholderTextColor={theme.colors.placeholder}
-            style={styles.input}
-            value={numericalId ? String(numericalId) : ''}
-            onChangeText={setNumericalId}
-            keyboardType="numeric"
-        />
+            <Input
+                label={t('hash_id_input_label') || 'Hash ID'}
+                placeholder={t('hash_id_placeholder')}
+                value={hashId}
+                onChangeText={setHashId}
+            />
 
-        <TextInput
-            placeholder={t('hash_id_placeholder')}
-            placeholderTextColor={theme.colors.placeholder}
-            style={styles.input}
-            value={hashId}
-            onChangeText={setHashId}
-        />
+            <View style={styles.switchContainer}>
+                <Text style={styles.switchText}>{t('electric_bike')}</Text>
+                <Switch
+                    value={isElectric}
+                    onValueChange={setIsElectric}
+                    trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+                    thumbColor={isElectric ? (theme.colors.buttonText || '#FFFFFF') : '#f4f3f4'}
+                />
+            </View>
 
-        <View style={styles.switchContainer}>
-            <Text style={styles.text}>{t('electric_bike')}</Text>
-            <Switch
-                value={isElectric}
-                onValueChange={setIsElectric}
-                trackColor={{ false: "#767577", true: theme.colors.primary }}
-                thumbColor={isElectric ? "#f4f3f4" : "#f4f3f4"}
+            <Button
+                title={t('create_bike_btn')}
+                onPress={handleSubmit}
+                disabled={loading}
+                loading={loading}
+                variant="primary"
+                size="lg"
+                style={{ marginTop: 8 }}
             />
         </View>
-
-        <Button title={t('create_bike_btn')} onPress={handleSubmit} disabled={loading} loading={loading} variant="primary" />
     </View>
 );
 
-class ErrorBoundary extends React.Component {
-    static contextType = ThemeContext;
-    constructor(props) {
-        super(props);
-        this.state = { hasError: false, error: null };
-    }
-    static getDerivedStateFromError(error) {
-        return { hasError: true, error };
-    }
-    componentDidCatch(error, errorInfo) {
-        console.error("CreateBike ErrorBoundary:", error, errorInfo);
-    }
-    render() {
-        const theme = this.context?.theme;
-        if (this.state.hasError) {
-            return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><Text style={{ color: theme?.colors?.error || '#EF4444' }}>Error: {this.state.error?.toString()}</Text></View>;
-        }
-        return this.props.children;
-    }
-}
-
 const createStyles = (theme) => StyleSheet.create({
-    container: { flex: 1, padding: 20, backgroundColor: theme.colors.background },
-    title: { fontSize: 24, marginBottom: 20, color: theme.colors.text },
-    input: {
-        height: 40,
-        borderColor: theme.colors.border,
-        borderWidth: 1,
-        marginBottom: 12,
-        paddingHorizontal: 8,
-        borderRadius: 4,
+    container: {
+        flex: 1,
+        padding: theme?.metrics?.spacing?.lg || 16,
+        backgroundColor: theme.colors.background,
+    },
+    title: {
+        fontSize: theme?.typography?.h2?.fontSize || 24,
+        fontWeight: 'bold',
+        marginBottom: theme?.metrics?.spacing?.lg || 16,
         color: theme.colors.text,
-        backgroundColor: theme.colors.inputBackground,
-        fontSize: 16
+    },
+    formCard: {
+        backgroundColor: theme.colors.card,
+        borderRadius: theme?.metrics?.radii?.lg || 16,
+        padding: theme?.metrics?.spacing?.lg || 16,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        ...(theme?.shadows?.sm || {}),
     },
     switchContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 20,
-        justifyContent: 'space-between'
+        marginVertical: 12,
+        justifyContent: 'space-between',
     },
-    text: {
-        color: theme.colors.text
-    }
+    switchText: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: theme.colors.text,
+    },
 });
 
 export default CreateBikeScreen;

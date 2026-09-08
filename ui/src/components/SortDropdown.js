@@ -1,131 +1,104 @@
-import React, { useContext, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, FlatList } from 'react-native';
+import React, { useContext } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { ThemeContext } from '../context/ThemeContext';
 import { LanguageContext } from '../context/LanguageContext';
-
 import Icon from './Icon';
 
 const SORT_OPTIONS = [
-    { value: 'recent', labelKey: 'sort_recent' },
-    { value: 'rating', labelKey: 'sort_rating' },
-    { value: 'most_reviewed', labelKey: 'sort_most_reviewed' },
+    { value: 'recent', labelKey: 'sort_recent', icon: 'time-outline' },
+    { value: 'rating', labelKey: 'sort_rating', icon: 'star-outline' },
+    { value: 'most_reviewed', labelKey: 'sort_most_reviewed', icon: 'chatbubbles-outline' },
 ];
 
 const SortDropdown = ({ selectedSort, onSortChange }) => {
     const { theme } = useContext(ThemeContext);
     const { t } = useContext(LanguageContext);
-    const [modalVisible, setModalVisible] = useState(false);
 
     const styles = React.useMemo(() => createStyles(theme), [theme]);
 
-    const selectedOption = SORT_OPTIONS.find(o => o.value === selectedSort) || SORT_OPTIONS[0];
-
     return (
         <View style={styles.container}>
-            <TouchableOpacity style={styles.button} onPress={() => setModalVisible(true)}>
-                <Text style={styles.buttonText}>{t('sort_by_label')}: {t(selectedOption.labelKey) || selectedOption.labelKey}</Text>
-                <Icon name="chevron-down" size={16} color={theme.colors.subtext} />
-            </TouchableOpacity>
-
-            <Modal visible={modalVisible} transparent={true} animationType="fade">
-                <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setModalVisible(false)}>
-                    <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>{t('sort_options_title') || 'Sort Options'}</Text>
-                        <FlatList
-                            data={SORT_OPTIONS}
-                            keyExtractor={item => item.value}
-                            renderItem={({ item }) => (
-                                <TouchableOpacity
-                                    style={[styles.optionItem, selectedSort === item.value && styles.selectedOptionItem]}
-                                    onPress={() => {
-                                        onSortChange(item.value);
-                                        setModalVisible(false);
-                                    }}
-                                >
-                                    <Text style={[styles.optionText, selectedSort === item.value && styles.selectedOptionText]}>
-                                        {t(item.labelKey) || item.labelKey}
-                                    </Text>
-                                    {selectedSort === item.value && <Icon name="checkmark" size={18} color={theme.colors.primary} />}
-                                </TouchableOpacity>
-                            )}
-                        />
-                    </View>
-                </TouchableOpacity>
-            </Modal>
+            <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.scrollContent}
+                contentInsetAdjustmentBehavior="never"
+                automaticallyAdjustContentInsets={false}
+            >
+                {SORT_OPTIONS.map((option) => {
+                    const isSelected = selectedSort === option.value;
+                    return (
+                        <TouchableOpacity
+                            key={option.value}
+                            onPress={() => onSortChange(option.value)}
+                            style={[
+                                styles.chip,
+                                isSelected ? styles.activeChip : styles.inactiveChip,
+                            ]}
+                            activeOpacity={0.7}
+                            accessibilityRole="button"
+                            accessibilityState={{ selected: isSelected }}
+                        >
+                            <Icon
+                                name={option.icon}
+                                size={15}
+                                color={isSelected ? (theme.colors.buttonText || '#FFFFFF') : theme.colors.subtext}
+                                style={styles.chipIcon}
+                            />
+                            <Text
+                                style={[
+                                    styles.chipText,
+                                    isSelected ? styles.activeChipText : styles.inactiveChipText,
+                                ]}
+                            >
+                                {t(option.labelKey) || option.labelKey}
+                            </Text>
+                        </TouchableOpacity>
+                    );
+                })}
+            </ScrollView>
         </View>
     );
 };
 
 const createStyles = (theme) => StyleSheet.create({
     container: {
-        marginBottom: 10,
-        zIndex: 10,
+        marginBottom: theme?.metrics?.spacing?.md || 12,
     },
-    button: {
+    scrollContent: {
+        flexDirection: 'row',
+        gap: theme?.metrics?.spacing?.sm || 8,
+        paddingVertical: 2,
+    },
+    chip: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        backgroundColor: theme.colors.card,
-        paddingHorizontal: 15,
-        paddingVertical: 10,
-        borderRadius: 8,
+        paddingVertical: 8,
+        paddingHorizontal: 14,
+        borderRadius: theme?.metrics?.radii?.pill || 9999,
         borderWidth: 1,
+    },
+    activeChip: {
+        backgroundColor: theme.colors.primary,
+        borderColor: theme.colors.primary,
+    },
+    inactiveChip: {
+        backgroundColor: theme.colors.card,
         borderColor: theme.colors.border,
     },
-    buttonText: {
-        fontSize: 16,
-        color: theme.colors.text,
+    chipIcon: {
+        marginRight: 6,
     },
-    arrow: {
+    chipText: {
         fontSize: 14,
+        fontWeight: '600',
+    },
+    activeChipText: {
+        color: theme.colors.buttonText || '#FFFFFF',
+    },
+    inactiveChipText: {
         color: theme.colors.subtext,
     },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    modalContent: {
-        width: '80%',
-        backgroundColor: theme.colors.card,
-        borderRadius: 12,
-        padding: 20,
-        elevation: 5,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-    },
-    modalTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: theme.colors.text,
-        marginBottom: 15,
-    },
-    optionItem: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        paddingVertical: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: theme.colors.border,
-    },
-    selectedOptionItem: {
-        backgroundColor: theme.colors.inputBackground,
-    },
-    optionText: {
-        fontSize: 16,
-        color: theme.colors.text,
-    },
-    selectedOptionText: {
-        color: theme.colors.primary,
-        fontWeight: 'bold',
-    },
-    selectedCheck: {
-        fontSize: 16,
-        color: theme.colors.primary,
-        fontWeight: 'bold',
-    }
 });
 
 export default SortDropdown;
