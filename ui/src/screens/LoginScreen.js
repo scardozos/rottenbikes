@@ -24,6 +24,7 @@ const LoginScreen = ({ navigation }) => {
 
     const HCAPTCHA_SITEKEY = (typeof window !== 'undefined' && window.EXPO_PUBLIC_HCAPTCHA_SITEKEY) || process.env.EXPO_PUBLIC_HCAPTCHA_SITEKEY;
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     useEffect(() => {
         if (lastUsername && !identifier) {
             setIdentifier(lastUsername);
@@ -108,7 +109,7 @@ const LoginScreen = ({ navigation }) => {
                             </View>
 
                             <View style={styles.switchAuthRow}>
-                                <Text style={styles.switchAuthPrompt}>Don't have an account?</Text>
+                                <Text style={styles.switchAuthPrompt}>Don&apos;t have an account?</Text>
                                 <Button
                                     title={t('register')}
                                     onPress={() => navigation.navigate('Register')}

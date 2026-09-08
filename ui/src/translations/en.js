@@ -149,8 +149,7 @@ export default {
     overall_rating: 'Overall Rating:',
     comment: 'Comment',
     write_review_placeholder: 'Write your review...',
-    image_upload_placeholder: 'Image Upload Placeholder',
-    select_image_mock: 'Select Image (Mock)',
+
     submit_review: 'Submit Review',
     please_rate: 'Please rate at least one category',
     invalid_numerical_id: 'Numerical ID must be between 4 and 5 digits.',

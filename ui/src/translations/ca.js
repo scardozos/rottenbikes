@@ -149,8 +149,7 @@ export default {
     overall_rating: 'Valoració General:',
     comment: 'Comentari',
     write_review_placeholder: 'Escriu la teva ressenya...',
-    image_upload_placeholder: 'Marcador de Pujada d\'Imatges',
-    select_image_mock: 'Seleccionar Imatge (Simulat)',
+
     submit_review: 'Enviar Ressenya',
     please_rate: 'Siusplau valora almenys una categoria',
     invalid_numerical_id: 'L\'ID numèrica ha de tenir entre 4 i 5 dígits.',

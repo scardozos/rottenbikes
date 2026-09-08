@@ -37,8 +37,8 @@ const BikeDetailsScreen = ({ route, navigation }) => {
     const [loadingMoreReviews, setLoadingMoreReviews] = useState(false);
     const [totalReviews, setTotalReviews] = useState(0);
     const [isModalRendered, setIsModalRendered] = useState(false);
-    const slideAnim = useRef(new Animated.Value(Dimensions.get('window').height)).current;
-    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const [slideAnim] = useState(() => new Animated.Value(Dimensions.get('window').height));
+    const [fadeAnim] = useState(() => new Animated.Value(0));
 
     const openModal = useCallback(() => {
         setIsModalRendered(true);
@@ -400,7 +400,7 @@ const BikeDetailsScreen = ({ route, navigation }) => {
                                 <Icon
                                     name="time-outline"
                                     size={14}
-                                    color={sortBy === 'date' ? (theme.colors.buttonText || '#FFFFFF') : theme.colors.subtext}
+                                    color={sortBy === 'date' ? theme.colors.buttonText : theme.colors.subtext}
                                 />
                                 <Text style={[styles.modalSortText, sortBy === 'date' && styles.modalSortTextActive]}>
                                     {t('sort_date')}
@@ -414,7 +414,7 @@ const BikeDetailsScreen = ({ route, navigation }) => {
                                 <Icon
                                     name="star-outline"
                                     size={14}
-                                    color={sortBy === 'rating' ? (theme.colors.buttonText || '#FFFFFF') : theme.colors.subtext}
+                                    color={sortBy === 'rating' ? theme.colors.buttonText : theme.colors.subtext}
                                 />
                                 <Text style={[styles.modalSortText, sortBy === 'rating' && styles.modalSortTextActive]}>
                                     {t('sort_rating')}
@@ -740,7 +740,7 @@ const createStyles = (theme) => StyleSheet.create({
         fontWeight: '500',
     },
     modalSortTextActive: {
-        color: theme.colors.buttonText || '#FFFFFF',
+        color: theme.colors.buttonText,
         fontWeight: 'bold',
     },
     modalOrderToggle: {

@@ -42,7 +42,7 @@ const SortDropdown = ({ selectedSort, onSortChange }) => {
                             <Icon
                                 name={option.icon}
                                 size={15}
-                                color={isSelected ? (theme.colors.buttonText || '#FFFFFF') : theme.colors.subtext}
+                                color={isSelected ? theme.colors.buttonText : theme.colors.subtext}
                                 style={styles.chipIcon}
                             />
                             <Text
@@ -94,7 +94,7 @@ const createStyles = (theme) => StyleSheet.create({
         fontWeight: '600',
     },
     activeChipText: {
-        color: theme.colors.buttonText || '#FFFFFF',
+        color: theme.colors.buttonText,
     },
     inactiveChipText: {
         color: theme.colors.subtext,

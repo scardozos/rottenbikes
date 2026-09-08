@@ -34,7 +34,7 @@ const Toast = ({ message, type = 'success', onClose, duration = 4000 }) => {
     if (type === 'error') backgroundColor = theme.colors.danger || theme.colors.error;
     if (type === 'info') backgroundColor = theme.colors.primary;
 
-    const textColor = theme.colors.buttonText || '#FFFFFF';
+    const textColor = theme.colors.buttonText;
 
     return (
         <Animated.View 

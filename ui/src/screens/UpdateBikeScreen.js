@@ -56,7 +56,7 @@ const UpdateBikeScreen = ({ route, navigation }) => {
         };
 
         checkAndFetch();
-    }, [bikeId, validatedBikeId]);
+    }, [bikeId, validatedBikeId, navigation, showToast, t]);
 
     const handleSubmit = async () => {
         setSubmitting(true);

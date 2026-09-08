@@ -258,7 +258,7 @@ const createStyles = (theme) => StyleSheet.create({
         fontWeight: '600',
     },
     langTextActive: {
-        color: 'white',
+        color: theme.colors.buttonText,
     },
     logoutButton: {
         backgroundColor: theme.colors.error,
@@ -281,7 +281,7 @@ const createStyles = (theme) => StyleSheet.create({
         fontWeight: 'bold',
     },
     logoutText: {
-        color: 'white',
+        color: theme.colors.buttonText,
         fontSize: 16,
         fontWeight: 'bold',
     },
@@ -394,7 +394,7 @@ const createStyles = (theme) => StyleSheet.create({
         backgroundColor: theme.colors.error,
     },
     confirmDeleteText: {
-        color: 'white',
+        color: theme.colors.buttonText,
         fontWeight: 'bold',
     },
     disabledButton: {
