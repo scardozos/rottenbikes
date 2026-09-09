@@ -121,14 +121,7 @@ const ReviewItem = React.memo(({ item, isExpanded, onToggle, onEdit, showBikeId,
     }
 
     return (
-        <TouchableOpacity
-            style={styles.card}
-            onPress={onToggle}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-            accessibilityState={{ expanded: isExpanded }}
-            accessibilityLabel={`${t('review_by')} ${item.poster_username || t('anonymous')}. ${item.ratings?.overall || 0} ${t('stars')}.`}
-        >
+        <View style={styles.card}>
             {/* Header Row */}
             <View style={styles.headerRow}>
                 <View style={styles.ratingGroup}>
@@ -162,48 +155,59 @@ const ReviewItem = React.memo(({ item, isExpanded, onToggle, onEdit, showBikeId,
                         </TouchableOpacity>
                     )}
                     <Text style={styles.timeText}>{getRelativeTime(item.created_at, t)}</Text>
-                    <Icon
-                        name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                        size={15}
-                        color={theme.colors.subtext}
-                        style={styles.chevron}
-                    />
+                    <TouchableOpacity onPress={onToggle} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                        <Icon
+                            name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                            size={15}
+                            color={theme.colors.subtext}
+                            style={styles.chevron}
+                        />
+                    </TouchableOpacity>
                 </View>
             </View>
 
-            {/* Comment Body */}
-            {item.comment ? (
-                <Text style={styles.commentText} numberOfLines={isExpanded ? undefined : 3}>
-                    {item.comment}
-                </Text>
-            ) : null}
+            <TouchableOpacity
+                style={styles.bodyTouchable}
+                onPress={onToggle}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: isExpanded }}
+                accessibilityLabel={`${t('review_by')} ${item.poster_username || t('anonymous')}. ${item.ratings?.overall || 0} ${t('stars')}.`}
+            >
+                {/* Comment Body */}
+                {item.comment ? (
+                    <Text style={styles.commentText} numberOfLines={isExpanded ? undefined : 3}>
+                        {item.comment}
+                    </Text>
+                ) : null}
 
-            {/* Expanded Sub-Ratings */}
-            {isExpanded && subRatings.length > 0 && (
-                <View style={styles.subRatingsContainer}>
-                    <Text style={styles.subRatingsHeader}>{t('ratings')}</Text>
-                    <View style={styles.subRatingsGrid}>
-                        {subRatings.map(([key, score]) => (
-                            <View key={key} style={styles.subRatingItem}>
-                                <Text style={styles.subRatingLabel} numberOfLines={1}>{t(key) || key}</Text>
-                                <View style={styles.subRatingScoreRow}>
-                                    <Text style={styles.subRatingScore}>{score} </Text>
-                                    <Icon name="star" size={12} color={theme.colors.warning} />
+                {/* Expanded Sub-Ratings */}
+                {isExpanded && subRatings.length > 0 && (
+                    <View style={styles.subRatingsContainer}>
+                        <Text style={styles.subRatingsHeader}>{t('ratings')}</Text>
+                        <View style={styles.subRatingsGrid}>
+                            {subRatings.map(([key, score]) => (
+                                <View key={key} style={styles.subRatingItem}>
+                                    <Text style={styles.subRatingLabel} numberOfLines={1}>{t(key) || key}</Text>
+                                    <View style={styles.subRatingScoreRow}>
+                                        <Text style={styles.subRatingScore}>{score} </Text>
+                                        <Icon name="star" size={12} color={theme.colors.warning} />
+                                    </View>
                                 </View>
-                            </View>
-                        ))}
+                            ))}
+                        </View>
+                    </View>
+                )}
+
+                {/* Footer Row */}
+                <View style={styles.footerRow}>
+                    <View style={styles.userGroup}>
+                        <Icon name="person-circle-outline" size={16} color={theme.colors.subtext} />
+                        <Text style={styles.userText}>{item.poster_username || t('anonymous')}</Text>
                     </View>
                 </View>
-            )}
-
-            {/* Footer Row */}
-            <View style={styles.footerRow}>
-                <View style={styles.userGroup}>
-                    <Icon name="person-circle-outline" size={16} color={theme.colors.subtext} />
-                    <Text style={styles.userText}>{item.poster_username || t('anonymous')}</Text>
-                </View>
-            </View>
-        </TouchableOpacity>
+            </TouchableOpacity>
+        </View>
     );
 });
 
