@@ -38,18 +38,25 @@ const ConfigurationScreen = ({ navigation }) => {
     };
 
     const handleLogout = () => {
-        Alert.alert(
-            t('logout_confirm_title') || 'Log Out',
-            t('logout_confirm_desc') || 'Are you sure you want to log out?',
-            [
-                { text: t('cancel') || 'Cancel', style: 'cancel' },
-                {
-                    text: t('logout') || 'Log Out',
-                    style: 'destructive',
-                    onPress: () => logout()
-                }
-            ]
-        );
+        if (Platform.OS === 'web') {
+            const confirmed = window.confirm(t('logout_confirm_desc') || 'Are you sure you want to log out?');
+            if (confirmed) {
+                logout();
+            }
+        } else {
+            Alert.alert(
+                t('logout_confirm_title') || 'Log Out',
+                t('logout_confirm_desc') || 'Are you sure you want to log out?',
+                [
+                    { text: t('cancel') || 'Cancel', style: 'cancel' },
+                    {
+                        text: t('logout') || 'Log Out',
+                        style: 'destructive',
+                        onPress: () => logout()
+                    }
+                ]
+            );
+        }
     };
 
     return (
