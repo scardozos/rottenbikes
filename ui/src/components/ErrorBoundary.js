@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { ThemeContext } from '../context/ThemeContext';
+import { LanguageContext } from '../context/LanguageContext';
 import Button from './Button';
 
 class ErrorBoundary extends React.Component {
@@ -25,11 +26,15 @@ class ErrorBoundary extends React.Component {
 
         if (this.state.hasError) {
             return (
-                <View style={[styles.container, { backgroundColor }]}>
-                    <Text style={[styles.title, { color: textColor }]}>Oops! Something went wrong.</Text>
-                    <Text style={[styles.subtitle, { color: errorColor }]}>{this.state.error?.toString()}</Text>
-                    <Button title="Restart App" onPress={() => this.setState({ hasError: false })} />
-                </View>
+                <LanguageContext.Consumer>
+                    {({ t }) => (
+                        <View style={[styles.container, { backgroundColor }]}>
+                            <Text style={[styles.title, { color: textColor }]}>{t('error_boundary_title')}</Text>
+                            <Text style={[styles.subtitle, { color: errorColor }]}>{this.state.error?.toString()}</Text>
+                            <Button title={t('retry')} onPress={() => this.setState({ hasError: false })} />
+                        </View>
+                    )}
+                </LanguageContext.Consumer>
             );
         }
 

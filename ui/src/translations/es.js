@@ -234,4 +234,11 @@ export default {
     retry: "Reintentar",
     review_by: "Reseña por",
     stars: "estrellas",
+    desktop_subtitle: "Usa la cámara de un dispositivo móvil para escanear, o busca por número de bicicleta a continuación.",
+    language: "Idioma",
+    no_account_prompt: "¿No tienes cuenta?",
+    has_account_prompt: "¿Ya tienes cuenta?",
+    error_boundary_title: "¡Vaya! Algo salió mal.",
+    camera_secure_context_error: "La cámara requiere un contexto seguro.",
+    scanner_not_loaded_error: "Librería de escáner no cargada.",
 };

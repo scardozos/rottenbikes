@@ -147,7 +147,7 @@ const MyReviewsScreen = ({ navigation }) => {
                             title={t('error')}
                             action={
                                 <Button
-                                    title={t('retry') || 'Retry'}
+                                    title={t('retry')}
                                     onPress={() => fetchReviews(true)}
                                     variant="primary"
                                     size="sm"
@@ -174,7 +174,7 @@ const MyReviewsScreen = ({ navigation }) => {
                         return (
                             <View style={styles.footerAction}>
                                 <Text style={styles.errorText}>{t('error')}</Text>
-                                <Button title={t('retry') || 'Retry'} onPress={() => fetchReviews(false)} variant="primary" size="sm" />
+                                <Button title={t('retry')} onPress={() => fetchReviews(false)} variant="primary" size="sm" />
                             </View>
                         );
                     }

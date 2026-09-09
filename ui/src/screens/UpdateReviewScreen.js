@@ -89,12 +89,11 @@ const UpdateReviewScreen = ({ route, navigation }) => {
         setLoading(true);
         try {
             await api.delete(`/reviews/${reviewId}`);
-            showToast(t('review_deleted_success') || 'Review deleted successfully', "success");
+            showToast(t('review_deleted_success'), "success");
             navigation.goBack();
         } catch (e) {
             console.error(e);
-            const errMsg = e.response?.data?.error || t('failed_delete_review') || 'Failed to delete review';
-            showToast(errMsg, "error");
+            showToast(e.response?.data?.error || t('failed_delete_review'), "error");
         } finally {
             setLoading(false);
         }
@@ -102,18 +101,18 @@ const UpdateReviewScreen = ({ route, navigation }) => {
 
     const handleDelete = () => {
         if (Platform.OS === 'web') {
-            const confirmed = window.confirm(t('delete_review_confirm') || 'Are you sure you want to delete this review?');
+            const confirmed = window.confirm(t('delete_review_confirm'));
             if (confirmed) {
                 performDelete();
             }
         } else {
             Alert.alert(
-                t('delete_review_title') || 'Delete Review',
-                t('delete_review_confirm') || 'Are you sure you want to delete this review?',
+                t('delete_review_title'),
+                t('delete_review_confirm'),
                 [
-                    { text: t('cancel') || 'Cancel', style: 'cancel' },
+                    { text: t('cancel'), style: 'cancel' },
                     {
-                        text: t('delete') || 'Delete',
+                        text: t('delete'),
                         style: 'destructive',
                         onPress: performDelete
                     }

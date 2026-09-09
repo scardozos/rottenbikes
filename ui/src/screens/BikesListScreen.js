@@ -197,7 +197,7 @@ const BikesListScreen = ({ navigation }) => {
                             return (
                                 <View style={styles.footerAction}>
                                     <Text style={styles.errorText}>{t('error')}</Text>
-                                    <Button title={t('retry') || 'Retry'} onPress={() => fetchBikes(false)} variant="primary" size="sm" />
+                                    <Button title={t('retry')} onPress={() => fetchBikes(false)} variant="primary" size="sm" />
                                 </View>
                             );
                         }
@@ -216,7 +216,7 @@ const BikesListScreen = ({ navigation }) => {
                                     icon="alert-circle-outline"
                                     title={t('error')}
                                     description={t('scan_lookup_failed')}
-                                    action={<Button title={t('retry') || 'Retry'} onPress={() => fetchBikes(true)} variant="primary" />}
+                                    action={<Button title={t('retry')} onPress={() => fetchBikes(true)} variant="primary" />}
                                 />
                             );
                         }
