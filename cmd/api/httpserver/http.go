@@ -216,6 +216,10 @@ func (i *statusInterceptor) Write(b []byte) (int, error) {
 	return i.ResponseWriter.Write(b)
 }
 
+func (i *statusInterceptor) Unwrap() http.ResponseWriter {
+	return i.ResponseWriter
+}
+
 func parsePagination(r *http.Request, defaultLimit, maxLimit int) (limit, offset int) {
 	limit = defaultLimit
 	offset = 0
