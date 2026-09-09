@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -184,7 +183,7 @@ func TestHandleVerifyToken(t *testing.T) {
 			if token == "valid-token" {
 				return &domain.AuthPoster{PosterID: 123}, nil
 			}
-			return nil, fmt.Errorf("invalid token")
+			return nil, domain.ErrInvalidToken
 		},
 	}
 

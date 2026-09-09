@@ -58,6 +58,9 @@ var (
 var (
 	ErrRateLimitExceeded = errors.New("daily magic link limit reached")
 	ErrUserNotFound      = errors.New("user not found")
+	ErrInvalidToken      = errors.New("invalid token")
+	ErrTokenExpired      = errors.New("token expired")
+	ErrEmailNotVerified  = errors.New("email not verified")
 )
 
 func randomToken(nBytes int) (string, error) {
@@ -257,13 +260,13 @@ func (s *Store) ConfirmMagicLink(ctx context.Context, token string) (*ConfirmRes
 	err = tx.QueryRowContext(ctx, getMagicLinkQuery, hashedToken).Scan(&posterID, &expires, &consumed)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("invalid token")
+			return nil, ErrInvalidToken
 		}
 		return nil, fmt.Errorf("load magic link: %w", err)
 	}
 
 	if (consumed.Valid && !consumed.Time.IsZero()) || time.Now().After(expires) {
-		return nil, fmt.Errorf("token expired or already used")
+		return nil, ErrTokenExpired
 	}
 
 	// Always rotate: generate a fresh raw api token, persist only its hash.
@@ -314,17 +317,17 @@ func (s *Store) GetPosterByAPIToken(ctx context.Context, token string) (*AuthPos
 	err := s.db.QueryRowContext(ctx, getPosterByTokenQuery, HashToken(token)).Scan(&p.PosterID, &p.Email, &p.Username, &expires, &emailVerified)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("invalid token")
+			return nil, ErrInvalidToken
 		}
 		return nil, fmt.Errorf("load poster by token: %w", err)
 	}
 
 	if !emailVerified {
-		return nil, fmt.Errorf("email not verified")
+		return nil, ErrEmailNotVerified
 	}
 
 	if !expires.Valid || time.Now().After(expires.Time) {
-		return nil, fmt.Errorf("token expired")
+		return nil, ErrTokenExpired
 	}
 
 	return &p, nil
