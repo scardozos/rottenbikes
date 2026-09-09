@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { ThemeContext } from '../context/ThemeContext';
@@ -85,32 +85,41 @@ const UpdateReviewScreen = ({ route, navigation }) => {
         }
     };
 
+    const performDelete = async () => {
+        setLoading(true);
+        try {
+            await api.delete(`/reviews/${reviewId}`);
+            showToast(t('review_deleted_success') || 'Review deleted successfully', "success");
+            navigation.goBack();
+        } catch (e) {
+            console.error(e);
+            const errMsg = e.response?.data?.error || t('failed_delete_review') || 'Failed to delete review';
+            showToast(errMsg, "error");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleDelete = () => {
-        Alert.alert(
-            t('delete_review_title') || 'Delete Review',
-            t('delete_review_confirm') || 'Are you sure you want to delete this review?',
-            [
-                { text: t('cancel') || 'Cancel', style: 'cancel' },
-                {
-                    text: t('delete') || 'Delete',
-                    style: 'destructive',
-                    onPress: async () => {
-                        setLoading(true);
-                        try {
-                            await api.delete(`/reviews/${reviewId}`);
-                            showToast(t('review_deleted_success') || 'Review deleted successfully', "success");
-                            navigation.goBack();
-                        } catch (e) {
-                            console.error(e);
-                            const errMsg = e.response?.data?.error || t('failed_delete_review') || 'Failed to delete review';
-                            showToast(errMsg, "error");
-                        } finally {
-                            setLoading(false);
-                        }
+        if (Platform.OS === 'web') {
+            const confirmed = window.confirm(t('delete_review_confirm') || 'Are you sure you want to delete this review?');
+            if (confirmed) {
+                performDelete();
+            }
+        } else {
+            Alert.alert(
+                t('delete_review_title') || 'Delete Review',
+                t('delete_review_confirm') || 'Are you sure you want to delete this review?',
+                [
+                    { text: t('cancel') || 'Cancel', style: 'cancel' },
+                    {
+                        text: t('delete') || 'Delete',
+                        style: 'destructive',
+                        onPress: performDelete
                     }
-                }
-            ]
-        );
+                ]
+            );
+        }
     };
 
     return (
