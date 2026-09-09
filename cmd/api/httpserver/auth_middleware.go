@@ -2,9 +2,12 @@ package httpserver
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/scardozos/rottenbikes/internal/domain"
 )
 
 type contextKey string
@@ -55,7 +58,12 @@ func (s *HTTPServer) middlewareAuth(next http.Handler) http.Handler {
 
 		poster, err := s.service.GetPosterByAPIToken(ctx, token)
 		if err != nil {
-			s.sendError(w, "invalid or expired api token", http.StatusUnauthorized)
+			if errors.Is(err, domain.ErrInvalidToken) || errors.Is(err, domain.ErrTokenExpired) || errors.Is(err, domain.ErrEmailNotVerified) {
+				s.sendError(w, "invalid or expired api token", http.StatusUnauthorized)
+			} else {
+				// We don't want to log the user out if the database connection failed
+				s.sendError(w, "internal server error", http.StatusInternalServerError)
+			}
 			return
 		}
 

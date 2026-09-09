@@ -2,7 +2,6 @@ package httpserver
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -17,7 +16,7 @@ func TestAuthMiddleware(t *testing.T) {
 			if token == "good-token" {
 				return &domain.AuthPoster{PosterID: 42, Email: "u@example.com", Username: "u"}, nil
 			}
-			return nil, errors.New("invalid token")
+			return nil, domain.ErrInvalidToken
 		},
 	}
 
