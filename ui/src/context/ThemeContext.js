@@ -30,22 +30,23 @@ export const themes = {
         ...baseTheme,
         dark: true,
         colors: {
-            primary: '#60A5FA', // Blue 400
-            secondary: '#34D399', // Emerald 400
-            background: '#0F172A', // Slate 900
-            card: '#1E293B', // Slate 800
-            text: '#F1F5F9', // Slate 100
-            subtext: '#94A3B8', // Slate 400
-            border: '#334155', // Slate 700
+            primary: '#A3E635', // Lime 400
+            secondary: '#2DD4BF', // Teal 400
+            background: '#0C1210', // Green-tinted near-black
+            card: '#151E19', // Deep green-charcoal
+            text: '#EAF2E6', // Soft green-white
+            subtext: '#8CA392', // Desaturated green-gray
+            border: '#26332B', // Muted green-gray
             notification: '#F87171', // Red 400
-            inputBackground: '#1E293B', // Slate 800 (Card color) or slightly lighter
-            placeholder: '#64748B', // Slate 500
-            error: '#EF4444', // Red 500
-            danger: '#EF4444',
-            success: '#10B981', // Emerald 500
-            warning: '#F59E0B', // Amber 500
+            inputBackground: '#1A241E', // Slightly lighter than card
+            placeholder: '#5A6B60', // Muted green-gray
+            error: '#F87171', // Red 400
+            danger: '#F87171',
+            success: '#34D399', // Emerald 400
+            warning: '#FBBF24', // Amber 400
             ghostBackground: 'rgba(255, 255, 255, 0.1)',
-            buttonText: '#FFFFFF',
+            // Lime is light enough that white text fails contrast; buttons use dark text
+            buttonText: '#101606',
         },
         shadows: {
             sm: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.3, shadowRadius: 2, elevation: 2 },
@@ -57,19 +58,19 @@ export const themes = {
         ...baseTheme,
         dark: false,
         colors: {
-            primary: '#2563EB', // Blue 600
-            secondary: '#059669', // Emerald 600
-            background: '#FFFFFF',
-            card: '#F8FAFC', // Slate 50
-            text: '#0F172A', // Slate 900
-            subtext: '#64748B', // Slate 500
-            border: '#E2E8F0', // Slate 200
+            primary: '#65A30D', // Lime 600
+            secondary: '#0D9488', // Teal 600
+            background: '#F7F9F2', // Warm off-white
+            card: '#FFFFFF',
+            text: '#182415', // Green-tinted charcoal
+            subtext: '#5C6B58', // Green-gray
+            border: '#DFE6DA', // Soft green-gray
             notification: '#DC2626', // Red 600
-            inputBackground: '#F1F5F9', // Slate 100
-            placeholder: '#94A3B8', // Slate 400
+            inputBackground: '#EEF2E8', // Pale green-tinted
+            placeholder: '#98A693', // Muted green-gray
             error: '#DC2626', // Red 600
             danger: '#DC2626',
-            success: '#059669', // Emerald 600
+            success: '#047857', // Emerald 700
             warning: '#D97706', // Amber 600
             ghostBackground: 'rgba(0, 0, 0, 0.05)',
             buttonText: '#FFFFFF',

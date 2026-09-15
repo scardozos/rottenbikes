@@ -12,25 +12,32 @@ describe('getBorderColor', () => {
     });
 
     it('returns green for ratings >= 4', () => {
-        eq(r.getBorderColor(4), '#10B981');
-        eq(r.getBorderColor(4.5), '#10B981');
-        eq(r.getBorderColor(5), '#10B981');
+        eq(r.getBorderColor(4), '#047857');
+        eq(r.getBorderColor(4.5), '#047857');
+        eq(r.getBorderColor(5), '#047857');
     });
 
     it('returns yellow for ratings >= 3 and < 4', () => {
-        eq(r.getBorderColor(3), '#F59E0B');
-        eq(r.getBorderColor(3.5), '#F59E0B');
-        eq(r.getBorderColor(3.99), '#F59E0B');
+        eq(r.getBorderColor(3), '#D97706');
+        eq(r.getBorderColor(3.5), '#D97706');
+        eq(r.getBorderColor(3.99), '#D97706');
     });
 
     it('returns red for ratings < 3', () => {
-        eq(r.getBorderColor(2.9), '#EF4444');
-        eq(r.getBorderColor(1), '#EF4444');
-        eq(r.getBorderColor(0), '#EF4444');
+        eq(r.getBorderColor(2.9), '#DC2626');
+        eq(r.getBorderColor(1), '#DC2626');
+        eq(r.getBorderColor(0), '#DC2626');
     });
 
     it('treats 0 as red (not null)', () => {
-        eq(r.getBorderColor(0), '#EF4444');
+        eq(r.getBorderColor(0), '#DC2626');
+    });
+
+    it('returns dark-mode variants when isDark is true', () => {
+        eq(r.getBorderColor(4, true), '#34D399');
+        eq(r.getBorderColor(3, true), '#FBBF24');
+        eq(r.getBorderColor(2.9, true), '#F87171');
+        eq(r.getBorderColor(null, true), 'transparent');
     });
 });
 

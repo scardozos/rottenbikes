@@ -2,17 +2,20 @@
 
 export const TREND_THRESHOLD = 0.2;
 
-export const GOOD_COLOR = '#10B981'; // Emerald 500
-export const WARN_COLOR = '#F59E0B'; // Amber 500
-export const BAD_COLOR = '#EF4444'; // Red 500
+// Semantic rating colors, aligned with the success/warning/danger tokens in ThemeContext.
+export const RATING_COLORS = {
+    dark: { good: '#34D399', warn: '#FBBF24', bad: '#F87171' },
+    light: { good: '#047857', warn: '#D97706', bad: '#DC2626' },
+};
 export const NEUTRAL_COLOR = 'transparent';
 
 // Returns a border color for a given aggregate rating.
-export const getBorderColor = (rating) => {
+export const getBorderColor = (rating, isDark = false) => {
+    const colors = RATING_COLORS[isDark ? 'dark' : 'light'];
     if (rating == null) return NEUTRAL_COLOR;
-    if (rating >= 4) return GOOD_COLOR;
-    if (rating >= 3) return WARN_COLOR;
-    return BAD_COLOR;
+    if (rating >= 4) return colors.good;
+    if (rating >= 3) return colors.warn;
+    return colors.bad;
 };
 
 // Computes a trend ('improving' | 'degrading' | 'stable') by comparing
