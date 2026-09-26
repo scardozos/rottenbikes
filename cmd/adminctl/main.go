@@ -8,6 +8,7 @@
 //	adminctl promote <email-or-username>   grant the admin role
 //	adminctl demote  <email-or-username>   revoke the admin role
 //	adminctl list                          list all admins
+//	adminctl delete-bike <numerical_id>    delete a bike as an admin
 //
 // It uses the same database configuration as the API (DATABASE_URL, or the
 // DB_* variables).
@@ -29,7 +30,8 @@ import (
 const usage = `usage:
   adminctl promote <email-or-username>   grant the admin role
   adminctl demote  <email-or-username>   revoke the admin role
-  adminctl list                          list all admins`
+  adminctl list                          list all admins
+  adminctl delete-bike <numerical_id>    delete a bike as an admin`
 
 func main() {
 	if len(os.Args) < 2 {
@@ -51,6 +53,10 @@ func main() {
 	case cmd == "list" && len(os.Args) == 2:
 		if err := runList(); err != nil {
 			fatal("list admins", err)
+		}
+	case cmd == "delete-bike" && len(os.Args) == 3:
+		if err := runDeleteBike(os.Args[2]); err != nil {
+			fatal("delete bike", err)
 		}
 	default:
 		fmt.Fprintln(os.Stderr, usage)
@@ -125,4 +131,26 @@ func runList() error {
 func fatal(action string, err error) {
 	fmt.Fprintf(os.Stderr, "adminctl: %s: %v\n", action, err)
 	os.Exit(1)
+}
+
+func runDeleteBike(bikeID string) error {
+	store, db, err := openStore()
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	err = store.AdminDeleteBike(ctx, bikeID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("bike %q not found", bikeID)
+		}
+		return err
+	}
+
+	fmt.Printf("Bike %s successfully deleted.\n", bikeID)
+	return nil
 }

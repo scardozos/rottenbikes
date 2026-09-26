@@ -1,6 +1,6 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useState, useCallback, useContext, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Pressable, Animated, Dimensions, Easing, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Pressable, Animated, Dimensions, Easing, ActivityIndicator, Alert, Platform } from 'react-native';
 import Icon from '../components/Icon';
 import Button from '../components/Button';
 
@@ -103,7 +103,7 @@ const BikeDetailsScreen = ({ route, navigation }) => {
         });
     }, []);
 
-    const { userToken } = useContext(AuthContext);
+    const { userToken, isAdmin } = useContext(AuthContext);
     const { validatedBikeId } = useSession();
     const { t } = useContext(LanguageContext);
     const { showToast } = useToast();
@@ -111,6 +111,33 @@ const BikeDetailsScreen = ({ route, navigation }) => {
     // Determine if review is allowed based on session context
     // Using string comparison to handle leading zeros
     const isReviewAllowed = validatedBikeId != null && String(validatedBikeId) === String(bike.numerical_id);
+
+    const handleAdminDeleteBike = useCallback(() => {
+        const doDelete = async () => {
+            try {
+                await api.delete(`/admin/bikes/${bike.numerical_id}`);
+                showToast('Bike deleted successfully.', 'success');
+                navigation.navigate('Home');
+            } catch (e) {
+                showToast(e.response?.data?.error || 'Failed to delete bike.', 'error');
+            }
+        };
+
+        if (Platform.OS === 'web') {
+            if (window.confirm(`Are you sure you want to delete bike ${bike.numerical_id}? This will also delete all of its reviews.`)) {
+                doDelete();
+            }
+        } else {
+            Alert.alert(
+                'Delete Bike',
+                `Are you sure you want to delete bike ${bike.numerical_id}? This will also delete all of its reviews.`,
+                [
+                    { text: t('cancel'), style: 'cancel' },
+                    { text: 'Delete', style: 'destructive', onPress: doDelete }
+                ]
+            );
+        }
+    }, [bike.numerical_id, showToast, navigation, t]);
 
     const fetchData = useCallback(async (currentId) => {
         setLoading(true);
@@ -364,6 +391,15 @@ const BikeDetailsScreen = ({ route, navigation }) => {
                             size="lg"
                             disabled={!isReviewAllowed && !userToken}
                         />
+                        {isAdmin && (
+                            <Button
+                                title="Delete Bike (Admin)"
+                                onPress={handleAdminDeleteBike}
+                                variant="outline"
+                                style={{ marginTop: 12, borderColor: theme.colors.error }}
+                                textStyle={{ color: theme.colors.error }}
+                            />
+                        )}
                     </View>
                 </View>
             )}
