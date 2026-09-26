@@ -244,4 +244,21 @@ export default {
     error_boundary_title: "Oops! Something went wrong.",
     camera_secure_context_error: "Camera requires Secure Context.",
     scanner_not_loaded_error: "Scanner library not loaded.",
+
+    // Onboarding
+    onboarding_title_1: "Welcome to RottenBikes!",
+    onboarding_body_1: "Scanning a bike's QR code reads its unique Hash ID.",
+    onboarding_pro_tip: "Pro Tip: If you manually enter the 4 or 5-digit Numerical ID found on the bike frame, it helps everyone identify the bike much more easily!",
+    onboarding_title_2: "How it Works",
+    onboarding_body_2a: "When you scan a bike, you'll see its history if it's already in our system.",
+    onboarding_body_2b: "If it's new, you'll be prompted to add it first. Once added (by you or someone else), you can submit your own reviews!",
+    onboarding_title_3: "Rating Criteria",
+    onboarding_breaks_desc: "How responsive and safe the brakes feel.",
+    onboarding_seat_desc: "Is the seat easily adjustable and intact?",
+    onboarding_sturdiness_desc: "Does the bike rattle? Are the wheels aligned?",
+    onboarding_power_desc: "Does the motor give good assist (electric bikes), or the chain transfer power smoothly (mechanical bikes)?",
+    onboarding_pedals_desc: "Are the pedals and chain running smoothly?",
+    onboarding_next: "Next",
+    onboarding_get_started: "Get Started",
+    onboarding_skip: "Skip",
 };
