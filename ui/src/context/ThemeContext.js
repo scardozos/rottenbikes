@@ -30,20 +30,20 @@ export const themes = {
         ...baseTheme,
         dark: true,
         colors: {
-            primary: '#60A5FA', // Blue 400
-            secondary: '#34D399', // Emerald 400
-            background: '#0F172A', // Slate 900
-            card: '#1E293B', // Slate 800
-            text: '#F1F5F9', // Slate 100
-            subtext: '#94A3B8', // Slate 400
-            border: '#334155', // Slate 700
-            notification: '#F87171', // Red 400
-            inputBackground: '#1E293B', // Slate 800 (Card color) or slightly lighter
-            placeholder: '#64748B', // Slate 500
-            error: '#EF4444', // Red 500
-            danger: '#EF4444',
-            success: '#10B981', // Emerald 500
-            warning: '#F59E0B', // Amber 500
+            primary: '#E11D48', // Racing Red
+            secondary: '#3B82F6', // Cobalt Blue
+            background: '#09090B', // True Carbon
+            card: '#18181B', // Elevated Carbon
+            text: '#F4F4F5', // Off-white
+            subtext: '#A1A1AA', // Zinc 400
+            border: '#27272A', // Zinc 800
+            notification: '#E11D48',
+            inputBackground: '#27272A',
+            placeholder: '#71717A', // Zinc 500
+            error: '#F87171',
+            danger: '#F87171',
+            success: '#34D399',
+            warning: '#FBBF24',
             ghostBackground: 'rgba(255, 255, 255, 0.1)',
             buttonText: '#FFFFFF',
         },
@@ -57,20 +57,20 @@ export const themes = {
         ...baseTheme,
         dark: false,
         colors: {
-            primary: '#2563EB', // Blue 600
-            secondary: '#059669', // Emerald 600
-            background: '#FFFFFF',
-            card: '#F8FAFC', // Slate 50
-            text: '#0F172A', // Slate 900
-            subtext: '#64748B', // Slate 500
-            border: '#E2E8F0', // Slate 200
-            notification: '#DC2626', // Red 600
-            inputBackground: '#F1F5F9', // Slate 100
-            placeholder: '#94A3B8', // Slate 400
-            error: '#DC2626', // Red 600
+            primary: '#E11D48', // Racing Red
+            secondary: '#3B82F6', // Cobalt Blue
+            background: '#F4F4F5', // Soft gray
+            card: '#FFFFFF',
+            text: '#18181B', // Near black
+            subtext: '#52525B', // Zinc 600
+            border: '#E4E4E7', // Zinc 200
+            notification: '#E11D48',
+            inputBackground: '#F4F4F5',
+            placeholder: '#A1A1AA', // Zinc 400
+            error: '#DC2626',
             danger: '#DC2626',
-            success: '#059669', // Emerald 600
-            warning: '#D97706', // Amber 600
+            success: '#059669',
+            warning: '#D97706',
             ghostBackground: 'rgba(0, 0, 0, 0.05)',
             buttonText: '#FFFFFF',
         },

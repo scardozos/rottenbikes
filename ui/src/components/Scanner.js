@@ -30,7 +30,7 @@ const WebScannerWrapper = ({ onScan, onClose, theme, t }) => {
     if (!isSecure) {
         return (
             <View style={styles.center}>
-                <Text style={{ color: theme.colors.error, marginBottom: 12 }}>Camera requires Secure Context.</Text>
+                <Text style={{ color: theme.colors.error, marginBottom: 12 }}>{t('camera_secure_context_error')}</Text>
                 {onClose && <Button title={t('cancel')} onPress={onClose} variant="ghost" />}
             </View>
         );
@@ -39,7 +39,7 @@ const WebScannerWrapper = ({ onScan, onClose, theme, t }) => {
     if (!WebScanner) {
         return (
             <View style={styles.center}>
-                <Text style={{ color: theme.colors.error, marginBottom: 12 }}>Scanner library not loaded.</Text>
+                <Text style={{ color: theme.colors.error, marginBottom: 12 }}>{t('scanner_not_loaded_error')}</Text>
                 {onClose && <Button title={t('cancel')} onPress={onClose} variant="ghost" />}
             </View>
         );
@@ -101,7 +101,7 @@ const NativeScannerWrapper = ({ onScan, onClose, theme, t }) => {
                 />
                 <Button
                     onPress={() => Linking.openSettings()}
-                    title={t('open_settings') || "Open Settings"}
+                    title={t('open_settings')}
                     variant="secondary"
                     style={{ marginBottom: 10 }}
                 />

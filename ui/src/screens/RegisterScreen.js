@@ -158,7 +158,7 @@ const RegisterScreen = ({ navigation }) => {
                             </View>
 
                             <View style={styles.switchAuthRow}>
-                                <Text style={styles.switchAuthPrompt}>Already have an account?</Text>
+                                <Text style={styles.switchAuthPrompt}>{t('has_account_prompt')}</Text>
                                 <Button
                                     title={t('login')}
                                     onPress={() => navigation.navigate('Login')}
@@ -185,10 +185,10 @@ const RegisterScreen = ({ navigation }) => {
                             {pollingTimeout && (
                                 <View style={styles.timeoutContainer}>
                                     <Text style={styles.timeoutText}>
-                                        {t('polling_timeout') || 'Waiting for confirmation timed out.'}
+                                        {t('polling_timeout')}
                                     </Text>
                                     <Button
-                                        title={t('resend_link') || 'Resend Link'}
+                                        title={t('resend_link')}
                                         onPress={handleRegister}
                                         variant="primary"
                                         size="md"

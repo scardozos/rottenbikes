@@ -234,4 +234,11 @@ export default {
     retry: "Retry",
     review_by: "Review by",
     stars: "stars",
+    desktop_subtitle: "Use a mobile device camera to scan, or look up by bike number below.",
+    language: "Language",
+    no_account_prompt: "Don't have an account?",
+    has_account_prompt: "Already have an account?",
+    error_boundary_title: "Oops! Something went wrong.",
+    camera_secure_context_error: "Camera requires Secure Context.",
+    scanner_not_loaded_error: "Scanner library not loaded.",
 };

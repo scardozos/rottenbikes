@@ -67,3 +67,40 @@ func TestAuthMiddleware(t *testing.T) {
 		}
 	})
 }
+
+type dummyWrapper struct {
+	http.ResponseWriter
+}
+
+func (d *dummyWrapper) Unwrap() http.ResponseWriter {
+	return d.ResponseWriter
+}
+
+func TestAuthMiddlewareUnwrap(t *testing.T) {
+	mockService := &MockService{
+		GetPosterByAPITokenFunc: func(ctx context.Context, token string) (*domain.AuthPoster, error) {
+			return &domain.AuthPoster{PosterID: 42, Username: "testuser"}, nil
+		},
+	}
+	srv := &HTTPServer{service: mockService}
+
+	handler := srv.middlewareAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Authorization", "Bearer valid")
+
+	rec := httptest.NewRecorder()
+
+	// Create custom ResponseWriter that we want to extract
+	customRW := &ResponseWriter{ResponseWriter: rec}
+	// Wrap it in dummyWrapper
+	wrapped := &dummyWrapper{ResponseWriter: customRW}
+
+	handler.ServeHTTP(wrapped, req)
+
+	if customRW.Username != "testuser" {
+		t.Errorf("expected username 'testuser', got '%s'", customRW.Username)
+	}
+}

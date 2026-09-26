@@ -137,7 +137,7 @@ const HomeScreen = ({ navigation }) => {
                     ) : (
                         <View style={stylesInternal.scannerPaused}>
                             <Icon name="camera-reverse-outline" size={40} color={theme.colors.subtext} />
-                            <Text style={stylesInternal.scannerPausedText}>{t('scanner_paused') || "Scanner Paused"}</Text>
+                            <Text style={stylesInternal.scannerPausedText}>{t('scanner_paused')}</Text>
                         </View>
                     )}
                 </View>
@@ -146,9 +146,9 @@ const HomeScreen = ({ navigation }) => {
                     <View style={stylesInternal.desktopIconCircle}>
                         <Icon name="qr-code-outline" size={56} color={theme.colors.primary} />
                     </View>
-                    <Text style={stylesInternal.desktopTitle}>{t('scan_qr') || "Scan Bike QR Code"}</Text>
+                    <Text style={stylesInternal.desktopTitle}>{t('scan_qr')}</Text>
                     <Text style={stylesInternal.desktopSubtitle}>
-                        Use a mobile device camera to scan, or look up by bike number below.
+                        {t('desktop_subtitle')}
                     </Text>
                 </View>
             )}

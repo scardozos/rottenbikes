@@ -22,16 +22,14 @@ const HealthTrendBadge = ({ aggregates, subcategory = 'overall' }) => {
     const trend = computeTrend(w1, w2);
     let iconName = 'arrow-forward';
     let color = theme.colors.subtext;
-    let label = t('trend_stable') || 'Stable';
+    let label = t(`trend_${trend}`);
 
     if (trend === 'improving') {
         iconName = 'trending-up';
         color = theme.colors.success;
-        label = t('trend_improving') || 'Improving';
     } else if (trend === 'degrading') {
         iconName = 'trending-down';
         color = theme.colors.danger || theme.colors.error;
-        label = t('trend_degrading') || 'Degrading';
     }
 
     return (

@@ -39,18 +39,18 @@ const ConfigurationScreen = ({ navigation }) => {
 
     const handleLogout = () => {
         if (Platform.OS === 'web') {
-            const confirmed = window.confirm(t('logout_confirm_desc') || 'Are you sure you want to log out?');
+            const confirmed = window.confirm(t('logout_confirm_desc'));
             if (confirmed) {
                 logout();
             }
         } else {
             Alert.alert(
-                t('logout_confirm_title') || 'Log Out',
-                t('logout_confirm_desc') || 'Are you sure you want to log out?',
+                t('logout_confirm_title'),
+                t('logout_confirm_desc'),
                 [
-                    { text: t('cancel') || 'Cancel', style: 'cancel' },
+                    { text: t('cancel'), style: 'cancel' },
                     {
-                        text: t('logout') || 'Log Out',
+                        text: t('logout'),
                         style: 'destructive',
                         onPress: () => logout()
                     }
@@ -78,7 +78,7 @@ const ConfigurationScreen = ({ navigation }) => {
             </View>
 
             <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Language</Text>
+                <Text style={styles.sectionTitle}>{t('language')}</Text>
                 <View style={styles.langRow}>
                     {['ca', 'es', 'en'].map((lang) => (
                         <TouchableOpacity

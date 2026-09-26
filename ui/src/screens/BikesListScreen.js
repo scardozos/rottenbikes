@@ -92,7 +92,9 @@ const BikesListScreen = ({ navigation }) => {
 
     const styles = React.useMemo(() => createStyles(theme), [theme]);
 
-    const renderItem = useCallback(({ item }) => (
+    const renderItem = useCallback(({ item }) => {
+        const addedDate = item.created_ts ? new Date(item.created_ts).toLocaleDateString() : '';
+        return (
         <TouchableOpacity
             style={styles.card}
             onPress={() => navigation.navigate('BikeDetails', { bikeId: item.numerical_id })}
@@ -100,24 +102,31 @@ const BikesListScreen = ({ navigation }) => {
             accessibilityRole="button"
             accessibilityLabel={`Bike ${item.numerical_id}`}
         >
-            <View style={styles.cardContent}>
-                <View style={styles.cardHeaderRow}>
-                    <Text style={styles.bikeNumber}>#{item.numerical_id}</Text>
-                    <View style={[styles.typeBadge, item.is_electric ? styles.electricBadge : styles.mechanicalBadge]}>
-                        <Icon
-                            name={item.is_electric ? 'flash' : 'bicycle'}
-                            size={14}
-                            color={item.is_electric ? theme.colors.warning : theme.colors.primary}
-                        />
-                        <Text style={[styles.typeText, { color: item.is_electric ? theme.colors.warning : theme.colors.primary }]}>
-                            {item.is_electric ? t('electric') : t('mechanical')}
-                        </Text>
-                    </View>
+            <View style={styles.cardLeft}>
+                <View style={[styles.bikeIconContainer, item.is_electric ? styles.electricIconBg : styles.mechanicalIconBg]}>
+                    <Icon
+                        name={item.is_electric ? 'flash' : 'bicycle'}
+                        size={24}
+                        color={item.is_electric ? theme.colors.warning : theme.colors.primary}
+                    />
                 </View>
+                <View style={styles.cardContent}>
+                    <View style={styles.cardHeaderRow}>
+                        <Text style={styles.bikeNumber}>#{item.numerical_id}</Text>
+                        <View style={[styles.typeBadge, item.is_electric ? styles.electricBadge : styles.mechanicalBadge]}>
+                            <Text style={[styles.typeText, { color: item.is_electric ? theme.colors.warning : theme.colors.primary }]}>
+                                {item.is_electric ? t('electric') : t('mechanical')}
+                            </Text>
+                        </View>
+                    </View>
 
-                <Text style={styles.hashText} numberOfLines={1} ellipsizeMode="middle">
-                    {item.hash_id || '—'}
-                </Text>
+                    <Text style={styles.hashText} numberOfLines={1} ellipsizeMode="middle">
+                        ID: {item.hash_id || '—'}
+                    </Text>
+                    {addedDate ? (
+                        <Text style={styles.dateText}>Added: {addedDate}</Text>
+                    ) : null}
+                </View>
             </View>
 
             <View style={styles.cardRight}>
@@ -132,13 +141,13 @@ const BikesListScreen = ({ navigation }) => {
                     <Badge
                         variant="default"
                         size="md"
-                        label={t('no_reviews')}
+                        label={t('new') || 'New'}
                     />
                 )}
-                <Icon name="chevron-forward" size={18} color={theme.colors.subtext} style={styles.chevron} />
+                <Icon name="chevron-forward" size={20} color={theme.colors.subtext} style={styles.chevron} />
             </View>
         </TouchableOpacity>
-    ), [styles, navigation, theme, t]);
+    )}, [navigation, styles, theme, t]);
 
     const handleCreateSearchBike = () => {
         const numeric = isNumeric(searchQuery);
@@ -151,8 +160,8 @@ const BikesListScreen = ({ navigation }) => {
         navigation.navigate('CreateBike', params);
     };
 
-    return (
-        <View style={styles.container}>
+    const renderHeader = () => (
+        <>
             <View style={styles.header}>
                 <Text style={styles.title}>{t('all_bikes')}</Text>
             </View>
@@ -168,79 +177,85 @@ const BikesListScreen = ({ navigation }) => {
             />
 
             <SortDropdown selectedSort={sortOption} onSortChange={setSortOption} />
+        </>
+    );
 
+    return (
+        <View style={styles.container}>
             {loading && bikes.length === 0 ? (
                 <View style={styles.centerLoading}>
                     <ActivityIndicator size="large" color={theme.colors.primary} />
                 </View>
             ) : (
                 <FlatList
+                    style={{ width: '100%' }}
                     data={bikes}
                     keyExtractor={item => item.numerical_id.toString()}
                     renderItem={renderItem}
+                    ListHeaderComponent={renderHeader}
                     contentContainerStyle={styles.listContent}
                     contentInsetAdjustmentBehavior="never"
-                    automaticallyAdjustContentInsets={false}
-                    automaticallyAdjustsScrollIndicatorInsets={false}
-                    refreshControl={
-                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />
-                    }
-                    contentOffset={{ x: 0, y: 0 }}
-                    onEndReached={() => {
-                        if (!loadingMore && hasMore && !error) {
-                            fetchBikes(false);
+                        automaticallyAdjustContentInsets={false}
+                        automaticallyAdjustsScrollIndicatorInsets={false}
+                        refreshControl={
+                            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />
                         }
-                    }}
-                    onEndReachedThreshold={0.5}
-                    ListFooterComponent={() => {
-                        if (error && bikes.length > 0) {
-                            return (
-                                <View style={styles.footerAction}>
-                                    <Text style={styles.errorText}>{t('error')}</Text>
-                                    <Button title={t('retry') || 'Retry'} onPress={() => fetchBikes(false)} variant="primary" size="sm" />
-                                </View>
-                            );
-                        }
-                        if (loadingMore) {
-                            return <ActivityIndicator size="small" color={theme.colors.primary} style={styles.footerLoading} />;
-                        }
-                        if (!hasMore && bikes.length > 0) {
-                            return <Text style={styles.endText}>{t('no_more_bikes')}</Text>;
-                        }
-                        return null;
-                    }}
-                    ListEmptyComponent={() => {
-                        if (error) {
-                            return (
-                                <EmptyState
-                                    icon="alert-circle-outline"
-                                    title={t('error')}
-                                    description={t('scan_lookup_failed')}
-                                    action={<Button title={t('retry') || 'Retry'} onPress={() => fetchBikes(true)} variant="primary" />}
-                                />
-                            );
-                        }
-                        if (!loading) {
-                            return (
-                                <EmptyState
-                                    icon="bicycle-outline"
-                                    title={searchQuery ? t('no_bikes_found', { query: searchQuery }) : t('no_bikes_available')}
-                                    action={
-                                        isNumeric(searchQuery) ? (
-                                            <Button
-                                                title={t('create_new_bike', { numerical_id: searchQuery })}
-                                                onPress={handleCreateSearchBike}
-                                                variant="primary"
-                                                size="sm"
-                                            />
-                                        ) : null
-                                    }
-                                />
-                            );
-                        }
-                        return null;
-                    }}
-                />
+                        contentOffset={{ x: 0, y: 0 }}
+                        onEndReached={() => {
+                            if (!loadingMore && hasMore && !error) {
+                                fetchBikes(false);
+                            }
+                        }}
+                        onEndReachedThreshold={0.5}
+                        ListFooterComponent={() => {
+                            if (error && bikes.length > 0) {
+                                return (
+                                    <View style={styles.footerAction}>
+                                        <Text style={styles.errorText}>{t('error')}</Text>
+                                        <Button title={t('retry')} onPress={() => fetchBikes(false)} variant="primary" size="sm" />
+                                    </View>
+                                );
+                            }
+                            if (loadingMore) {
+                                return <ActivityIndicator size="small" color={theme.colors.primary} style={styles.footerLoading} />;
+                            }
+                            if (!hasMore && bikes.length > 0) {
+                                return <Text style={styles.endText}>{t('no_more_bikes')}</Text>;
+                            }
+                            return null;
+                        }}
+                        ListEmptyComponent={() => {
+                            if (error) {
+                                return (
+                                    <EmptyState
+                                        icon="alert-circle-outline"
+                                        title={t('error')}
+                                        description={t('scan_lookup_failed')}
+                                        action={<Button title={t('retry')} onPress={() => fetchBikes(true)} variant="primary" />}
+                                    />
+                                );
+                            }
+                            if (!loading) {
+                                return (
+                                    <EmptyState
+                                        icon="bicycle-outline"
+                                        title={searchQuery ? t('no_bikes_found', { query: searchQuery }) : t('no_bikes_available')}
+                                        action={
+                                            isNumeric(searchQuery) ? (
+                                                <Button
+                                                    title={t('create_new_bike', { numerical_id: searchQuery })}
+                                                    onPress={handleCreateSearchBike}
+                                                    variant="primary"
+                                                    size="sm"
+                                                />
+                                            ) : null
+                                        }
+                                    />
+                                );
+                            }
+                            return null;
+                        }}
+                    />
             )}
         </View>
     );
@@ -249,8 +264,6 @@ const BikesListScreen = ({ navigation }) => {
 const createStyles = (theme) => StyleSheet.create({
     container: {
         flex: 1,
-        paddingHorizontal: theme?.metrics?.spacing?.lg || 16,
-        paddingTop: theme?.metrics?.spacing?.md || 12,
         backgroundColor: theme.colors.background,
     },
     header: {
@@ -270,6 +283,11 @@ const createStyles = (theme) => StyleSheet.create({
     },
     listContent: {
         paddingBottom: theme?.metrics?.spacing?.xxl || 32,
+        paddingHorizontal: theme?.metrics?.spacing?.lg || 16,
+        paddingTop: theme?.metrics?.spacing?.md || 12,
+        maxWidth: 800,
+        width: '100%',
+        alignSelf: 'center',
     },
     card: {
         flexDirection: 'row',
@@ -282,15 +300,35 @@ const createStyles = (theme) => StyleSheet.create({
         borderWidth: 1,
         borderColor: theme.colors.border,
         ...(theme?.shadows?.sm || {}),
+        width: '100%',
+    },
+    cardLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+    },
+    bikeIconContainer: {
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 14,
+    },
+    electricIconBg: {
+        backgroundColor: theme.colors.warning + '18',
+    },
+    mechanicalIconBg: {
+        backgroundColor: theme.colors.primary + '18',
     },
     cardContent: {
         flex: 1,
-        marginRight: theme?.metrics?.spacing?.sm || 8,
+        justifyContent: 'center',
     },
     cardHeaderRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 4,
+        marginBottom: 6,
     },
     bikeNumber: {
         fontSize: 18,
@@ -314,12 +352,16 @@ const createStyles = (theme) => StyleSheet.create({
     typeText: {
         fontSize: 12,
         fontWeight: '600',
-        marginLeft: 4,
     },
     hashText: {
-        fontSize: 12,
+        fontSize: 13,
         color: theme.colors.subtext,
         fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+        marginBottom: 4,
+    },
+    dateText: {
+        fontSize: 12,
+        color: theme.colors.placeholder,
     },
     cardRight: {
         flexDirection: 'row',

@@ -92,7 +92,7 @@ const CreateBikeContent = ({ theme, styles, numericalId, setNumericalId, hashId,
             />
 
             <Input
-                label={t('hash_id_input_label') || 'Hash ID'}
+                label={t('hash_id_input_label')}
                 placeholder={t('hash_id_placeholder')}
                 value={hashId}
                 onChangeText={setHashId}

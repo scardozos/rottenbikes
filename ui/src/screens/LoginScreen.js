@@ -109,7 +109,7 @@ const LoginScreen = ({ navigation }) => {
                             </View>
 
                             <View style={styles.switchAuthRow}>
-                                <Text style={styles.switchAuthPrompt}>Don&apos;t have an account?</Text>
+                                <Text style={styles.switchAuthPrompt}>{t('no_account_prompt')}</Text>
                                 <Button
                                     title={t('register')}
                                     onPress={() => navigation.navigate('Register')}
@@ -135,10 +135,10 @@ const LoginScreen = ({ navigation }) => {
                             {pollingTimeout && (
                                 <View style={styles.timeoutContainer}>
                                     <Text style={styles.timeoutText}>
-                                        {t('polling_timeout') || 'Waiting for confirmation timed out.'}
+                                        {t('polling_timeout')}
                                     </Text>
                                     <Button
-                                        title={t('resend_link') || 'Resend Link'}
+                                        title={t('resend_link')}
                                         onPress={handleRequestLink}
                                         variant="primary"
                                         size="md"

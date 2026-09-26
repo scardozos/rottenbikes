@@ -234,4 +234,11 @@ export default {
     retry: "Tornar a provar",
     review_by: "Ressenya per",
     stars: "estrelles",
+    desktop_subtitle: "Fes servir la càmera d'un dispositiu mòbil per escanejar, o cerca per número de bicicleta a continuació.",
+    language: "Idioma",
+    no_account_prompt: "No tens compte?",
+    has_account_prompt: "Ja tens compte?",
+    error_boundary_title: "Vaja! Alguna cosa ha sortit malament.",
+    camera_secure_context_error: "La càmera requereix un context segur.",
+    scanner_not_loaded_error: "Llibreria d'escàner no carregada.",
 };
