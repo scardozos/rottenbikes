@@ -1,4 +1,4 @@
-import React, { useEffect, useContext, useState } from 'react';
+import React, { useEffect, useContext, useState, useCallback } from 'react';
 import { View, Text, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 import Button from '../components/Button';
 import { AuthContext } from '../context/AuthContext';
@@ -19,10 +19,30 @@ const ConfirmLoginScreen = ({ route, navigation }) => {
     const [isCrossDevice, setIsCrossDevice] = useState(false);
     const [submitting, setSubmitting] = useState(false);
 
+    const handleContinueToApp = useCallback(() => {
+        if (userToken) {
+            try {
+                navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Main' }],
+                });
+            } catch (e) {
+                __DEV__ && console.log('reset navigation failed, navigating to Main:', e);
+                navigation.navigate('Main');
+            }
+        } else {
+            navigation.navigate('Public', { screen: 'Home' });
+        }
+    }, [userToken, navigation]);
+
     useEffect(() => {
-        // Redirection will happen automatically when userToken is set in AuthContext
-        // For cross-device confirmation, the user stays on the confirmation view
-    }, [status, isCrossDevice, navigation]);
+        if (status === 'success' && !isCrossDevice && userToken) {
+            const timer = setTimeout(() => {
+                handleContinueToApp();
+            }, 600);
+            return () => clearTimeout(timer);
+        }
+    }, [status, isCrossDevice, userToken, handleContinueToApp]);
 
     // eslint-disable-next-line react-hooks/set-state-in-effect
     useEffect(() => {
@@ -103,21 +123,13 @@ const ConfirmLoginScreen = ({ route, navigation }) => {
                         ? t('mobile_auto_login')
                         : t('redirecting')}
                 </Text>
-                {isCrossDevice && (
-                    <View style={{ marginTop: 20, width: '100%' }}>
-                        <Button
-                            title={t('continue_to_app')}
-                            onPress={() => {
-                                if (userToken) {
-                                    navigation.navigate('Main');
-                                } else {
-                                    navigation.navigate('Public', { screen: 'Home' });
-                                }
-                            }}
-                            variant="primary"
-                        />
-                    </View>
-                )}
+                <View style={{ marginTop: 20, width: '100%' }}>
+                    <Button
+                        title={t('continue_to_app')}
+                        onPress={handleContinueToApp}
+                        variant="primary"
+                    />
+                </View>
             </View>
         );
     }
