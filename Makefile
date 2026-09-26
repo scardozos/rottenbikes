@@ -41,15 +41,15 @@ reset-login-prd:
 
 # Admin role management (out-of-band: admin identity lives only in the DB)
 admin-promote:
-	@if [ -z "$(USER)" ]; then echo "Usage: make admin-promote USER=<email_or_username>"; exit 1; fi
-	@go run ./cmd/adminctl promote $(USER)
+	@if [ -z "$(USER)" ]; then echo "Usage: make admin-promote USER=<email_or_username> [ENV_FILE=<env_file>]"; exit 1; fi
+	@if [ -n "$(ENV_FILE)" ]; then export $$(grep -v '^#' $(ENV_FILE) | xargs); fi; go run ./cmd/adminctl promote $(USER)
 
 admin-demote:
-	@if [ -z "$(USER)" ]; then echo "Usage: make admin-demote USER=<email_or_username>"; exit 1; fi
-	@go run ./cmd/adminctl demote $(USER)
+	@if [ -z "$(USER)" ]; then echo "Usage: make admin-demote USER=<email_or_username> [ENV_FILE=<env_file>]"; exit 1; fi
+	@if [ -n "$(ENV_FILE)" ]; then export $$(grep -v '^#' $(ENV_FILE) | xargs); fi; go run ./cmd/adminctl demote $(USER)
 
 admin-list:
-	@go run ./cmd/adminctl list
+	@if [ -n "$(ENV_FILE)" ]; then export $$(grep -v '^#' $(ENV_FILE) | xargs); fi; go run ./cmd/adminctl list
 
 db-reset:
 	@if [ -z "$(ENV)" ]; then echo "Usage: make db-reset ENV=local/dev/prod"; exit 1; fi
