@@ -1,3 +1,4 @@
-SELECT poster_id, email, username, api_token_expires_ts, email_verified
-FROM posters
-WHERE api_token = $1
+SELECT p.poster_id, p.email, p.username, pt.expires_ts AS api_token_expires_ts, p.email_verified
+FROM poster_tokens pt
+JOIN posters p ON p.poster_id = pt.poster_id
+WHERE pt.token_hash = $1

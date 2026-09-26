@@ -57,13 +57,14 @@ func New(service domain.Service, sender email.EmailSender, addr string) (*HTTPSe
 	mux.HandleFunc("GET /auth/poll", s.handlePollMagicLink)
 	mux.HandleFunc("POST /auth/register", s.handleRegister)
 	mux.HandleFunc("GET /auth/verify", s.middlewareAuth(http.HandlerFunc(s.handleVerifyToken)).ServeHTTP)
+	mux.HandleFunc("POST /auth/logout", s.middlewareAuth(http.HandlerFunc(s.handleLogout)).ServeHTTP)
 	mux.HandleFunc("DELETE /auth/user", s.middlewareAuth(http.HandlerFunc(s.handleDeletePoster)).ServeHTTP)
 	mux.HandleFunc("GET /users/me/reviews", s.middlewareAuth(http.HandlerFunc(s.handleListMyReviews)).ServeHTTP)
 
 	// /bikes
 	mux.HandleFunc("GET /bikes", s.handleListBikes)
 	mux.HandleFunc("POST /bikes", s.middlewareAuth(http.HandlerFunc(s.handleCreateBike)).ServeHTTP)
-	
+
 	// /bikes/{id}
 	mux.HandleFunc("GET /bikes/{id}", s.handleGetBike)
 	mux.HandleFunc("PUT /bikes/{id}", s.middlewareAuth(http.HandlerFunc(s.handleUpdateBike)).ServeHTTP)
@@ -144,17 +145,17 @@ func isOriginAllowed(origin string) bool {
 			return true
 		}
 	}
-	
+
 	u, err := url.Parse(origin)
 	if err != nil {
 		return false
 	}
-	
+
 	ip := net.ParseIP(u.Hostname())
 	if ip == nil {
 		return false
 	}
-	
+
 	return ip.IsPrivate() || ip.IsLoopback()
 }
 
@@ -185,7 +186,7 @@ func json405Middleware(next http.Handler) http.Handler {
 		next.ServeHTTP(rw, r)
 		if rw.statusCode == http.StatusMethodNotAllowed {
 			// If we haven't written the body yet, or if ServeMux wrote a plaintext Method Not Allowed,
-			// unfortunately ServeMux already wrote it. 
+			// unfortunately ServeMux already wrote it.
 			// A better way is to use a response interceptor that prevents writing body on 405.
 		}
 	})

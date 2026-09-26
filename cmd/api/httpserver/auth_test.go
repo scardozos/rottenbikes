@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -218,6 +219,56 @@ func TestHandleVerifyToken(t *testing.T) {
 	t.Run("unauthorized", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/auth/verify", nil)
 		req.Header.Set("Authorization", "Bearer invalid-token")
+		w := httptest.NewRecorder()
+
+		srv.server.Handler.ServeHTTP(w, req)
+
+		if w.Code != http.StatusUnauthorized {
+			t.Errorf("expected status 401, got %d", w.Code)
+		}
+	})
+}
+
+func TestHandleLogout(t *testing.T) {
+	revoked := false
+	mockService := &MockService{
+		GetPosterByAPITokenFunc: func(ctx context.Context, token string) (*domain.AuthPoster, error) {
+			if token == "active-token" {
+				return &domain.AuthPoster{PosterID: 10, Username: "testuser"}, nil
+			}
+			return nil, domain.ErrInvalidToken
+		},
+		RevokeAPITokenFunc: func(ctx context.Context, token string) error {
+			if token == "active-token" {
+				revoked = true
+				return nil
+			}
+			return errors.New("unknown token")
+		},
+	}
+
+	srv, err := New(mockService, &email.NoopSender{}, ":8080")
+	if err != nil {
+		t.Fatalf("failed to create server: %v", err)
+	}
+
+	t.Run("success", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/auth/logout", nil)
+		req.Header.Set("Authorization", "Bearer active-token")
+		w := httptest.NewRecorder()
+
+		srv.server.Handler.ServeHTTP(w, req)
+
+		if w.Code != http.StatusNoContent {
+			t.Errorf("expected status 204, got %d", w.Code)
+		}
+		if !revoked {
+			t.Errorf("expected token to be revoked")
+		}
+	})
+
+	t.Run("unauthorized_missing_token", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/auth/logout", nil)
 		w := httptest.NewRecorder()
 
 		srv.server.Handler.ServeHTTP(w, req)

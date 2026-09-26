@@ -15,6 +15,7 @@ type Service interface {
 	ConfirmMagicLink(ctx context.Context, token string) (*ConfirmResult, error)
 	GetPosterByAPIToken(ctx context.Context, token string) (*AuthPoster, error)
 	CheckMagicLinkStatus(ctx context.Context, token string) (string, error)
+	RevokeAPIToken(ctx context.Context, token string) error
 	DeletePoster(ctx context.Context, posterID int64, deleteContent bool) error
 
 	// Infrastructure
@@ -89,6 +90,10 @@ func (s *service) GetPosterByAPIToken(ctx context.Context, token string) (*AuthP
 
 func (s *service) CheckMagicLinkStatus(ctx context.Context, token string) (string, error) {
 	return s.store.CheckMagicLinkStatus(ctx, token)
+}
+
+func (s *service) RevokeAPIToken(ctx context.Context, token string) error {
+	return s.store.RevokeAPIToken(ctx, token)
 }
 
 func (s *service) DeletePoster(ctx context.Context, posterID int64, deleteContent bool) error {

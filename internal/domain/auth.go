@@ -53,6 +53,8 @@ var (
 	deleteUserMagicLinksQuery string
 	//go:embed sql/delete_user_poster.sql
 	deleteUserPosterQuery string
+	//go:embed sql/delete_poster_token.sql
+	deletePosterTokenQuery string
 )
 
 var (
@@ -102,12 +104,10 @@ func (s *Store) CreateMagicLink(ctx context.Context, identifier string) (magicTo
 	defer tx.Rollback()
 
 	var posterID int64
-	var apiToken *string
-	var apiTokenExpires sql.NullTime
 	var userEmail string
 
 	// SELECT poster strictly by email OR username
-	err = tx.QueryRowContext(ctx, getPosterQuery, identifier).Scan(&posterID, &apiToken, &apiTokenExpires, &userEmail)
+	err = tx.QueryRowContext(ctx, getPosterQuery, identifier).Scan(&posterID, &userEmail)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return "", "", "", ErrUserNotFound
@@ -125,7 +125,7 @@ func (s *Store) CreateMagicLink(ctx context.Context, identifier string) (magicTo
 		return "", "", "", ErrRateLimitExceeded
 	}
 
-	magicToken, pollToken, err = s.issueMagicLink(ctx, tx, posterID, apiToken, apiTokenExpires)
+	magicToken, pollToken, err = s.issueMagicLink(ctx, tx, posterID)
 	if err != nil {
 		return "", "", "", err
 	}
@@ -150,11 +150,9 @@ func (s *Store) Register(ctx context.Context, username, email string) (string, s
 	defer tx.Rollback()
 
 	var posterID int64
-	var apiToken *string
-	var apiTokenExpires sql.NullTime
 
 	// Create poster
-	err = tx.QueryRowContext(ctx, createPosterQuery, email, username).Scan(&posterID, &apiToken, &apiTokenExpires)
+	err = tx.QueryRowContext(ctx, createPosterQuery, email, username).Scan(&posterID)
 	if err != nil {
 		var pqErr *pq.Error
 		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
@@ -168,7 +166,7 @@ func (s *Store) Register(ctx context.Context, username, email string) (string, s
 		return "", "", fmt.Errorf("insert poster: %w", err)
 	}
 
-	magicToken, pollToken, err := s.issueMagicLink(ctx, tx, posterID, apiToken, apiTokenExpires)
+	magicToken, pollToken, err := s.issueMagicLink(ctx, tx, posterID)
 	if err != nil {
 		return "", "", err
 	}
@@ -180,34 +178,8 @@ func (s *Store) Register(ctx context.Context, username, email string) (string, s
 	return magicToken, pollToken, nil
 }
 
-func (s *Store) issueMagicLink(ctx context.Context, tx *sql.Tx, posterID int64, apiToken *string, apiTokenExpires sql.NullTime) (magicToken string, pollToken string, err error) {
-
+func (s *Store) issueMagicLink(ctx context.Context, tx *sql.Tx, posterID int64) (magicToken string, pollToken string, err error) {
 	now := time.Now()
-	needNewToken := true
-	if apiToken != nil && apiTokenExpires.Valid && apiTokenExpires.Time.After(now) {
-		// existing token still valid; keep it but refresh expiry
-		needNewToken = false
-	}
-
-	if needNewToken {
-		tok, err := randomToken(32)
-		if err != nil {
-			return "", "", fmt.Errorf("generate api token: %w", err)
-		}
-		exp := now.AddDate(0, 2, 0) // +2 months
-		// Store the SHA-256 hash of the api token; the raw token is only ever
-		// handed to a client at confirm time and is never persisted in posters.
-		if _, err := tx.ExecContext(ctx, updatePosterTokenQuery, HashToken(tok), exp, posterID); err != nil {
-			return "", "", fmt.Errorf("set api token: %w", err)
-		}
-		apiToken = &tok
-	} else {
-		// refresh expiry on existing token
-		exp := now.AddDate(0, 2, 0)
-		if _, err := tx.ExecContext(ctx, updatePosterTokenExpiryQuery, exp, posterID); err != nil {
-			return "", "", fmt.Errorf("refresh api token expiry: %w", err)
-		}
-	}
 
 	// issue one-time magic token (emailed) and a separate poll token (returned to
 	// the requesting device). Both are stored SHA-256 hashed.
@@ -346,6 +318,15 @@ func (s *Store) CheckMagicLinkStatus(ctx context.Context, token string) (string,
 		return "", err
 	}
 	return apiToken.String, nil
+}
+
+// RevokeAPIToken deletes the given API token session from poster_tokens.
+func (s *Store) RevokeAPIToken(ctx context.Context, token string) error {
+	_, err := s.db.ExecContext(ctx, deletePosterTokenQuery, HashToken(token))
+	if err != nil {
+		return fmt.Errorf("revoke token: %w", err)
+	}
+	return nil
 }
 
 func (s *Store) DeletePoster(ctx context.Context, posterID int64, deleteContent bool) error {
