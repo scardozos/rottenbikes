@@ -12,6 +12,7 @@ type MockService struct {
 	ConfirmMagicLinkFunc             func(ctx context.Context, token string) (*domain.ConfirmResult, error)
 	GetPosterByAPITokenFunc          func(ctx context.Context, token string) (*domain.AuthPoster, error)
 	CheckMagicLinkStatusFunc         func(ctx context.Context, token string) (string, error)
+	RevokeAPITokenFunc               func(ctx context.Context, token string) error
 	DeletePosterFunc                 func(ctx context.Context, posterID int64, deleteContent bool) error
 	ListBikesFunc                    func(ctx context.Context, searchQuery, sortBy string, limit, offset int) ([]domain.Bike, error)
 	CreateBikeFunc                   func(ctx context.Context, numericalID string, hashID *string, isElectric bool, creatorID int64) (*domain.Bike, error)
@@ -47,6 +48,13 @@ func (m *MockService) GetPosterByAPIToken(ctx context.Context, token string) (*d
 
 func (m *MockService) CheckMagicLinkStatus(ctx context.Context, token string) (string, error) {
 	return m.CheckMagicLinkStatusFunc(ctx, token)
+}
+
+func (m *MockService) RevokeAPIToken(ctx context.Context, token string) error {
+	if m.RevokeAPITokenFunc != nil {
+		return m.RevokeAPITokenFunc(ctx, token)
+	}
+	return nil
 }
 
 func (m *MockService) DeletePoster(ctx context.Context, posterID int64, deleteContent bool) error {

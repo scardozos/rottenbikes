@@ -22,24 +22,16 @@ func TestCreateMagicLink(t *testing.T) {
 	email := "test@example.com"
 
 	t.Run("success_existing_valid_token", func(t *testing.T) {
-		validToken := "existing_token"
-		validExpires := time.Now().Add(24 * time.Hour)
-
 		mock.ExpectBegin()
-		mock.ExpectQuery("SELECT poster_id, api_token, api_token_expires_ts, email FROM posters").
+		mock.ExpectQuery("SELECT poster_id, email FROM posters").
 			WithArgs(email).
-			WillReturnRows(sqlmock.NewRows([]string{"poster_id", "api_token", "api_token_expires_ts", "email"}).
-				AddRow(1, validToken, validExpires, email))
+			WillReturnRows(sqlmock.NewRows([]string{"poster_id", "email"}).
+				AddRow(1, email))
 
 		// Rate limit check
 		mock.ExpectQuery("SELECT COUNT\\(\\*\\) FROM magic_links").
 			WithArgs(1).
 			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
-
-		// issueMagicLink: existing token still valid -> refresh expiry only
-		mock.ExpectExec("UPDATE posters").
-			WithArgs(sqlmock.AnyArg(), 1).
-			WillReturnResult(sqlmock.NewResult(1, 1))
 
 		// Insert magic link (now carries a poll_token: 4 args)
 		mock.ExpectExec("INSERT INTO magic_links").
@@ -71,7 +63,7 @@ func TestCreateMagicLink(t *testing.T) {
 
 	t.Run("user_not_found", func(t *testing.T) {
 		mock.ExpectBegin()
-		mock.ExpectQuery("SELECT poster_id, api_token, api_token_expires_ts, email FROM posters").
+		mock.ExpectQuery("SELECT poster_id, email FROM posters").
 			WithArgs(email).
 			WillReturnError(sql.ErrNoRows)
 		mock.ExpectRollback()
@@ -85,10 +77,10 @@ func TestCreateMagicLink(t *testing.T) {
 
 	t.Run("rate_limit_exceeded", func(t *testing.T) {
 		mock.ExpectBegin()
-		mock.ExpectQuery("SELECT poster_id, api_token, api_token_expires_ts, email FROM posters").
+		mock.ExpectQuery("SELECT poster_id, email FROM posters").
 			WithArgs(email).
-			WillReturnRows(sqlmock.NewRows([]string{"poster_id", "api_token", "api_token_expires_ts", "email"}).
-				AddRow(1, "some_token", time.Now().Add(time.Hour), email))
+			WillReturnRows(sqlmock.NewRows([]string{"poster_id", "email"}).
+				AddRow(1, email))
 
 		mock.ExpectQuery("SELECT COUNT\\(\\*\\) FROM magic_links").
 			WithArgs(1).
@@ -119,13 +111,8 @@ func TestRegister(t *testing.T) {
 		mock.ExpectBegin()
 		mock.ExpectQuery("INSERT INTO posters").
 			WithArgs(email, username).
-			WillReturnRows(sqlmock.NewRows([]string{"poster_id", "api_token", "api_token_expires_ts"}).
-				AddRow(1, nil, nil))
-
-		// issueMagicLink: no existing token -> set a new (hashed) api token
-		mock.ExpectExec("UPDATE posters").
-			WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), 1).
-			WillReturnResult(sqlmock.NewResult(1, 1))
+			WillReturnRows(sqlmock.NewRows([]string{"poster_id"}).
+				AddRow(1))
 
 		// Insert magic link (4 args: poster_id, magic_hash, poll_hash, expires)
 		mock.ExpectExec("INSERT INTO magic_links").
@@ -202,11 +189,11 @@ func TestConfirmMagicLink(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"poster_id", "expires_ts", "consumed_ts"}).
 				AddRow(1, time.Now().Add(time.Hour), nil))
 
-		// Always rotate: issue a fresh api token, store only its hash, return
+		// Always rotate: issue a fresh api token, store only its hash in poster_tokens, return
 		// expires + email.
-		mock.ExpectQuery("UPDATE posters").
+		mock.ExpectQuery("WITH updated_poster AS").
 			WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), 1).
-			WillReturnRows(sqlmock.NewRows([]string{"api_token_expires_ts", "email"}).
+			WillReturnRows(sqlmock.NewRows([]string{"expires_ts", "email"}).
 				AddRow(time.Now().Add(time.Hour), "test@example.com"))
 
 		// Make the raw api token available for one-time poll retrieval.
@@ -294,8 +281,8 @@ func TestGetPosterByAPIToken(t *testing.T) {
 	token := "api_token"
 
 	t.Run("success", func(t *testing.T) {
-		// The bearer is hashed before lookup (posters.api_token stores the hash).
-		mock.ExpectQuery("SELECT poster_id, email, username, api_token_expires_ts, email_verified FROM posters").
+		// The bearer is hashed before lookup (poster_tokens.token_hash stores the hash).
+		mock.ExpectQuery("SELECT p.poster_id, p.email, p.username, pt.expires_ts AS api_token_expires_ts, p.email_verified FROM poster_tokens pt").
 			WithArgs(HashToken(token)).
 			WillReturnRows(sqlmock.NewRows([]string{"poster_id", "email", "username", "api_token_expires_ts", "email_verified"}).
 				AddRow(1, "test@example.com", "testuser", time.Now().Add(time.Hour), true))
@@ -314,7 +301,7 @@ func TestGetPosterByAPIToken(t *testing.T) {
 	})
 
 	t.Run("expired_token", func(t *testing.T) {
-		mock.ExpectQuery("SELECT poster_id, email, username, api_token_expires_ts, email_verified FROM posters").
+		mock.ExpectQuery("SELECT p.poster_id, p.email, p.username, pt.expires_ts AS api_token_expires_ts, p.email_verified FROM poster_tokens pt").
 			WithArgs(HashToken(token)).
 			WillReturnRows(sqlmock.NewRows([]string{"poster_id", "email", "username", "api_token_expires_ts", "email_verified"}).
 				AddRow(1, "test@example.com", "testuser", time.Now().Add(-time.Hour), true))
@@ -327,7 +314,7 @@ func TestGetPosterByAPIToken(t *testing.T) {
 	})
 
 	t.Run("unverified_email", func(t *testing.T) {
-		mock.ExpectQuery("SELECT poster_id, email, username, api_token_expires_ts, email_verified FROM posters").
+		mock.ExpectQuery("SELECT p.poster_id, p.email, p.username, pt.expires_ts AS api_token_expires_ts, p.email_verified FROM poster_tokens pt").
 			WithArgs(HashToken(token)).
 			WillReturnRows(sqlmock.NewRows([]string{"poster_id", "email", "username", "api_token_expires_ts", "email_verified"}).
 				AddRow(1, "test@example.com", "testuser", time.Now().Add(time.Hour), false))
@@ -341,7 +328,7 @@ func TestGetPosterByAPIToken(t *testing.T) {
 
 	// A token whose hash is not in the DB (typo / revoked) must not authenticate.
 	t.Run("unknown_token", func(t *testing.T) {
-		mock.ExpectQuery("SELECT poster_id, email, username, api_token_expires_ts, email_verified FROM posters").
+		mock.ExpectQuery("SELECT p.poster_id, p.email, p.username, pt.expires_ts AS api_token_expires_ts, p.email_verified FROM poster_tokens pt").
 			WithArgs(HashToken("some-other-token")).
 			WillReturnError(sql.ErrNoRows)
 
@@ -351,6 +338,61 @@ func TestGetPosterByAPIToken(t *testing.T) {
 			t.Error("expected error for unknown token")
 		}
 	})
+
+	// Multiple concurrent sessions for the same user must both be valid.
+	t.Run("multiple_concurrent_sessions", func(t *testing.T) {
+		token1 := "token-session-pc"
+		token2 := "token-session-mobile"
+
+		mock.ExpectQuery("SELECT p.poster_id, p.email, p.username, pt.expires_ts AS api_token_expires_ts, p.email_verified FROM poster_tokens pt").
+			WithArgs(HashToken(token1)).
+			WillReturnRows(sqlmock.NewRows([]string{"poster_id", "email", "username", "api_token_expires_ts", "email_verified"}).
+				AddRow(1, "test@example.com", "testuser", time.Now().Add(time.Hour), true))
+
+		mock.ExpectQuery("SELECT p.poster_id, p.email, p.username, pt.expires_ts AS api_token_expires_ts, p.email_verified FROM poster_tokens pt").
+			WithArgs(HashToken(token2)).
+			WillReturnRows(sqlmock.NewRows([]string{"poster_id", "email", "username", "api_token_expires_ts", "email_verified"}).
+				AddRow(1, "test@example.com", "testuser", time.Now().Add(time.Hour), true))
+
+		store := NewService(NewStore(db))
+
+		poster1, err1 := store.GetPosterByAPIToken(ctx, token1)
+		if err1 != nil {
+			t.Fatalf("session 1 failed: %v", err1)
+		}
+		poster2, err2 := store.GetPosterByAPIToken(ctx, token2)
+		if err2 != nil {
+			t.Fatalf("session 2 failed: %v", err2)
+		}
+
+		if poster1.PosterID != poster2.PosterID || poster1.PosterID != 1 {
+			t.Errorf("expected both sessions to resolve to poster_id 1, got %d and %d", poster1.PosterID, poster2.PosterID)
+		}
+	})
+}
+
+func TestRevokeAPIToken(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer db.Close()
+
+	ctx := context.Background()
+	token := "token-to-revoke"
+
+	mock.ExpectExec("DELETE FROM poster_tokens").
+		WithArgs(HashToken(token)).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	store := NewService(NewStore(db))
+	if err := store.RevokeAPIToken(ctx, token); err != nil {
+		t.Fatalf("unexpected error revoking token: %v", err)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
 }
 
 func TestDeletePoster(t *testing.T) {

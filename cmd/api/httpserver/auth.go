@@ -330,6 +330,30 @@ func (s *HTTPServer) handlePollMagicLink(w http.ResponseWriter, r *http.Request)
 	})
 }
 
+// POST /auth/logout
+func (s *HTTPServer) handleLogout(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	token, ok := apiTokenFromContext(r.Context())
+	if !ok || token == "" {
+		s.sendError(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel()
+
+	if err := s.service.RevokeAPIToken(ctx, token); err != nil {
+		s.sendInternalServerError(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // DELETE /auth/user
 func (s *HTTPServer) handleDeletePoster(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodDelete {

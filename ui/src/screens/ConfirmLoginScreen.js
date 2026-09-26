@@ -20,10 +20,8 @@ const ConfirmLoginScreen = ({ route, navigation }) => {
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
-        // Only trigger automatic redirection if we just successfully logged in on this device
-        if (status === 'success' && !isCrossDevice) {
-            navigation.replace('Main');
-        }
+        // Redirection will happen automatically when userToken is set in AuthContext
+        // For cross-device confirmation, the user stays on the confirmation view
     }, [status, isCrossDevice, navigation]);
 
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -50,8 +48,6 @@ const ConfirmLoginScreen = ({ route, navigation }) => {
             } else {
                 await completeLogin(token);
                 setStatus('success');
-                // Automatically redirect to Home for same-device logins
-                navigation.replace('Main');
             }
         } catch (e) {
             setStatus('error');
@@ -112,7 +108,11 @@ const ConfirmLoginScreen = ({ route, navigation }) => {
                         <Button
                             title={t('continue_to_app')}
                             onPress={() => {
-                                navigation.replace('Main');
+                                if (userToken) {
+                                    navigation.navigate('Main');
+                                } else {
+                                    navigation.navigate('Public', { screen: 'Home' });
+                                }
                             }}
                             variant="primary"
                         />

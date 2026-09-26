@@ -121,10 +121,10 @@ const BikesListScreen = ({ navigation }) => {
                     </View>
 
                     <Text style={styles.hashText} numberOfLines={1} ellipsizeMode="middle">
-                        ID: {item.hash_id || '—'}
+                        {t('bike_id_label', { id: item.hash_id || '—' })}
                     </Text>
                     {addedDate ? (
-                        <Text style={styles.dateText}>Added: {addedDate}</Text>
+                        <Text style={styles.dateText}>{t('added_date_label', { date: addedDate })}</Text>
                     ) : null}
                 </View>
             </View>
@@ -141,7 +141,7 @@ const BikesListScreen = ({ navigation }) => {
                     <Badge
                         variant="default"
                         size="md"
-                        label={t('new') || 'New'}
+                        label={t('new')}
                     />
                 )}
                 <Icon name="chevron-forward" size={20} color={theme.colors.subtext} style={styles.chevron} />

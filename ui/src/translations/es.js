@@ -128,6 +128,9 @@ export default {
     search_list_placeholder: 'Buscar en la lista...',
     no_bikes_found: 'No se encontraron bicicletas para "{query}"',
     no_bikes_available: 'No hay bicicletas disponibles',
+    new: 'Nueva',
+    bike_id_label: 'ID: {id}',
+    added_date_label: 'Añadida: {date}',
 
     // Confirm Login
     finish_login: 'Finalizar Inicio de Sesión',

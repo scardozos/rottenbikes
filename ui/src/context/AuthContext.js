@@ -148,11 +148,18 @@ export const AuthProvider = ({ children }) => {
     }, [fetchCurrentUser, showToast, t]);
 
     const logout = useCallback(async () => {
-        setUserToken(null);
-        setUserId(null);
-        setUsername(null);
-        await storage.deleteItem('userToken');
-        DeviceEventEmitter.emit('clear_session');
+        try {
+            await api.post('/auth/logout');
+        } catch (e) {
+            // Silently continue local logout even if network / server fails
+            __DEV__ && console.log('Error invalidating token on logout:', e);
+        } finally {
+            setUserToken(null);
+            setUserId(null);
+            setUsername(null);
+            await storage.deleteItem('userToken');
+            DeviceEventEmitter.emit('clear_session');
+        }
     }, []);
 
     const isLoggedIn = useCallback(async () => {

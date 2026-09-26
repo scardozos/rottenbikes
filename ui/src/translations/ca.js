@@ -128,6 +128,9 @@ export default {
     search_list_placeholder: 'Cerca a la llista...',
     no_bikes_found: 'No s\'han trobat bicicletes per "{query}"',
     no_bikes_available: 'No hi ha bicicletes disponibles',
+    new: 'Nova',
+    bike_id_label: 'ID: {id}',
+    added_date_label: 'Afegida: {date}',
 
     // Confirm Login
     finish_login: 'Finalitzar Inici de Sessió',

@@ -128,6 +128,9 @@ export default {
     search_list_placeholder: 'Search list...',
     no_bikes_found: 'No bikes found for "{query}"',
     no_bikes_available: 'No bikes available',
+    new: 'New',
+    bike_id_label: 'ID: {id}',
+    added_date_label: 'Added: {date}',
 
     // Confirm Login
     finish_login: 'Finish Logging In',
