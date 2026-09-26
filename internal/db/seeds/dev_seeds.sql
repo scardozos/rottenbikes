@@ -6,6 +6,9 @@ VALUES
     ('carol@example.com', 'carol')
 ON CONFLICT DO NOTHING;
 
+-- Alice is the seeded dev admin (promote/demote real admins with cmd/adminctl)
+UPDATE posters SET role = 'admin' WHERE username = 'alice';
+
 -- Sample bikes
 -- NumericalID must be 4-5 digits (1000-99999) but stored as text
 INSERT INTO bikes (numerical_id, hash_id, is_electric, creator_id)

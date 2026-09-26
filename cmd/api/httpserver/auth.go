@@ -296,11 +296,13 @@ func (s *HTTPServer) handleVerifyToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	username, _ := usernameFromContext(r.Context())
+	role, _ := roleFromContext(r.Context())
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"poster_id": posterID,
 		"username":  username,
+		"is_admin":  role == domain.PosterRoleAdmin,
 		"status":    "ok",
 	})
 }

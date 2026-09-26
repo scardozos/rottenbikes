@@ -2,6 +2,7 @@ SELECT
 	b.numerical_id, 
 	b.hash_id, 
 	b.is_electric, 
+	b.was_scanned,
 	b.created_ts, 
 	b.updated_ts,
 	ra.average_rating

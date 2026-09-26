@@ -1,6 +1,14 @@
 # Rotten Bikes
 
-An application for managing (bicing) bike reviews and ratings.
+An open-source platform for community reviews, ratings, and condition tracking of urban bike-share fleets.
+
+> **Disclaimer:** Rotten Bikes is an independent, community-driven open-source project. It is not affiliated, associated, authorized, endorsed by, or in any way officially connected with Bicing, Barcelona de Serveis Municipals (B:SM), Smou, the Ajuntament de Barcelona, or any official public transit operator. 
+>
+> All product names, trademarks, and registered trademarks mentioned herein (such as "Bicing") are the property of their respective owners. Any reference to third-party services or marks is strictly for identification, reference, and descriptive nominative fair use purposes.
+
+## Overview
+
+Rotten Bikes allows commuters and riders to crowdsource fleet quality data for public and shared bicycles (such as Barcelona's Bicing system). Users can scan vehicle QR/Barcodes to leave and view ratings across key physical components (brakes, pedals, electric power, seat comfort) to help fellow riders avoid faulty equipment and report maintenance needs.
 
 ## Getting Started
 
@@ -81,12 +89,13 @@ make db-reset
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
 | `GET` | `/bikes` | List all bikes. | **Yes** |
-| `POST` | `/bikes` | Create a new bike. | **Yes** |
+| `POST` | `/bikes` | Create a new bike. Accepts `was_scanned` (client-declared origin flag for moderation). | **Yes** |
 | `GET` | `/bikes/{id}` | Get details of a specific bike. | **Yes** |
 | `PUT` | `/bikes/{id}` | Update a specific bike. | **Yes** |
 | `DELETE` | `/bikes/{id}` | Delete a specific bike. | **Yes** |
+| `GET` | `/scan/{hash}` | Look up a bike by its QR `hash_id` and record the scan server-side. Reviews created afterwards get `was_scanned = true` (derived from the recorded scan, so it cannot be spoofed by clients). | **Yes** |
 | `GET` | `/bikes/{id}/details` | Get bike details including aggregate ratings and reviews. | **Yes** |
-| `POST` | `/bikes/{id}/reviews` | Create a review for a specific bike. | **Yes** |
+| `POST` | `/bikes/{id}/reviews` | Create a review for a specific bike. `was_scanned` is computed server-side from recorded scans. | **Yes** |
 
 ### Reviews
 | Method | Endpoint | Description | Auth Required |
@@ -94,6 +103,14 @@ make db-reset
 | `GET` | `/reviews/{id}` | Get a specific review. | **Yes** |
 | `PUT` | `/reviews/{id}` | Update a specific review. | **Yes** |
 | `DELETE` | `/reviews/{id}` | Delete a specific review. | **Yes** |
+
+### Admin (Moderation)
+Requires the caller to have the **admin role** (see [Admin roles](#admin-roles)).
+
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/admin/users?q=` | Search posters by email/username, with their role, review and bike counts. | **Yes (admin)** |
+| `DELETE` | `/admin/users/{id}` | Purge a malicious poster and all their content (reviews, ratings, created bikes, sessions) in one transaction. Deleting their bikes also removes other users' reviews on those bikes. The action is recorded in the `moderation_actions` audit table. Admins cannot purge other admins. | **Yes (admin)** |
 
 ### System
 | Method | Endpoint | Description | Auth Required |
@@ -112,6 +129,7 @@ Rotten Bikes uses a **magic link** system for authentication, removing the need 
 The mobile app features a built-in **QR/Barcode scanner**.
 - Scan a bike's QR code to instantly view its details and reviews.
 - If the bike doesn't exist in the system, you'll be prompted to create it immediately.
+- Scans are recorded server-side (`scan_events`): reviews submitted for a scanned bike are flagged `was_scanned = true` for moderation. Reviews submitted after manual ID entry are flagged `was_scanned = false` (a moderation signal, not proof of abuse — e.g. desktop web users cannot scan).
 
 ### 📊 Review System
 Rate bikes across multiple categories:
@@ -145,3 +163,27 @@ The application is configured via environment variables. Create a `.env` file (o
 | `CORS_ALLOWED_ORIGINS` | Comma-separated allowlist of origins for the API (e.g. `https://rottenbik.es,https://app.rottenbik.es`). When unset, falls back to the local dev UI origins. | `http://localhost:8081,http://localhost:8080` |
 | `UI_HOST` | Hostname for generating magic links. | `localhost` |
 | `UI_PORT` | Port for generating magic links. | `8081` |
+
+## Admin roles
+
+Admin (moderation) access is a database role — `posters.role` (`'user'` | `'admin'`) — managed out-of-band, so **no admin identity ever lives in git, env files, or k8s manifests**. The role is read from the database on every token lookup, so promotion and demotion take effect immediately, without a restart or redeploy.
+
+Manage admins with the `adminctl` CLI (or the Make wrappers), which uses the same database configuration as the API (`DATABASE_URL` or the `DB_*` variables):
+
+```sh
+make admin-promote USER=alice@example.com   # or: go run ./cmd/adminctl promote alice@example.com
+make admin-demote  USER=alice@example.com
+make admin-list
+```
+
+In Kubernetes, run it inside an API pod so nothing sensitive touches a manifest:
+
+```sh
+kubectl exec -n rottenbikes deploy/api -- ./adminctl list
+```
+
+Notes:
+- Admins cannot purge other admins (demote first) — one compromised admin can't wipe the rest.
+- Purging a poster deletes all their content and writes an audit row to `moderation_actions`.
+- The seeded dev database promotes `alice` as the dev admin.
+

@@ -16,6 +16,10 @@ var (
 	createBikeQuery string
 	//go:embed sql/get_bike_by_id.sql
 	getBikeQuery string
+	//go:embed sql/get_bike_by_hash.sql
+	getBikeByHashQuery string
+	//go:embed sql/upsert_scan_event.sql
+	upsertScanEventQuery string
 	//go:embed sql/update_bike.sql
 	updateBikeQuery string
 	//go:embed sql/delete_bike.sql
@@ -30,6 +34,7 @@ type Bike struct {
 	NumericalID   string    `db:"numerical_id" json:"numerical_id"` // PK
 	HashID        *string   `db:"hash_id" json:"hash_id"`
 	IsElectric    bool      `db:"is_electric" json:"is_electric"`
+	WasScanned    bool      `db:"was_scanned" json:"was_scanned"`
 	AverageRating *float64  `db:"average_rating" json:"average_rating"`
 	CreatedAt     time.Time `db:"created_ts" json:"created_ts"`
 	UpdatedAt     time.Time `db:"updated_ts" json:"updated_ts"`
@@ -57,7 +62,7 @@ func (s *Store) ListBikes(ctx context.Context, searchQuery, sortBy string, limit
 	for rows.Next() {
 		var b Bike
 		var avgRating sql.NullFloat64
-		if err := rows.Scan(&b.NumericalID, &b.HashID, &b.IsElectric, &b.CreatedAt, &b.UpdatedAt, &avgRating); err != nil {
+		if err := rows.Scan(&b.NumericalID, &b.HashID, &b.IsElectric, &b.WasScanned, &b.CreatedAt, &b.UpdatedAt, &avgRating); err != nil {
 			return nil, err
 		}
 		if avgRating.Valid {
@@ -72,12 +77,13 @@ func (s *Store) ListBikes(ctx context.Context, searchQuery, sortBy string, limit
 	return bikes, nil
 }
 
-func (s *Store) CreateBike(ctx context.Context, numericalID string, hashID *string, isElectric bool, creatorID int64) (*Bike, error) {
+func (s *Store) CreateBike(ctx context.Context, numericalID string, hashID *string, isElectric, wasScanned bool, creatorID int64) (*Bike, error) {
 	var b Bike
-	err := s.db.QueryRowContext(ctx, createBikeQuery, numericalID, hashID, isElectric, creatorID).Scan(
+	err := s.db.QueryRowContext(ctx, createBikeQuery, numericalID, hashID, isElectric, wasScanned, creatorID).Scan(
 		&b.NumericalID,
 		&b.HashID,
 		&b.IsElectric,
+		&b.WasScanned,
 		&b.CreatedAt,
 		&b.UpdatedAt,
 	)
@@ -90,10 +96,44 @@ func (s *Store) CreateBike(ctx context.Context, numericalID string, hashID *stri
 func (s *Store) GetBike(ctx context.Context, id string) (*Bike, error) {
 	var b Bike
 	var avgRating sql.NullFloat64
-	err := s.db.QueryRowContext(ctx, getBikeQuery, id).Scan(&b.NumericalID, &b.HashID, &b.IsElectric, &b.CreatedAt, &b.UpdatedAt, &avgRating)
+	err := s.db.QueryRowContext(ctx, getBikeQuery, id).Scan(&b.NumericalID, &b.HashID, &b.IsElectric, &b.WasScanned, &b.CreatedAt, &b.UpdatedAt, &avgRating)
 	if err != nil {
 		return nil, err
 	}
+	if avgRating.Valid {
+		b.AverageRating = &avgRating.Float64
+	}
+	return &b, nil
+}
+
+// GetBikeByHash looks up a bike by its QR hash_id and records a scan event for
+// the authenticated poster. The scan event is what review creation later checks
+// to set reviews.was_scanned, so the flag cannot be spoofed by clients.
+func (s *Store) GetBikeByHash(ctx context.Context, hashID string, posterID int64) (*Bike, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	var b Bike
+	var avgRating sql.NullFloat64
+	err = tx.QueryRowContext(ctx, getBikeByHashQuery, hashID).Scan(&b.NumericalID, &b.HashID, &b.IsElectric, &b.WasScanned, &b.CreatedAt, &b.UpdatedAt, &avgRating)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, sql.ErrNoRows
+		}
+		return nil, fmt.Errorf("get bike by hash: %w", err)
+	}
+
+	if _, err := tx.ExecContext(ctx, upsertScanEventQuery, posterID, b.NumericalID); err != nil {
+		return nil, fmt.Errorf("record scan event: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit tx: %w", err)
+	}
+
 	if avgRating.Valid {
 		b.AverageRating = &avgRating.Float64
 	}
@@ -109,6 +149,7 @@ func (s *Store) GetBikeDetails(ctx context.Context, id string, limit, offset int
 		&bd.Bike.NumericalID,
 		&bd.Bike.HashID,
 		&bd.Bike.IsElectric,
+		&bd.Bike.WasScanned,
 		&bd.Bike.CreatedAt,
 		&bd.Bike.UpdatedAt,
 		&avgRating,

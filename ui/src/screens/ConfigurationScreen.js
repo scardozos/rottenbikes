@@ -5,10 +5,11 @@ import { AuthContext } from '../context/AuthContext';
 import { LanguageContext } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
 import api from '../services/api';
+import AdminModerationPanel from '../components/AdminModerationPanel';
 
 const ConfigurationScreen = ({ navigation }) => {
     const { theme, isDark, toggleTheme } = useContext(ThemeContext);
-    const { logout, username } = useContext(AuthContext);
+    const { logout, username, isAdmin } = useContext(AuthContext);
     const { t, language, changeLanguage } = useContext(LanguageContext);
     const [deleteModalVisible, setDeleteModalVisible] = useState(false);
     const [confirmUsername, setConfirmUsername] = useState('');
@@ -109,6 +110,13 @@ const ConfigurationScreen = ({ navigation }) => {
                     <Text style={styles.logoutText}>{t('logout')}</Text>
                 </TouchableOpacity>
             </View>
+
+            {isAdmin && (
+                <View style={[styles.section, styles.adminZone]}>
+                    <Text style={[styles.sectionTitle, styles.adminText]}>{t('admin_section')}</Text>
+                    <AdminModerationPanel />
+                </View>
+            )}
 
             <View style={[styles.section, styles.dangerZone]}>
                 <Text style={[styles.sectionTitle, styles.dangerText]}>{t('danger_zone')}</Text>
@@ -298,6 +306,13 @@ const createStyles = (theme) => StyleSheet.create({
     },
     dangerText: {
         color: theme.colors.error,
+    },
+    adminZone: {
+        borderColor: theme.colors.primary,
+        borderWidth: 1,
+    },
+    adminText: {
+        color: theme.colors.primary,
     },
     deleteButton: {
         backgroundColor: 'transparent',

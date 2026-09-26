@@ -282,10 +282,10 @@ func TestGetPosterByAPIToken(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		// The bearer is hashed before lookup (poster_tokens.token_hash stores the hash).
-		mock.ExpectQuery("SELECT p.poster_id, p.email, p.username, pt.expires_ts AS api_token_expires_ts, p.email_verified FROM poster_tokens pt").
+		mock.ExpectQuery("SELECT p.poster_id, p.email, p.username, p.role, pt.expires_ts AS api_token_expires_ts, p.email_verified FROM poster_tokens pt").
 			WithArgs(HashToken(token)).
-			WillReturnRows(sqlmock.NewRows([]string{"poster_id", "email", "username", "api_token_expires_ts", "email_verified"}).
-				AddRow(1, "test@example.com", "testuser", time.Now().Add(time.Hour), true))
+			WillReturnRows(sqlmock.NewRows([]string{"poster_id", "email", "username", "role", "api_token_expires_ts", "email_verified"}).
+				AddRow(1, "test@example.com", "testuser", "user", time.Now().Add(time.Hour), true))
 
 		store := NewService(NewStore(db))
 		poster, err := store.GetPosterByAPIToken(ctx, token)
@@ -301,10 +301,10 @@ func TestGetPosterByAPIToken(t *testing.T) {
 	})
 
 	t.Run("expired_token", func(t *testing.T) {
-		mock.ExpectQuery("SELECT p.poster_id, p.email, p.username, pt.expires_ts AS api_token_expires_ts, p.email_verified FROM poster_tokens pt").
+		mock.ExpectQuery("SELECT p.poster_id, p.email, p.username, p.role, pt.expires_ts AS api_token_expires_ts, p.email_verified FROM poster_tokens pt").
 			WithArgs(HashToken(token)).
-			WillReturnRows(sqlmock.NewRows([]string{"poster_id", "email", "username", "api_token_expires_ts", "email_verified"}).
-				AddRow(1, "test@example.com", "testuser", time.Now().Add(-time.Hour), true))
+			WillReturnRows(sqlmock.NewRows([]string{"poster_id", "email", "username", "role", "api_token_expires_ts", "email_verified"}).
+				AddRow(1, "test@example.com", "testuser", "user", time.Now().Add(-time.Hour), true))
 
 		store := NewService(NewStore(db))
 		_, err := store.GetPosterByAPIToken(ctx, token)
@@ -314,10 +314,10 @@ func TestGetPosterByAPIToken(t *testing.T) {
 	})
 
 	t.Run("unverified_email", func(t *testing.T) {
-		mock.ExpectQuery("SELECT p.poster_id, p.email, p.username, pt.expires_ts AS api_token_expires_ts, p.email_verified FROM poster_tokens pt").
+		mock.ExpectQuery("SELECT p.poster_id, p.email, p.username, p.role, pt.expires_ts AS api_token_expires_ts, p.email_verified FROM poster_tokens pt").
 			WithArgs(HashToken(token)).
-			WillReturnRows(sqlmock.NewRows([]string{"poster_id", "email", "username", "api_token_expires_ts", "email_verified"}).
-				AddRow(1, "test@example.com", "testuser", time.Now().Add(time.Hour), false))
+			WillReturnRows(sqlmock.NewRows([]string{"poster_id", "email", "username", "role", "api_token_expires_ts", "email_verified"}).
+				AddRow(1, "test@example.com", "testuser", "user", time.Now().Add(time.Hour), false))
 
 		store := NewService(NewStore(db))
 		_, err := store.GetPosterByAPIToken(ctx, token)
@@ -328,7 +328,7 @@ func TestGetPosterByAPIToken(t *testing.T) {
 
 	// A token whose hash is not in the DB (typo / revoked) must not authenticate.
 	t.Run("unknown_token", func(t *testing.T) {
-		mock.ExpectQuery("SELECT p.poster_id, p.email, p.username, pt.expires_ts AS api_token_expires_ts, p.email_verified FROM poster_tokens pt").
+		mock.ExpectQuery("SELECT p.poster_id, p.email, p.username, p.role, pt.expires_ts AS api_token_expires_ts, p.email_verified FROM poster_tokens pt").
 			WithArgs(HashToken("some-other-token")).
 			WillReturnError(sql.ErrNoRows)
 
@@ -344,15 +344,15 @@ func TestGetPosterByAPIToken(t *testing.T) {
 		token1 := "token-session-pc"
 		token2 := "token-session-mobile"
 
-		mock.ExpectQuery("SELECT p.poster_id, p.email, p.username, pt.expires_ts AS api_token_expires_ts, p.email_verified FROM poster_tokens pt").
+		mock.ExpectQuery("SELECT p.poster_id, p.email, p.username, p.role, pt.expires_ts AS api_token_expires_ts, p.email_verified FROM poster_tokens pt").
 			WithArgs(HashToken(token1)).
-			WillReturnRows(sqlmock.NewRows([]string{"poster_id", "email", "username", "api_token_expires_ts", "email_verified"}).
-				AddRow(1, "test@example.com", "testuser", time.Now().Add(time.Hour), true))
+			WillReturnRows(sqlmock.NewRows([]string{"poster_id", "email", "username", "role", "api_token_expires_ts", "email_verified"}).
+				AddRow(1, "test@example.com", "testuser", "user", time.Now().Add(time.Hour), true))
 
-		mock.ExpectQuery("SELECT p.poster_id, p.email, p.username, pt.expires_ts AS api_token_expires_ts, p.email_verified FROM poster_tokens pt").
+		mock.ExpectQuery("SELECT p.poster_id, p.email, p.username, p.role, pt.expires_ts AS api_token_expires_ts, p.email_verified FROM poster_tokens pt").
 			WithArgs(HashToken(token2)).
-			WillReturnRows(sqlmock.NewRows([]string{"poster_id", "email", "username", "api_token_expires_ts", "email_verified"}).
-				AddRow(1, "test@example.com", "testuser", time.Now().Add(time.Hour), true))
+			WillReturnRows(sqlmock.NewRows([]string{"poster_id", "email", "username", "role", "api_token_expires_ts", "email_verified"}).
+				AddRow(1, "test@example.com", "testuser", "user", time.Now().Add(time.Hour), true))
 
 		store := NewService(NewStore(db))
 
@@ -457,7 +457,7 @@ func TestDeletePoster(t *testing.T) {
 		mock.ExpectCommit()
 
 		store := NewService(NewStore(db))
-		// deleteContent = true
+		// deleteContent = true (service-level: no moderation audit)
 		err := store.DeletePoster(ctx, posterID, true)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
@@ -494,7 +494,7 @@ func TestDeletePoster(t *testing.T) {
 		mock.ExpectCommit()
 
 		store := NewService(NewStore(db))
-		// deleteContent = false
+		// deleteContent = false (service-level: no moderation audit)
 		err := store.DeletePoster(ctx, posterID, false)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)

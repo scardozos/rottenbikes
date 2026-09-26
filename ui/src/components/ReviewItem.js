@@ -51,6 +51,14 @@ const ReviewItem = React.memo(({ item, isExpanded, onToggle, onEdit, showBikeId,
                                 <Text style={styles.editText}>{t('edit')}</Text>
                             </TouchableOpacity>
                         )}
+                        {item.was_scanned && (
+                            <Badge
+                                label={t('qr_verified')}
+                                variant="success"
+                                size="sm"
+                                icon={<Icon name="qr-code-outline" size={11} color={theme.colors.success} />}
+                            />
+                        )}
                         <Text style={styles.timeText}>{getRelativeTime(item.created_at, t)}</Text>
                     </View>
                 </View>
@@ -205,6 +213,14 @@ const ReviewItem = React.memo(({ item, isExpanded, onToggle, onEdit, showBikeId,
                         <Icon name="person-circle-outline" size={16} color={theme.colors.subtext} />
                         <Text style={styles.userText}>{item.poster_username || t('anonymous')}</Text>
                     </View>
+                    {item.was_scanned && (
+                        <Badge
+                            label={t('qr_verified')}
+                            variant="success"
+                            size="sm"
+                            icon={<Icon name="qr-code-outline" size={11} color={theme.colors.success} />}
+                        />
+                    )}
                 </View>
             </TouchableOpacity>
         </View>
