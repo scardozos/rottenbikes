@@ -89,12 +89,13 @@ make db-reset
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
 | `GET` | `/bikes` | List all bikes. | **Yes** |
-| `POST` | `/bikes` | Create a new bike. | **Yes** |
+| `POST` | `/bikes` | Create a new bike. Accepts `was_scanned` (client-declared origin flag for moderation). | **Yes** |
 | `GET` | `/bikes/{id}` | Get details of a specific bike. | **Yes** |
 | `PUT` | `/bikes/{id}` | Update a specific bike. | **Yes** |
 | `DELETE` | `/bikes/{id}` | Delete a specific bike. | **Yes** |
+| `GET` | `/scan/{hash}` | Look up a bike by its QR `hash_id` and record the scan server-side. Reviews created afterwards get `was_scanned = true` (derived from the recorded scan, so it cannot be spoofed by clients). | **Yes** |
 | `GET` | `/bikes/{id}/details` | Get bike details including aggregate ratings and reviews. | **Yes** |
-| `POST` | `/bikes/{id}/reviews` | Create a review for a specific bike. | **Yes** |
+| `POST` | `/bikes/{id}/reviews` | Create a review for a specific bike. `was_scanned` is computed server-side from recorded scans. | **Yes** |
 
 ### Reviews
 | Method | Endpoint | Description | Auth Required |
@@ -102,6 +103,14 @@ make db-reset
 | `GET` | `/reviews/{id}` | Get a specific review. | **Yes** |
 | `PUT` | `/reviews/{id}` | Update a specific review. | **Yes** |
 | `DELETE` | `/reviews/{id}` | Delete a specific review. | **Yes** |
+
+### Admin (Moderation)
+Requires the caller's email to be in the `ADMIN_EMAILS` allowlist (see Configuration).
+
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/admin/users?q=` | Search posters by email/username, with their review and bike counts. | **Yes (admin)** |
+| `DELETE` | `/admin/users/{id}` | Purge a malicious poster and all their content (reviews, ratings, created bikes, sessions) in one transaction. Deleting their bikes also removes other users' reviews on those bikes. The action is recorded in the `moderation_actions` audit table. | **Yes (admin)** |
 
 ### System
 | Method | Endpoint | Description | Auth Required |
@@ -120,6 +129,7 @@ Rotten Bikes uses a **magic link** system for authentication, removing the need 
 The mobile app features a built-in **QR/Barcode scanner**.
 - Scan a bike's QR code to instantly view its details and reviews.
 - If the bike doesn't exist in the system, you'll be prompted to create it immediately.
+- Scans are recorded server-side (`scan_events`): reviews submitted for a scanned bike are flagged `was_scanned = true` for moderation. Reviews submitted after manual ID entry are flagged `was_scanned = false` (a moderation signal, not proof of abuse — e.g. desktop web users cannot scan).
 
 ### 📊 Review System
 Rate bikes across multiple categories:
@@ -151,5 +161,6 @@ The application is configured via environment variables. Create a `.env` file (o
 | `EMAIL_FROM_ADDRESS` | Sender email address. | `hello@rottenbik.es` |
 | `HCAPTCHA_SECRET` | Secret key for hCaptcha verification. | Empty (skips verification in dev) |
 | `CORS_ALLOWED_ORIGINS` | Comma-separated allowlist of origins for the API (e.g. `https://rottenbik.es,https://app.rottenbik.es`). When unset, falls back to the local dev UI origins. | `http://localhost:8081,http://localhost:8080` |
+| `ADMIN_EMAILS` | Comma-separated allowlist of poster emails with admin (moderation) access: `GET /admin/users` and `DELETE /admin/users/{id}` (purge). Read on every request, so removing an email revokes admin access without a restart. When unset, the admin API is disabled. | Empty |
 | `UI_HOST` | Hostname for generating magic links. | `localhost` |
 | `UI_PORT` | Port for generating magic links. | `8081` |

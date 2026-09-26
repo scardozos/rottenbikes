@@ -12,6 +12,7 @@ export const AuthProvider = ({ children }) => {
     const [userToken, setUserToken] = useState(null);
     const [userId, setUserId] = useState(null);
     const [username, setUsername] = useState(null);
+    const [isAdmin, setIsAdmin] = useState(false);
     const [lastUsername, setLastUsername] = useState(null);
     const lastUsernameRef = useRef(null);
 
@@ -33,6 +34,7 @@ export const AuthProvider = ({ children }) => {
                 __DEV__ && console.log('[AuthContext] Fetched current user:', res.data);
                 setUserId(res.data.poster_id);
                 setUsername(res.data.username);
+                setIsAdmin(res.data.is_admin === true);
             }
         } catch (e) {
             console.log('[AuthContext] Failed to fetch current user:', e);
@@ -157,6 +159,7 @@ export const AuthProvider = ({ children }) => {
             setUserToken(null);
             setUserId(null);
             setUsername(null);
+            setIsAdmin(false);
             await storage.deleteItem('userToken');
             DeviceEventEmitter.emit('clear_session');
         }
@@ -203,6 +206,7 @@ export const AuthProvider = ({ children }) => {
         userToken,
         userId,
         username,
+        isAdmin,
         lastUsername
     }), [
         register,
@@ -215,6 +219,7 @@ export const AuthProvider = ({ children }) => {
         userToken,
         userId,
         username,
+        isAdmin,
         lastUsername
     ]);
 

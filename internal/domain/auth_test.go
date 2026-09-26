@@ -457,7 +457,7 @@ func TestDeletePoster(t *testing.T) {
 		mock.ExpectCommit()
 
 		store := NewService(NewStore(db))
-		// deleteContent = true
+		// deleteContent = true (service-level: no moderation audit)
 		err := store.DeletePoster(ctx, posterID, true)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
@@ -494,7 +494,7 @@ func TestDeletePoster(t *testing.T) {
 		mock.ExpectCommit()
 
 		store := NewService(NewStore(db))
-		// deleteContent = false
+		// deleteContent = false (service-level: no moderation audit)
 		err := store.DeletePoster(ctx, posterID, false)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)

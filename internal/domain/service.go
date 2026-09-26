@@ -18,13 +18,18 @@ type Service interface {
 	RevokeAPIToken(ctx context.Context, token string) error
 	DeletePoster(ctx context.Context, posterID int64, deleteContent bool) error
 
+	// Admin (moderation)
+	SearchPosters(ctx context.Context, query string, limit int) ([]PosterSummary, error)
+	PurgePoster(ctx context.Context, adminPosterID, targetPosterID int64) error
+
 	// Infrastructure
 	HealthCheck(ctx context.Context) error
 
 	// Bike
 	ListBikes(ctx context.Context, searchQuery, sortBy string, limit, offset int) ([]Bike, error)
-	CreateBike(ctx context.Context, numericalID string, hashID *string, isElectric bool, creatorID int64) (*Bike, error)
+	CreateBike(ctx context.Context, numericalID string, hashID *string, isElectric, wasScanned bool, creatorID int64) (*Bike, error)
 	GetBike(ctx context.Context, id string) (*Bike, error)
+	GetBikeByHash(ctx context.Context, hashID string, posterID int64) (*Bike, error)
 	GetBikeDetails(ctx context.Context, id string, limit, offset int) (*BikeDetails, error)
 	UpdateBike(ctx context.Context, id string, hashID *string, isElectric *bool, creatorID int64) error
 	DeleteBike(ctx context.Context, id string, creatorID int64) error
@@ -97,7 +102,26 @@ func (s *service) RevokeAPIToken(ctx context.Context, token string) error {
 }
 
 func (s *service) DeletePoster(ctx context.Context, posterID int64, deleteContent bool) error {
-	return s.store.DeletePoster(ctx, posterID, deleteContent)
+	return s.store.DeletePoster(ctx, posterID, deleteContent, nil)
+}
+
+// Admin (moderation)
+
+// SearchPosters finds posters by email or username substring (admin only).
+func (s *service) SearchPosters(ctx context.Context, query string, limit int) ([]PosterSummary, error) {
+	return s.store.SearchPosters(ctx, query, limit)
+}
+
+// PurgePoster removes a malicious poster and all their content (reviews,
+// ratings, created bikes, sessions) in one transaction, and writes an audit
+// row so the action is traceable. Deleting created bikes cascades to other
+// posters' reviews on those bikes.
+func (s *service) PurgePoster(ctx context.Context, adminPosterID, targetPosterID int64) error {
+	return s.store.DeletePoster(ctx, targetPosterID, true, &ModerationAudit{
+		AdminPosterID:  adminPosterID,
+		Action:         "purge_poster",
+		TargetPosterID: targetPosterID,
+	})
 }
 
 // Infrastructure
@@ -112,7 +136,7 @@ func (s *service) ListBikes(ctx context.Context, searchQuery, sortBy string, lim
 	return s.store.ListBikes(ctx, searchQuery, sortBy, limit, offset)
 }
 
-func (s *service) CreateBike(ctx context.Context, numericalID string, hashID *string, isElectric bool, creatorID int64) (*Bike, error) {
+func (s *service) CreateBike(ctx context.Context, numericalID string, hashID *string, isElectric, wasScanned bool, creatorID int64) (*Bike, error) {
 	// Validate numerical_id consistency (4-5 digits)
 	validID := true
 	if len(numericalID) < 4 || len(numericalID) > 5 {
@@ -138,7 +162,15 @@ func (s *service) CreateBike(ctx context.Context, numericalID string, hashID *st
 		return nil, fmt.Errorf("hash_id must be alphanumeric")
 	}
 
-	return s.store.CreateBike(ctx, numericalID, hashID, isElectric, creatorID)
+	return s.store.CreateBike(ctx, numericalID, hashID, isElectric, wasScanned, creatorID)
+}
+
+// GetBikeByHash looks up a bike by QR hash and records the scan server-side
+// (see Store.GetBikeByHash). wasScanned on bike creation is client-declared
+// (there is nothing to verify an unknown QR against), but scans of existing
+// bikes are recorded here and later prove a review came from a real scan.
+func (s *service) GetBikeByHash(ctx context.Context, hashID string, posterID int64) (*Bike, error) {
+	return s.store.GetBikeByHash(ctx, hashID, posterID)
 }
 
 func (s *service) GetBike(ctx context.Context, id string) (*Bike, error) {

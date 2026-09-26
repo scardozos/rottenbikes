@@ -1,5 +1,5 @@
 WITH paginated_reviews AS (
-	SELECT review_id, poster_id, comment, created_ts, bike_img
+	SELECT review_id, poster_id, comment, created_ts, bike_img, was_scanned
 	FROM reviews
 	WHERE bike_numerical_id = $1
 	ORDER BY review_id DESC
@@ -15,7 +15,8 @@ SELECT
 	r.created_ts,
 	rr.subcategory,
 	rr.score,
-	r.bike_img
+	r.bike_img,
+	r.was_scanned
 FROM paginated_reviews r
 LEFT JOIN posters p       ON p.poster_id = r.poster_id
 LEFT JOIN review_ratings rr ON rr.review_id = r.review_id

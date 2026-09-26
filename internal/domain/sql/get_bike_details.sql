@@ -1,6 +1,6 @@
 WITH bike_base AS (
     SELECT 
-        b.numerical_id, b.hash_id, b.is_electric, b.created_ts, b.updated_ts,
+        b.numerical_id, b.hash_id, b.is_electric, b.was_scanned, b.created_ts, b.updated_ts,
         ra.average_rating,
         (SELECT COUNT(*) FROM reviews r WHERE r.bike_numerical_id = b.numerical_id) as total_reviews
     FROM bikes b
@@ -17,6 +17,7 @@ reviews_list AS (
             'comment', r.comment,
             'created_at', r.created_ts,
             'bike_img', r.bike_img,
+            'was_scanned', r.was_scanned,
             'ratings', COALESCE((
                 SELECT json_object_agg(rr.subcategory, rr.score)
                 FROM review_ratings rr
@@ -33,7 +34,7 @@ reviews_list AS (
     LEFT JOIN posters p ON p.poster_id = r.poster_id
 )
 SELECT 
-    b.numerical_id, b.hash_id, b.is_electric, b.created_ts, b.updated_ts, b.average_rating, b.total_reviews,
+    b.numerical_id, b.hash_id, b.is_electric, b.was_scanned, b.created_ts, b.updated_ts, b.average_rating, b.total_reviews,
     r.reviews
 FROM bike_base b
 CROSS JOIN reviews_list r;

@@ -14,6 +14,7 @@ type contextKey string
 
 const contextKeyPosterID contextKey = "poster_id"
 const contextKeyUsername contextKey = "username"
+const contextKeyEmail contextKey = "email"
 const contextKeyAPIToken contextKey = "api_token"
 
 func posterIDFromContext(ctx context.Context) (int64, bool) {
@@ -32,6 +33,15 @@ func usernameFromContext(ctx context.Context) (string, bool) {
 	}
 	u, ok := v.(string)
 	return u, ok
+}
+
+func emailFromContext(ctx context.Context) (string, bool) {
+	v := ctx.Value(contextKeyEmail)
+	if v == nil {
+		return "", false
+	}
+	e, ok := v.(string)
+	return e, ok
 }
 
 func apiTokenFromContext(ctx context.Context) (string, bool) {
@@ -79,6 +89,7 @@ func (s *HTTPServer) middlewareAuth(next http.Handler) http.Handler {
 
 		ctx = context.WithValue(ctx, contextKeyPosterID, poster.PosterID)
 		ctx = context.WithValue(ctx, contextKeyUsername, poster.Username)
+		ctx = context.WithValue(ctx, contextKeyEmail, poster.Email)
 		ctx = context.WithValue(ctx, contextKeyAPIToken, token)
 
 		var target *ResponseWriter

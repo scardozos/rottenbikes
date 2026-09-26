@@ -329,7 +329,10 @@ func (s *Store) RevokeAPIToken(ctx context.Context, token string) error {
 	return nil
 }
 
-func (s *Store) DeletePoster(ctx context.Context, posterID int64, deleteContent bool) error {
+// DeletePoster removes a poster and (depending on deleteContent) their
+// content. When audit is non-nil, a moderation_actions row is written inside
+// the same transaction, so admin purges are logged atomically.
+func (s *Store) DeletePoster(ctx context.Context, posterID int64, deleteContent bool, audit *ModerationAudit) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
@@ -399,6 +402,13 @@ func (s *Store) DeletePoster(ctx context.Context, posterID int64, deleteContent 
 	// Always delete poster
 	if _, err := tx.ExecContext(ctx, deleteUserPosterQuery, posterID); err != nil {
 		return fmt.Errorf("delete poster: %w", err)
+	}
+
+	// Optional audit row, inside the same tx (admin purge path)
+	if audit != nil {
+		if _, err := tx.ExecContext(ctx, insertModerationActionQuery, audit.AdminPosterID, audit.Action, audit.TargetPosterID); err != nil {
+			return fmt.Errorf("insert moderation action: %w", err)
+		}
 	}
 
 	if err := tx.Commit(); err != nil {

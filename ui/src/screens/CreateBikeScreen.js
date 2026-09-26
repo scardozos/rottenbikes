@@ -8,11 +8,11 @@ import { useToast } from '../context/ToastContext';
 import { ThemeContext } from '../context/ThemeContext';
 import { LanguageContext } from '../context/LanguageContext';
 
-import { useSession } from '../context/SessionContext';
+import { useSession, BIKE_ORIGIN } from '../context/SessionContext';
 import { isValidNumericalId, isValidHashId } from '../utils/validation';
 
 const CreateBikeScreen = ({ route, navigation }) => {
-    const { initialNumericalId, initialHashId } = route.params || {};
+    const { initialNumericalId, initialHashId, origin } = route.params || {};
     const { showToast } = useToast();
     const { theme } = useContext(ThemeContext);
     const { t } = useContext(LanguageContext);
@@ -29,6 +29,10 @@ const CreateBikeScreen = ({ route, navigation }) => {
         if (initialNumericalId) setNumericalId(initialNumericalId);
         if (initialHashId) setHashId(initialHashId);
     }, [initialNumericalId, initialHashId]);
+
+    // 'scan' when this creation was triggered by scanning an unknown QR code;
+    // 'manual' (or anything else) when it came from manual ID entry.
+    const wasScanned = origin === BIKE_ORIGIN.SCAN;
 
     const handleSubmit = async () => {
         setLoading(true);
@@ -51,12 +55,13 @@ const CreateBikeScreen = ({ route, navigation }) => {
             const response = await api.post('/bikes', {
                 numerical_id: numId,
                 hash_id: hId === '' ? null : hId,
-                is_electric: isElectric
+                is_electric: isElectric,
+                was_scanned: wasScanned
             });
             showToast(t('success'), "success");
 
             // Validate the newly created bike so we can review it
-            validateBike(response.data.numerical_id);
+            validateBike(response.data.numerical_id, wasScanned ? BIKE_ORIGIN.SCAN : BIKE_ORIGIN.MANUAL);
 
             // Navigate to CreateReview (replacing CreateBike screen)
             navigation.replace('CreateReview', { bikeId: response.data.numerical_id });

@@ -298,9 +298,9 @@ func TestGetReviewWithRatingsByID(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		rows := sqlmock.NewRows([]string{
-			"review_id", "poster_id", "username", "bike_numerical_id", "comment", "created_ts", "subcategory", "score", "bike_img",
+			"review_id", "poster_id", "username", "bike_numerical_id", "comment", "created_ts", "subcategory", "score", "bike_img", "was_scanned",
 		}).
-			AddRow(reviewID, 1, "user1", "0101", "comment", time.Now(), "overall", 5, "img.jpg")
+			AddRow(reviewID, 1, "user1", "0101", "comment", time.Now(), "overall", 5, "img.jpg", true)
 
 		mock.ExpectQuery("SELECT .* FROM reviews r LEFT JOIN posters p .* LEFT JOIN review_ratings rr .*").
 			WithArgs(reviewID).
@@ -342,9 +342,9 @@ func TestListReviewsWithRatingsByBike(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		rows := sqlmock.NewRows([]string{
-			"review_id", "poster_id", "username", "bike_numerical_id", "comment", "created_ts", "subcategory", "score", "bike_img",
+			"review_id", "poster_id", "username", "bike_numerical_id", "comment", "created_ts", "subcategory", "score", "bike_img", "was_scanned",
 		}).
-			AddRow(int64(1), 1, "user1", bikeID, "comment", time.Now(), "overall", 5, "img.jpg")
+			AddRow(int64(1), 1, "user1", bikeID, "comment", time.Now(), "overall", 5, "img.jpg", true)
 
 		// Matching query regex
 		mock.ExpectQuery("WITH paginated_reviews AS").

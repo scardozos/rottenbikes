@@ -3,7 +3,7 @@ import { Text, View, StyleSheet, Platform, Alert, KeyboardAvoidingView, Pressabl
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { ThemeContext } from '../context/ThemeContext';
-import { useSession } from '../context/SessionContext';
+import { useSession, BIKE_ORIGIN } from '../context/SessionContext';
 import { LanguageContext } from '../context/LanguageContext';
 import { Scanner } from '../components/Scanner';
 import { isNumeric } from '../utils/validation';
@@ -45,7 +45,7 @@ const HomeScreen = ({ navigation }) => {
 
         try {
             await api.get(`/bikes/${bikeId}/details`);
-            validateBike(bikeId);
+            validateBike(bikeId, BIKE_ORIGIN.MANUAL);
             navigation.navigate('BikesList', { screen: 'BikeDetails', params: { bikeId } });
             setManualId('');
         } catch (e) {
@@ -53,7 +53,7 @@ const HomeScreen = ({ navigation }) => {
                 if (Platform.OS === 'web') {
                     const create = window.confirm(`Bike #${bikeId} not found. Would you like to create it?`);
                     if (create) {
-                        navigation.navigate('BikesList', { screen: 'CreateBike', params: { initialNumericalId: bikeId } });
+                        navigation.navigate('BikesList', { screen: 'CreateBike', params: { initialNumericalId: bikeId, origin: BIKE_ORIGIN.MANUAL } });
                     }
                 } else {
                     Alert.alert(
@@ -63,7 +63,7 @@ const HomeScreen = ({ navigation }) => {
                             { text: "Cancel", style: "cancel" },
                             {
                                 text: "Create",
-                                onPress: () => navigation.navigate('BikesList', { screen: 'CreateBike', params: { initialNumericalId: bikeId } })
+                                onPress: () => navigation.navigate('BikesList', { screen: 'CreateBike', params: { initialNumericalId: bikeId, origin: BIKE_ORIGIN.MANUAL } })
                             }
                         ]
                     );
@@ -80,20 +80,27 @@ const HomeScreen = ({ navigation }) => {
         isScanning.current = true;
 
         try {
-            const response = await api.get('/bikes');
-            const bikes = response.data || [];
-            const bike = bikes.find(b => b.hash_id === data);
+            // Lookup by QR hash via the scan endpoint: the server records the
+            // scan, which later marks reviews submitted for this bike as
+            // scan-backed (was_scanned) for moderation.
+            const response = await api.get(`/scan/${encodeURIComponent(data)}`);
+            const bike = response.data;
 
-            if (bike) {
+            if (bike && bike.numerical_id) {
                 showToast(t('found_bike', { id: bike.numerical_id }), "success");
                 isScanning.current = false;
-                validateBike(bike.numerical_id);
+                validateBike(bike.numerical_id, BIKE_ORIGIN.SCAN);
                 navigation.navigate('BikesList', { screen: 'BikeDetails', params: { bikeId: bike.numerical_id } });
             } else {
+                isScanning.current = false;
+            }
+        } catch (e) {
+            if (e.response && e.response.status === 404) {
+                // Unknown QR: offer to create the bike, flagged as scan-born.
                 if (Platform.OS === 'web') {
                     const create = window.confirm(`No bike found with Hash ID: ${data}. Create it?`);
                     if (create) {
-                        navigation.navigate('BikesList', { screen: 'CreateBike', params: { initialHashId: data } });
+                        navigation.navigate('BikesList', { screen: 'CreateBike', params: { initialHashId: data, origin: BIKE_ORIGIN.SCAN } });
                     } else {
                         isScanning.current = false;
                     }
@@ -103,15 +110,15 @@ const HomeScreen = ({ navigation }) => {
                         `No bike found with Hash ID: ${data}. Would you like to create it?`,
                         [
                             { text: "Cancel", onPress: () => { isScanning.current = false; }, style: "cancel" },
-                            { text: "Create", onPress: () => { navigation.navigate('BikesList', { screen: 'CreateBike', params: { initialHashId: data } }); } }
+                            { text: "Create", onPress: () => navigation.navigate('BikesList', { screen: 'CreateBike', params: { initialHashId: data, origin: BIKE_ORIGIN.SCAN } }) }
                         ]
                     );
                 }
+            } else {
+                const errMsg = e.response?.data?.error || t('scan_lookup_failed');
+                showToast(errMsg, "error");
+                isScanning.current = false;
             }
-        } catch (e) {
-            const errMsg = e.response?.data?.error || t('scan_lookup_failed');
-            showToast(errMsg, "error");
-            isScanning.current = false;
         }
     };
 

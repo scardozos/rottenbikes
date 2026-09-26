@@ -61,6 +61,10 @@ func New(service domain.Service, sender email.EmailSender, addr string) (*HTTPSe
 	mux.HandleFunc("DELETE /auth/user", s.middlewareAuth(http.HandlerFunc(s.handleDeletePoster)).ServeHTTP)
 	mux.HandleFunc("GET /users/me/reviews", s.middlewareAuth(http.HandlerFunc(s.handleListMyReviews)).ServeHTTP)
 
+	// Admin (moderation) endpoints
+	mux.HandleFunc("GET /admin/users", s.middlewareAdminAuth(http.HandlerFunc(s.handleAdminSearchPosters)).ServeHTTP)
+	mux.HandleFunc("DELETE /admin/users/{id}", s.middlewareAdminAuth(http.HandlerFunc(s.handleAdminPurgePoster)).ServeHTTP)
+
 	// /bikes
 	mux.HandleFunc("GET /bikes", s.handleListBikes)
 	mux.HandleFunc("POST /bikes", s.middlewareAuth(http.HandlerFunc(s.handleCreateBike)).ServeHTTP)
@@ -69,6 +73,12 @@ func New(service domain.Service, sender email.EmailSender, addr string) (*HTTPSe
 	mux.HandleFunc("GET /bikes/{id}", s.handleGetBike)
 	mux.HandleFunc("PUT /bikes/{id}", s.middlewareAuth(http.HandlerFunc(s.handleUpdateBike)).ServeHTTP)
 	mux.HandleFunc("DELETE /bikes/{id}", s.middlewareAuth(http.HandlerFunc(s.handleDeleteBike)).ServeHTTP)
+
+	// /scan/{hash} (QR scan lookup; auth required so the scan is recorded).
+	// Not under /bikes/: a /bikes/by-hash/{hash} route would conflict with the
+	// existing /bikes/{id}/reviews pattern in ServeMux (overlapping,
+	// incomparable specificity), so the scan lookup gets its own namespace.
+	mux.HandleFunc("GET /scan/{hash}", s.middlewareAuth(http.HandlerFunc(s.handleGetBikeByHash)).ServeHTTP)
 
 	// /bikes/{id}/...
 	mux.HandleFunc("POST /bikes/{id}/reviews", s.middlewareAuth(http.HandlerFunc(s.handleCreateBikeReview)).ServeHTTP)

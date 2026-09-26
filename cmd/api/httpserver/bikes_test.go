@@ -99,6 +99,76 @@ func TestHandleListBikes(t *testing.T) {
 	})
 }
 
+func TestHandleGetBikeByHash(t *testing.T) {
+	hashID := "qrhash123"
+
+	mockService := &MockService{
+		GetPosterByAPITokenFunc: func(ctx context.Context, token string) (*domain.AuthPoster, error) {
+			return &domain.AuthPoster{PosterID: 1, Email: "test@example.com"}, nil
+		},
+	}
+
+	srv, err := New(mockService, &email.NoopSender{}, ":8080")
+	if err != nil {
+		t.Fatalf("failed to create server: %v", err)
+	}
+
+	t.Run("success", func(t *testing.T) {
+		mockService.GetBikeByHashFunc = func(ctx context.Context, hash string, posterID int64) (*domain.Bike, error) {
+			if hash != hashID {
+				t.Errorf("expected hash %s, got %s", hashID, hash)
+			}
+			if posterID != 1 {
+				t.Errorf("expected poster id 1, got %d", posterID)
+			}
+			return &domain.Bike{
+				NumericalID: "0123",
+				HashID:      &hashID,
+				WasScanned:  false,
+				CreatedAt:   time.Now(),
+				UpdatedAt:   time.Now(),
+			}, nil
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/scan/"+hashID, nil)
+		req.Header.Set("Authorization", "Bearer valid_token")
+		w := httptest.NewRecorder()
+
+		srv.server.Handler.ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("expected status 200, got %d", w.Code)
+		}
+	})
+
+	t.Run("not_found", func(t *testing.T) {
+		mockService.GetBikeByHashFunc = func(ctx context.Context, hash string, posterID int64) (*domain.Bike, error) {
+			return nil, sql.ErrNoRows
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/scan/unknownhash", nil)
+		req.Header.Set("Authorization", "Bearer valid_token")
+		w := httptest.NewRecorder()
+
+		srv.server.Handler.ServeHTTP(w, req)
+
+		if w.Code != http.StatusNotFound {
+			t.Errorf("expected status 404, got %d", w.Code)
+		}
+	})
+
+	t.Run("unauthorized", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/scan/"+hashID, nil)
+		w := httptest.NewRecorder()
+
+		srv.server.Handler.ServeHTTP(w, req)
+
+		if w.Code != http.StatusUnauthorized {
+			t.Errorf("expected status 401, got %d", w.Code)
+		}
+	})
+}
+
 func TestHandleCreateBike(t *testing.T) {
 	mockService := &MockService{
 		GetPosterByAPITokenFunc: func(ctx context.Context, token string) (*domain.AuthPoster, error) {
@@ -107,11 +177,12 @@ func TestHandleCreateBike(t *testing.T) {
 				Email:    "test@example.com",
 			}, nil
 		},
-		CreateBikeFunc: func(ctx context.Context, numericalID string, hashID *string, isElectric bool, creatorID int64) (*domain.Bike, error) {
+		CreateBikeFunc: func(ctx context.Context, numericalID string, hashID *string, isElectric, wasScanned bool, creatorID int64) (*domain.Bike, error) {
 			return &domain.Bike{
 				NumericalID: numericalID,
 				HashID:      hashID,
 				IsElectric:  isElectric,
+				WasScanned:  wasScanned,
 				CreatedAt:   time.Now(),
 				UpdatedAt:   time.Now(),
 			}, nil
@@ -177,7 +248,7 @@ func TestHandleCreateBike(t *testing.T) {
 	})
 
 	t.Run("conflict_numerical_id", func(t *testing.T) {
-		mockService.CreateBikeFunc = func(ctx context.Context, numericalID string, hashID *string, isElectric bool, creatorID int64) (*domain.Bike, error) {
+		mockService.CreateBikeFunc = func(ctx context.Context, numericalID string, hashID *string, isElectric, wasScanned bool, creatorID int64) (*domain.Bike, error) {
 			return nil, &pq.Error{Code: "23505", Constraint: "bikes_pkey"}
 		}
 
@@ -197,7 +268,7 @@ func TestHandleCreateBike(t *testing.T) {
 	})
 
 	t.Run("internal_error", func(t *testing.T) {
-		mockService.CreateBikeFunc = func(ctx context.Context, numericalID string, hashID *string, isElectric bool, creatorID int64) (*domain.Bike, error) {
+		mockService.CreateBikeFunc = func(ctx context.Context, numericalID string, hashID *string, isElectric, wasScanned bool, creatorID int64) (*domain.Bike, error) {
 			return nil, errors.New("db error")
 		}
 

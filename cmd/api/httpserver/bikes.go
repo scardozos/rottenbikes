@@ -49,6 +49,10 @@ type createBikeRequest struct {
 	NumericalID string  `json:"numerical_id"`
 	HashID      *string `json:"hash_id"`
 	IsElectric  bool    `json:"is_electric"`
+	// WasScanned is client-declared: true when the creation flow started from
+	// an actual QR scan of an unknown bike (there is nothing to verify an
+	// unknown QR against server-side). Used as a moderation signal only.
+	WasScanned bool `json:"was_scanned"`
 }
 
 // POST /bikes → create a bike
@@ -105,7 +109,7 @@ func (s *HTTPServer) handleCreateBike(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
 
-	bike, err := s.service.CreateBike(ctx, numericalID, req.HashID, req.IsElectric, creatorID)
+	bike, err := s.service.CreateBike(ctx, numericalID, req.HashID, req.IsElectric, req.WasScanned, creatorID)
 	if err != nil {
 		var pqErr *pq.Error
 		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
@@ -203,6 +207,40 @@ func (s *HTTPServer) handleGetBike(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		zerolog.Ctx(r.Context()).Error().Err(err).Str("bike_id", bikeID).Msg("get bike error")
+		s.sendError(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(bike)
+}
+
+// GET /scan/{hash} → single bike looked up by its QR hash_id.
+// Auth required: the lookup records a server-side scan event for the poster,
+// which is what later proves a review came from an actual scan.
+func (s *HTTPServer) handleGetBikeByHash(w http.ResponseWriter, r *http.Request) {
+	hashID := r.PathValue("hash")
+	if !isAlphanumeric(hashID) {
+		s.sendError(w, "invalid hash id", http.StatusBadRequest)
+		return
+	}
+
+	posterID, ok := posterIDFromContext(r.Context())
+	if !ok {
+		s.sendError(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel()
+
+	bike, err := s.service.GetBikeByHash(ctx, hashID, posterID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			s.sendError(w, "bike not found", http.StatusNotFound)
+			return
+		}
+		zerolog.Ctx(r.Context()).Error().Err(err).Str("hash_id", hashID).Msg("get bike by hash error")
 		s.sendError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}

@@ -49,6 +49,7 @@ type ReviewWithRatings struct {
 	CreatedAt       time.Time                   `json:"created_at"`
 	Ratings         map[RatingSubcategory]int16 `json:"ratings"`
 	BikeImg         *string                     `json:"bike_img"`
+	WasScanned      bool                        `json:"was_scanned"`
 }
 
 type reviewRatingRow struct {
@@ -61,6 +62,7 @@ type reviewRatingRow struct {
 	Subcategory     sql.NullString
 	Score           sql.NullInt16
 	BikeImg         *string
+	WasScanned      bool
 }
 
 // all bikes
@@ -102,6 +104,7 @@ func buildReviewWithRatingsFromRows(rows *sql.Rows) ([]ReviewWithRatings, error)
 			&row.Subcategory,
 			&row.Score,
 			&row.BikeImg,
+			&row.WasScanned,
 		); err != nil {
 			return nil, err
 		}
@@ -117,6 +120,7 @@ func buildReviewWithRatingsFromRows(rows *sql.Rows) ([]ReviewWithRatings, error)
 				CreatedAt:       row.CreatedAt,
 				Ratings:         make(map[RatingSubcategory]int16),
 				BikeImg:         row.BikeImg,
+				WasScanned:      row.WasScanned,
 			}
 			reviewsMap[row.ReviewID] = r
 			order = append(order, row.ReviewID)
