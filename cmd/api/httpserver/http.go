@@ -64,6 +64,7 @@ func New(service domain.Service, sender email.EmailSender, addr string) (*HTTPSe
 	// Admin (moderation) endpoints
 	mux.HandleFunc("GET /admin/users", s.middlewareAdminAuth(http.HandlerFunc(s.handleAdminSearchPosters)).ServeHTTP)
 	mux.HandleFunc("DELETE /admin/users/{id}", s.middlewareAdminAuth(http.HandlerFunc(s.handleAdminPurgePoster)).ServeHTTP)
+	mux.HandleFunc("DELETE /admin/bikes/{id}", s.middlewareAdminAuth(http.HandlerFunc(s.handleAdminDeleteBike)).ServeHTTP)
 
 	// /bikes
 	mux.HandleFunc("GET /bikes", s.handleListBikes)
@@ -72,7 +73,6 @@ func New(service domain.Service, sender email.EmailSender, addr string) (*HTTPSe
 	// /bikes/{id}
 	mux.HandleFunc("GET /bikes/{id}", s.handleGetBike)
 	mux.HandleFunc("PUT /bikes/{id}", s.middlewareAuth(http.HandlerFunc(s.handleUpdateBike)).ServeHTTP)
-	mux.HandleFunc("DELETE /bikes/{id}", s.middlewareAuth(http.HandlerFunc(s.handleDeleteBike)).ServeHTTP)
 
 	// /scan/{hash} (QR scan lookup; auth required so the scan is recorded).
 	// Not under /bikes/: a /bikes/by-hash/{hash} route would conflict with the

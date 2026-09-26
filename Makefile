@@ -51,6 +51,11 @@ admin-demote:
 admin-list:
 	@if [ -n "$(ENV_FILE)" ]; then export $$(grep -v '^#' $(ENV_FILE) | xargs); fi; go run ./cmd/adminctl list
 
+admin-delete-bike:
+	@if [ -z "$(BIKE)" ]; then echo "Usage: make admin-delete-bike BIKE=<numerical_id> [ENV_FILE=<env_file>]"; exit 1; fi
+	@if [ -n "$(ENV_FILE)" ]; then export $$(grep -v '^#' $(ENV_FILE) | xargs); fi; go run ./cmd/adminctl delete-bike $(BIKE)
+
+
 db-reset:
 	@if [ -z "$(ENV)" ]; then echo "Usage: make db-reset ENV=local/dev/prod"; exit 1; fi
 	@echo "Resetting database (drop + re-run migrations)..."

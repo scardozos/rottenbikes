@@ -89,3 +89,34 @@ func (s *HTTPServer) handleAdminPurgePoster(w http.ResponseWriter, r *http.Reque
 	zerolog.Ctx(r.Context()).Info().Int64("admin_poster_id", adminID).Int64("target_poster_id", targetID).Msg("poster purged by admin")
 	w.WriteHeader(http.StatusNoContent)
 }
+
+// DELETE /admin/bikes/{id} → delete any bike as an admin
+func (s *HTTPServer) handleAdminDeleteBike(w http.ResponseWriter, r *http.Request) {
+	bikeID := r.PathValue("id")
+	if !isNumeric(bikeID) {
+		s.sendError(w, "invalid bike id", http.StatusBadRequest)
+		return
+	}
+
+	adminID, ok := posterIDFromContext(r.Context())
+	if !ok {
+		s.sendError(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	if err := s.service.AdminDeleteBike(ctx, adminID, bikeID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			s.sendError(w, "bike not found", http.StatusNotFound)
+			return
+		}
+		zerolog.Ctx(r.Context()).Error().Err(err).Str("bike_id", bikeID).Int64("admin_poster_id", adminID).Msg("admin delete bike error")
+		s.sendError(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	zerolog.Ctx(r.Context()).Info().Int64("admin_poster_id", adminID).Str("bike_id", bikeID).Msg("bike deleted by admin")
+	w.WriteHeader(http.StatusNoContent)
+}

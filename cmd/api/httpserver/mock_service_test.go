@@ -16,6 +16,7 @@ type MockService struct {
 	DeletePosterFunc                 func(ctx context.Context, posterID int64, deleteContent bool) error
 	SearchPostersFunc                func(ctx context.Context, query string, limit int) ([]domain.PosterSummary, error)
 	PurgePosterFunc                  func(ctx context.Context, adminPosterID, targetPosterID int64) error
+	AdminDeleteBikeFunc              func(ctx context.Context, adminPosterID int64, bikeID string) error
 	ListBikesFunc                    func(ctx context.Context, searchQuery, sortBy string, limit, offset int) ([]domain.Bike, error)
 	CreateBikeFunc                   func(ctx context.Context, numericalID string, hashID *string, isElectric, wasScanned bool, creatorID int64) (*domain.Bike, error)
 	GetBikeFunc                      func(ctx context.Context, id string) (*domain.Bike, error)
@@ -77,6 +78,13 @@ func (m *MockService) SearchPosters(ctx context.Context, query string, limit int
 func (m *MockService) PurgePoster(ctx context.Context, adminPosterID, targetPosterID int64) error {
 	if m.PurgePosterFunc != nil {
 		return m.PurgePosterFunc(ctx, adminPosterID, targetPosterID)
+	}
+	return nil
+}
+
+func (m *MockService) AdminDeleteBike(ctx context.Context, adminPosterID int64, bikeID string) error {
+	if m.AdminDeleteBikeFunc != nil {
+		return m.AdminDeleteBikeFunc(ctx, adminPosterID, bikeID)
 	}
 	return nil
 }

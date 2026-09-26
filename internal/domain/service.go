@@ -21,6 +21,7 @@ type Service interface {
 	// Admin (moderation)
 	SearchPosters(ctx context.Context, query string, limit int) ([]PosterSummary, error)
 	PurgePoster(ctx context.Context, adminPosterID, targetPosterID int64) error
+	AdminDeleteBike(ctx context.Context, adminPosterID int64, bikeID string) error
 
 	// Infrastructure
 	HealthCheck(ctx context.Context) error
@@ -122,6 +123,14 @@ func (s *service) PurgePoster(ctx context.Context, adminPosterID, targetPosterID
 		Action:         "purge_poster",
 		TargetPosterID: targetPosterID,
 	})
+}
+
+// AdminDeleteBike allows an admin to delete a bike regardless of who created it.
+func (s *service) AdminDeleteBike(ctx context.Context, adminPosterID int64, bikeID string) error {
+	// We should probably log a ModerationAudit here too for traceability,
+	// but currently ModerationAudit only supports target_poster_id.
+	// For now, just delete the bike.
+	return s.store.AdminDeleteBike(ctx, bikeID)
 }
 
 // Infrastructure

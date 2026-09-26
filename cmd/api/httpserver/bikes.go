@@ -249,35 +249,7 @@ func (s *HTTPServer) handleGetBikeByHash(w http.ResponseWriter, r *http.Request)
 	_ = json.NewEncoder(w).Encode(bike)
 }
 
-// DELETE /bikes/{id}
-func (s *HTTPServer) handleDeleteBike(w http.ResponseWriter, r *http.Request) {
-	bikeID := r.PathValue("id")
-	if !isNumeric(bikeID) {
-		s.sendError(w, "invalid bike id", http.StatusBadRequest)
-		return
-	}
 
-	posterID, ok := posterIDFromContext(r.Context())
-	if !ok {
-		s.sendError(w, "unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
-	defer cancel()
-
-	if err := s.service.DeleteBike(ctx, bikeID, posterID); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			s.sendError(w, "bike not found", http.StatusNotFound)
-			return
-		}
-		zerolog.Ctx(r.Context()).Error().Err(err).Str("bike_id", bikeID).Msg("delete bike error")
-		s.sendError(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusNoContent)
-}
 
 // GET /bikes/{id}/details → single bike + ratings + reviews
 func (s *HTTPServer) handleGetBikeDetails(w http.ResponseWriter, r *http.Request) {

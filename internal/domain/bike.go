@@ -24,6 +24,8 @@ var (
 	updateBikeQuery string
 	//go:embed sql/delete_bike.sql
 	deleteBikeQuery string
+	//go:embed sql/admin_delete_bike.sql
+	adminDeleteBikeQuery string
 	//go:embed sql/count_reviews_by_bike.sql
 	countReviewsByBikeQuery string
 	//go:embed sql/get_bike_details.sql
@@ -203,6 +205,22 @@ func (s *Store) UpdateBike(ctx context.Context, id string, hashID *string, isEle
 // missing bike) yields sql.ErrNoRows.
 func (s *Store) DeleteBike(ctx context.Context, id string, creatorID int64) error {
 	res, err := s.db.ExecContext(ctx, deleteBikeQuery, id, creatorID)
+	if err != nil {
+		return err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+// AdminDeleteBike deletes a bike without checking creator ownership.
+func (s *Store) AdminDeleteBike(ctx context.Context, id string) error {
+	res, err := s.db.ExecContext(ctx, adminDeleteBikeQuery, id)
 	if err != nil {
 		return err
 	}
