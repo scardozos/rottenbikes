@@ -244,4 +244,21 @@ export default {
     error_boundary_title: "Vaja! Alguna cosa ha sortit malament.",
     camera_secure_context_error: "La càmera requereix un context segur.",
     scanner_not_loaded_error: "Llibreria d'escàner no carregada.",
+
+    // Onboarding
+    onboarding_title_1: "Benvingut a RottenBikes!",
+    onboarding_body_1: "En escanejar el codi QR d'una bici es llegeix el seu Hash ID únic.",
+    onboarding_pro_tip: "Consell: si introdueixes manualment l'ID numèric de 4 o 5 dígits que hi ha al quadre de la bici, ajudes tothom a identificar-la molt més fàcilment.",
+    onboarding_title_2: "Com funciona",
+    onboarding_body_2a: "Quan escanegis una bici, veuràs el seu historial si ja és al nostre sistema.",
+    onboarding_body_2b: "Si és nova, se't demanarà afegir-la primer. Un cop afegida (per tu o per una altra persona), podràs enviar les teves pròpies ressenyes!",
+    onboarding_title_3: "Criteris de Valoració",
+    onboarding_breaks_desc: "Com de responsius i segurs se senten els frens.",
+    onboarding_seat_desc: "El selló s'ajusta fàcilment i està intacte?",
+    onboarding_sturdiness_desc: "La bici fa sorolls? Les rodes estan ben alineades?",
+    onboarding_power_desc: "El motor dóna bona assistència (bicis elèctriques) o la cadena transmet la potència suaument (bicis mecàniques)?",
+    onboarding_pedals_desc: "Els pedals i la cadena funcionen suaument?",
+    onboarding_next: "Següent",
+    onboarding_get_started: "Comencem!",
+    onboarding_skip: "Ometre",
 };

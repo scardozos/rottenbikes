@@ -244,4 +244,21 @@ export default {
     error_boundary_title: "¡Vaya! Algo salió mal.",
     camera_secure_context_error: "La cámara requiere un contexto seguro.",
     scanner_not_loaded_error: "Librería de escáner no cargada.",
+
+    // Onboarding
+    onboarding_title_1: "¡Bienvenido a RottenBikes!",
+    onboarding_body_1: "Al escanear el código QR de una bici se lee su Hash ID único.",
+    onboarding_pro_tip: "Consejo: si introduces manualmente el ID numérico de 4 o 5 dígitos que está en el cuadro de la bici, ayudas a todos a identificarla mucho más fácilmente.",
+    onboarding_title_2: "Cómo funciona",
+    onboarding_body_2a: "Cuando escaneas una bici, verás su historial si ya está en nuestro sistema.",
+    onboarding_body_2b: "Si es nueva, se te pedirá añadirla primero. ¡Una vez añadida (por ti u otra persona), podrás enviar tus propias reseñas!",
+    onboarding_title_3: "Criterios de Valoración",
+    onboarding_breaks_desc: "Lo responsivos y seguros que se sienten los frenos.",
+    onboarding_seat_desc: "¿El asiento se ajusta fácilmente y está intacto?",
+    onboarding_sturdiness_desc: "¿La bici traquetea? ¿Las ruedas están alineadas?",
+    onboarding_power_desc: "¿El motor da buena asistencia (bicis eléctricas) o la cadena transmite la potencia suavemente (bicis mecánicas)?",
+    onboarding_pedals_desc: "¿Los pedales y la cadena funcionan suavemente?",
+    onboarding_next: "Siguiente",
+    onboarding_get_started: "¡Empezar!",
+    onboarding_skip: "Saltar",
 };
