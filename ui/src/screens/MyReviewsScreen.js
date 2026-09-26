@@ -128,6 +128,7 @@ const MyReviewsScreen = ({ navigation }) => {
     return (
         <View style={styles.container}>
             <FlatList
+                style={{ width: '100%' }}
                 data={reviews}
                 keyExtractor={(item) => item.review_id.toString()}
                 renderItem={renderItem}
@@ -202,6 +203,9 @@ const createStyles = (theme) => StyleSheet.create({
         paddingHorizontal: theme?.metrics?.spacing?.lg || 16,
         paddingTop: theme?.metrics?.spacing?.md || 12,
         paddingBottom: theme?.metrics?.spacing?.xxl || 32,
+        maxWidth: 800,
+        width: '100%',
+        alignSelf: 'center',
     },
     footerAction: {
         marginVertical: 15,
