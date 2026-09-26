@@ -12,7 +12,7 @@ endif
 
 MIGRATIONS_DIR := internal/db/migrations
 
-.PHONY: db-up db-migrate-up db-migrate-down db-reset run test test-go test-ui build lint fmt build-and-push
+.PHONY: db-up db-migrate-up db-migrate-down db-reset run test test-go test-ui build lint fmt build-and-push admin-promote admin-demote admin-list
 
 db-up:
 	@echo "Starting local PostgreSQL..."
@@ -38,6 +38,18 @@ reset-login-dev:
 reset-login-prd:
 	@if [ -z "$(USER)" ]; then echo "Usage: make reset-login-prd USER=<email_or_username>"; exit 1; fi
 	@.scripts/reset_login_attempts.sh $(USER) .env.prod
+
+# Admin role management (out-of-band: admin identity lives only in the DB)
+admin-promote:
+	@if [ -z "$(USER)" ]; then echo "Usage: make admin-promote USER=<email_or_username>"; exit 1; fi
+	@go run ./cmd/adminctl promote $(USER)
+
+admin-demote:
+	@if [ -z "$(USER)" ]; then echo "Usage: make admin-demote USER=<email_or_username>"; exit 1; fi
+	@go run ./cmd/adminctl demote $(USER)
+
+admin-list:
+	@go run ./cmd/adminctl list
 
 db-reset:
 	@if [ -z "$(ENV)" ]; then echo "Usage: make db-reset ENV=local/dev/prod"; exit 1; fi

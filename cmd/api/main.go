@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -17,6 +16,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/scardozos/rottenbikes/cmd/api/email"
 	"github.com/scardozos/rottenbikes/cmd/api/httpserver"
+	"github.com/scardozos/rottenbikes/internal/dbconfig"
 	"github.com/scardozos/rottenbikes/internal/domain"
 )
 
@@ -67,17 +67,7 @@ func main() {
 		cfg.APIPort = os.Getenv("API_PORT")
 	}
 
-	dsn := os.Getenv("DATABASE_URL")
-
-	if dsn == "" {
-		user := getEnv("DB_USER", "rottenbikes")
-		pass := getEnv("DB_PASSWORD", "rottenbikes")
-		host := getEnv("DB_HOST", "localhost")
-		port := getEnv("DB_PORT", "5432")
-		dbname := getEnv("DB_NAME", "rottenbikes")
-		sslmode := getEnv("DB_SSLMODE", "disable")
-		dsn = fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s", user, pass, host, port, dbname, sslmode)
-	}
+	dsn := dbconfig.DSN()
 
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {

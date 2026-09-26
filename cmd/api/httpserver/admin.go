@@ -2,7 +2,9 @@ package httpserver
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
@@ -71,6 +73,14 @@ func (s *HTTPServer) handleAdminPurgePoster(w http.ResponseWriter, r *http.Reque
 	defer cancel()
 
 	if err := s.service.PurgePoster(ctx, adminID, targetID); err != nil {
+		if errors.Is(err, domain.ErrCannotPurgeAdmin) {
+			s.sendError(w, "cannot purge an admin; demote them first", http.StatusBadRequest)
+			return
+		}
+		if errors.Is(err, sql.ErrNoRows) {
+			s.sendError(w, "poster not found", http.StatusNotFound)
+			return
+		}
 		zerolog.Ctx(r.Context()).Error().Err(err).Int64("target_poster_id", targetID).Msg("admin purge poster error")
 		s.sendError(w, "internal server error", http.StatusInternalServerError)
 		return

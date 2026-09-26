@@ -114,6 +114,8 @@ export default {
     admin_no_results: 'No users found',
     admin_user_stats: '{reviews} reviews · {bikes} bikes',
     admin_purge: 'Purge user',
+    admin_badge: 'Admin',
+    admin_protected: 'Protected',
     admin_purge_confirm_title: 'Purge this user?',
     admin_purge_confirm_desc: 'This permanently deletes "{username}" ({reviews} reviews, {bikes} created bikes). Reviews by other users on their bikes will also be removed. This action cannot be undone.',
     admin_purge_success: 'User purged successfully.',

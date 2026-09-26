@@ -2,6 +2,7 @@ package httpserver
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -13,19 +14,17 @@ import (
 )
 
 func TestHandleAdminSearchPosters(t *testing.T) {
-	t.Setenv("ADMIN_EMAILS", "admin@example.com")
-
 	mockService := &MockService{
 		GetPosterByAPITokenFunc: func(ctx context.Context, token string) (*domain.AuthPoster, error) {
 			// The bearer decides whether the caller is an admin.
 			if token == "admin_token" {
-				return &domain.AuthPoster{PosterID: 1, Email: "admin@example.com"}, nil
+				return &domain.AuthPoster{PosterID: 1, Email: "admin@example.com", Role: domain.PosterRoleAdmin}, nil
 			}
-			return &domain.AuthPoster{PosterID: 2, Email: "user@example.com"}, nil
+			return &domain.AuthPoster{PosterID: 2, Email: "user@example.com", Role: domain.PosterRoleUser}, nil
 		},
 		SearchPostersFunc: func(ctx context.Context, query string, limit int) ([]domain.PosterSummary, error) {
 			return []domain.PosterSummary{
-				{PosterID: 2, Username: "troll", Email: "troll@example.com", CreatedAt: time.Now(), ReviewCount: 12, BikeCount: 3},
+				{PosterID: 2, Username: "troll", Email: "troll@example.com", Role: domain.PosterRoleUser, CreatedAt: time.Now(), ReviewCount: 12, BikeCount: 3},
 			}, nil
 		},
 	}
@@ -52,6 +51,9 @@ func TestHandleAdminSearchPosters(t *testing.T) {
 		}
 		if len(posters) != 1 || posters[0].Username != "troll" {
 			t.Errorf("expected 1 poster (troll), got %+v", posters)
+		}
+		if posters[0].Role != domain.PosterRoleUser {
+			t.Errorf("expected role user, got %s", posters[0].Role)
 		}
 	})
 
@@ -80,17 +82,15 @@ func TestHandleAdminSearchPosters(t *testing.T) {
 }
 
 func TestHandleAdminPurgePoster(t *testing.T) {
-	t.Setenv("ADMIN_EMAILS", "admin@example.com")
-
 	var purgedTarget int64
 	var called bool
 
 	mockService := &MockService{
 		GetPosterByAPITokenFunc: func(ctx context.Context, token string) (*domain.AuthPoster, error) {
 			if token == "admin_token" {
-				return &domain.AuthPoster{PosterID: 1, Email: "admin@example.com"}, nil
+				return &domain.AuthPoster{PosterID: 1, Email: "admin@example.com", Role: domain.PosterRoleAdmin}, nil
 			}
-			return &domain.AuthPoster{PosterID: 2, Email: "user@example.com"}, nil
+			return &domain.AuthPoster{PosterID: 2, Email: "user@example.com", Role: domain.PosterRoleUser}, nil
 		},
 		PurgePosterFunc: func(ctx context.Context, adminPosterID, targetPosterID int64) error {
 			called = true
@@ -122,7 +122,44 @@ func TestHandleAdminPurgePoster(t *testing.T) {
 		}
 	})
 
+	t.Run("admin_target_rejected", func(t *testing.T) {
+		mockService.PurgePosterFunc = func(ctx context.Context, adminPosterID, targetPosterID int64) error {
+			return domain.ErrCannotPurgeAdmin
+		}
+
+		req := httptest.NewRequest(http.MethodDelete, "/admin/users/9", nil)
+		req.Header.Set("Authorization", "Bearer admin_token")
+		w := httptest.NewRecorder()
+
+		srv.server.Handler.ServeHTTP(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected status 400 for admin target, got %d", w.Code)
+		}
+	})
+
+	t.Run("missing_target", func(t *testing.T) {
+		mockService.PurgePosterFunc = func(ctx context.Context, adminPosterID, targetPosterID int64) error {
+			return sql.ErrNoRows
+		}
+
+		req := httptest.NewRequest(http.MethodDelete, "/admin/users/404", nil)
+		req.Header.Set("Authorization", "Bearer admin_token")
+		w := httptest.NewRecorder()
+
+		srv.server.Handler.ServeHTTP(w, req)
+
+		if w.Code != http.StatusNotFound {
+			t.Errorf("expected status 404 for missing target, got %d", w.Code)
+		}
+	})
+
 	t.Run("self_purge_rejected", func(t *testing.T) {
+		mockService.PurgePosterFunc = func(ctx context.Context, adminPosterID, targetPosterID int64) error {
+			t.Error("PurgePoster must not be called for self-purge")
+			return nil
+		}
+
 		req := httptest.NewRequest(http.MethodDelete, "/admin/users/1", nil)
 		req.Header.Set("Authorization", "Bearer admin_token")
 		w := httptest.NewRecorder()
@@ -160,14 +197,12 @@ func TestHandleAdminPurgePoster(t *testing.T) {
 }
 
 func TestHandleVerifyTokenIsAdmin(t *testing.T) {
-	t.Setenv("ADMIN_EMAILS", "admin@example.com")
-
 	mockService := &MockService{
 		GetPosterByAPITokenFunc: func(ctx context.Context, token string) (*domain.AuthPoster, error) {
 			if token == "admin_token" {
-				return &domain.AuthPoster{PosterID: 1, Email: "admin@example.com", Username: "admin"}, nil
+				return &domain.AuthPoster{PosterID: 1, Email: "admin@example.com", Username: "admin", Role: domain.PosterRoleAdmin}, nil
 			}
-			return &domain.AuthPoster{PosterID: 2, Email: "user@example.com", Username: "user"}, nil
+			return &domain.AuthPoster{PosterID: 2, Email: "user@example.com", Username: "user", Role: domain.PosterRoleUser}, nil
 		},
 	}
 

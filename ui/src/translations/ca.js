@@ -114,6 +114,8 @@ export default {
     admin_no_results: "No s'han trobat usuaris",
     admin_user_stats: '{reviews} ressenyes · {bikes} bicis',
     admin_purge: 'Eliminar usuari',
+    admin_badge: 'Admin',
+    admin_protected: 'Protegit',
     admin_purge_confirm_title: 'Eliminar aquest usuari?',
     admin_purge_confirm_desc: 'Això elimina permanentment "{username}" ({reviews} ressenyes, {bikes} bicis creades). També se suprimiran les ressenyes d\'altres usuaris en les seves bicis. Aquesta acció no es pot desfer.',
     admin_purge_success: 'Usuari eliminat correctament.',

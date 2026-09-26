@@ -277,22 +277,25 @@ type AuthPoster struct {
 	PosterID int64
 	Email    string
 	Username string
+	Role     PosterRole
 }
 
 // GetPosterByAPIToken returns the poster for a valid, non-expired token.
 // The stored token is a SHA-256 hash, so the incoming bearer is hashed before lookup.
 func (s *Store) GetPosterByAPIToken(ctx context.Context, token string) (*AuthPoster, error) {
 	var p AuthPoster
+	var role string
 	var expires sql.NullTime
 	var emailVerified bool
 
-	err := s.db.QueryRowContext(ctx, getPosterByTokenQuery, HashToken(token)).Scan(&p.PosterID, &p.Email, &p.Username, &expires, &emailVerified)
+	err := s.db.QueryRowContext(ctx, getPosterByTokenQuery, HashToken(token)).Scan(&p.PosterID, &p.Email, &p.Username, &role, &expires, &emailVerified)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, ErrInvalidToken
 		}
 		return nil, fmt.Errorf("load poster by token: %w", err)
 	}
+	p.Role = PosterRole(role)
 
 	if !emailVerified {
 		return nil, ErrEmailNotVerified
@@ -338,6 +341,24 @@ func (s *Store) DeletePoster(ctx context.Context, posterID int64, deleteContent 
 		return fmt.Errorf("begin tx: %w", err)
 	}
 	defer tx.Rollback()
+
+	// Admin purge path (audit != nil): refuse to purge another admin, and
+	// surface a missing target as sql.ErrNoRows (→ 404) instead of a silent
+	// no-op. The row lock serializes with concurrent promote/demote, so there
+	// is no TOCTOU window on the role check. The self-service path (audit ==
+	// nil) keeps its current behavior: you may always delete your own account.
+	if audit != nil {
+		var targetRole string
+		if err := tx.QueryRowContext(ctx, getPosterRoleForPurgeQuery, posterID).Scan(&targetRole); err != nil {
+			if err == sql.ErrNoRows {
+				return sql.ErrNoRows
+			}
+			return fmt.Errorf("load target poster role: %w", err)
+		}
+		if PosterRole(targetRole) == PosterRoleAdmin {
+			return ErrCannotPurgeAdmin
+		}
+	}
 
 	// 1. Identify bikes that will need aggregate recomputation
 	// (Only if we are deleting content OR if we want to be safe, but actually

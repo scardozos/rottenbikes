@@ -114,6 +114,8 @@ export default {
     admin_no_results: 'No se encontraron usuarios',
     admin_user_stats: '{reviews} reseñas · {bikes} bicis',
     admin_purge: 'Eliminar usuario',
+    admin_badge: 'Admin',
+    admin_protected: 'Protegido',
     admin_purge_confirm_title: '¿Eliminar este usuario?',
     admin_purge_confirm_desc: 'Esto elimina permanentemente a "{username}" ({reviews} reseñas, {bikes} bicis creadas). También se eliminarán las reseñas de otros usuarios en sus bicis. Esta acción no se puede deshacer.',
     admin_purge_success: 'Usuario eliminado correctamente.',

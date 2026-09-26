@@ -105,12 +105,12 @@ make db-reset
 | `DELETE` | `/reviews/{id}` | Delete a specific review. | **Yes** |
 
 ### Admin (Moderation)
-Requires the caller's email to be in the `ADMIN_EMAILS` allowlist (see Configuration).
+Requires the caller to have the **admin role** (see [Admin roles](#admin-roles)).
 
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/admin/users?q=` | Search posters by email/username, with their review and bike counts. | **Yes (admin)** |
-| `DELETE` | `/admin/users/{id}` | Purge a malicious poster and all their content (reviews, ratings, created bikes, sessions) in one transaction. Deleting their bikes also removes other users' reviews on those bikes. The action is recorded in the `moderation_actions` audit table. | **Yes (admin)** |
+| `GET` | `/admin/users?q=` | Search posters by email/username, with their role, review and bike counts. | **Yes (admin)** |
+| `DELETE` | `/admin/users/{id}` | Purge a malicious poster and all their content (reviews, ratings, created bikes, sessions) in one transaction. Deleting their bikes also removes other users' reviews on those bikes. The action is recorded in the `moderation_actions` audit table. Admins cannot purge other admins. | **Yes (admin)** |
 
 ### System
 | Method | Endpoint | Description | Auth Required |
@@ -161,6 +161,29 @@ The application is configured via environment variables. Create a `.env` file (o
 | `EMAIL_FROM_ADDRESS` | Sender email address. | `hello@rottenbik.es` |
 | `HCAPTCHA_SECRET` | Secret key for hCaptcha verification. | Empty (skips verification in dev) |
 | `CORS_ALLOWED_ORIGINS` | Comma-separated allowlist of origins for the API (e.g. `https://rottenbik.es,https://app.rottenbik.es`). When unset, falls back to the local dev UI origins. | `http://localhost:8081,http://localhost:8080` |
-| `ADMIN_EMAILS` | Comma-separated allowlist of poster emails with admin (moderation) access: `GET /admin/users` and `DELETE /admin/users/{id}` (purge). Read on every request, so removing an email revokes admin access without a restart. When unset, the admin API is disabled. | Empty |
 | `UI_HOST` | Hostname for generating magic links. | `localhost` |
 | `UI_PORT` | Port for generating magic links. | `8081` |
+
+## Admin roles
+
+Admin (moderation) access is a database role — `posters.role` (`'user'` | `'admin'`) — managed out-of-band, so **no admin identity ever lives in git, env files, or k8s manifests**. The role is read from the database on every token lookup, so promotion and demotion take effect immediately, without a restart or redeploy.
+
+Manage admins with the `adminctl` CLI (or the Make wrappers), which uses the same database configuration as the API (`DATABASE_URL` or the `DB_*` variables):
+
+```sh
+make admin-promote USER=alice@example.com   # or: go run ./cmd/adminctl promote alice@example.com
+make admin-demote  USER=alice@example.com
+make admin-list
+```
+
+In Kubernetes, run it inside an API pod so nothing sensitive touches a manifest:
+
+```sh
+kubectl exec -n rottenbikes deploy/api -- ./adminctl list
+```
+
+Notes:
+- Admins cannot purge other admins (demote first) — one compromised admin can't wipe the rest.
+- Purging a poster deletes all their content and writes an audit row to `moderation_actions`.
+- The seeded dev database promotes `alice` as the dev admin.
+

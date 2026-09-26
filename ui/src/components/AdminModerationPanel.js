@@ -5,11 +5,12 @@ import { ThemeContext } from '../context/ThemeContext';
 import { LanguageContext } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
 import Icon from './Icon';
+import Badge from './Badge';
 
 // Admin-only moderation panel: search users and purge malicious ones.
 // A purge deletes the user, all their reviews, and the bikes they created
 // (reviews by others on those bikes are deleted too). Rendered only when
-// the current user is flagged as admin (ADMIN_EMAILS on the backend).
+// the current user has the admin role (managed via cmd/adminctl).
 const AdminModerationPanel = () => {
     const { theme } = useContext(ThemeContext);
     const { t } = useContext(LanguageContext);
@@ -38,6 +39,9 @@ const AdminModerationPanel = () => {
     };
 
     const confirmPurge = (user) => {
+        // The backend rejects purging admins (demote first); don't offer it.
+        if (user.role === 'admin') return;
+
         const message = t('admin_purge_confirm_desc', {
             username: user.username,
             reviews: user.review_count,
@@ -103,27 +107,39 @@ const AdminModerationPanel = () => {
 
             {results !== null && results.length > 0 && (
                 <View style={styles.resultsList}>
-                    {results.map((user) => (
-                        <View key={user.poster_id} style={styles.userRow}>
-                            <View style={styles.userInfo}>
-                                <Text style={styles.username}>{user.username}</Text>
-                                <Text style={styles.userMeta}>
-                                    {user.email} · {t('admin_user_stats', { reviews: user.review_count, bikes: user.bike_count })}
-                                </Text>
-                            </View>
-                            <TouchableOpacity
-                                style={[styles.purgeButton, purgingId === user.poster_id && styles.purgeButtonDisabled]}
-                                onPress={() => confirmPurge(user)}
-                                disabled={purgingId === user.poster_id}
-                            >
-                                {purgingId === user.poster_id ? (
-                                    <ActivityIndicator size="small" color={theme.colors.buttonText} />
+                    {results.map((user) => {
+                        const isAdminUser = user.role === 'admin';
+                        return (
+                            <View key={user.poster_id} style={styles.userRow}>
+                                <View style={styles.userInfo}>
+                                    <View style={styles.usernameRow}>
+                                        <Text style={styles.username}>{user.username}</Text>
+                                        {isAdminUser && (
+                                            <Badge label={t('admin_badge')} variant="warning" size="sm" />
+                                        )}
+                                    </View>
+                                    <Text style={styles.userMeta}>
+                                        {user.email} · {t('admin_user_stats', { reviews: user.review_count, bikes: user.bike_count })}
+                                    </Text>
+                                </View>
+                                {isAdminUser ? (
+                                    <Text style={styles.protectedText}>{t('admin_protected')}</Text>
                                 ) : (
-                                    <Text style={styles.purgeButtonText}>{t('admin_purge')}</Text>
+                                    <TouchableOpacity
+                                        style={[styles.purgeButton, purgingId === user.poster_id && styles.purgeButtonDisabled]}
+                                        onPress={() => confirmPurge(user)}
+                                        disabled={purgingId === user.poster_id}
+                                    >
+                                        {purgingId === user.poster_id ? (
+                                            <ActivityIndicator size="small" color={theme.colors.buttonText} />
+                                        ) : (
+                                            <Text style={styles.purgeButtonText}>{t('admin_purge')}</Text>
+                                        )}
+                                    </TouchableOpacity>
                                 )}
-                            </TouchableOpacity>
-                        </View>
-                    ))}
+                            </View>
+                        );
+                    })}
                 </View>
             )}
         </View>
@@ -177,10 +193,20 @@ const createStyles = (theme) => StyleSheet.create({
     userInfo: {
         flex: 1,
     },
+    usernameRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
     username: {
         color: theme.colors.text,
         fontWeight: '700',
         fontSize: 15,
+    },
+    protectedText: {
+        color: theme.colors.subtext,
+        fontSize: 12,
+        fontStyle: 'italic',
     },
     userMeta: {
         color: theme.colors.subtext,
