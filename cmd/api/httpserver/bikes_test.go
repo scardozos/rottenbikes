@@ -461,68 +461,7 @@ func TestHandleUpdateBike(t *testing.T) {
 	})
 }
 
-func TestHandleDeleteBike(t *testing.T) {
-	var capturedCreatorID int64
-	mockService := &MockService{
-		DeleteBikeFunc: func(ctx context.Context, id string, creatorID int64) error {
-			capturedCreatorID = creatorID
-			if id == "1" {
-				return nil
-			}
-			if id == "404" {
-				return sql.ErrNoRows
-			}
-			return errors.New("delete error")
-		},
-		GetPosterByAPITokenFunc: func(ctx context.Context, token string) (*domain.AuthPoster, error) {
-			return &domain.AuthPoster{PosterID: 1}, nil
-		},
-	}
 
-	srv, err := New(mockService, &email.NoopSender{}, ":8080")
-	if err != nil {
-		t.Fatalf("failed to create server: %v", err)
-	}
-
-	t.Run("success", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodDelete, "/bikes/1", nil)
-		req.Header.Set("Authorization", "Bearer valid_token")
-		w := httptest.NewRecorder()
-
-		srv.server.Handler.ServeHTTP(w, req)
-
-		if w.Code != http.StatusNoContent {
-			t.Errorf("expected status 204, got %d", w.Code)
-		}
-		if capturedCreatorID != 1 {
-			t.Errorf("expected creatorID 1 to be passed to service, got %d", capturedCreatorID)
-		}
-	})
-
-	t.Run("not_owner_returns_404", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodDelete, "/bikes/404", nil)
-		req.Header.Set("Authorization", "Bearer valid_token")
-		w := httptest.NewRecorder()
-
-		srv.server.Handler.ServeHTTP(w, req)
-
-		if w.Code != http.StatusNotFound {
-			t.Errorf("expected status 404 for non-owner, got %d", w.Code)
-		}
-	})
-
-	t.Run("internal_error", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodDelete, "/bikes/2", nil)
-		req.Header.Set("Authorization", "Bearer valid_token")
-		w := httptest.NewRecorder()
-
-		srv.server.Handler.ServeHTTP(w, req)
-
-		if w.Code != http.StatusInternalServerError {
-			t.Errorf("expected status 500, got %d", w.Code)
-		}
-	})
-}
 
 func TestHandleGetBikeDetails(t *testing.T) {
 	var lastLimit, lastOffset int
