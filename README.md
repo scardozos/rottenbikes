@@ -1,6 +1,14 @@
 # Rotten Bikes
 
-An application for managing (bicing) bike reviews and ratings.
+An open-source platform for community reviews, ratings, and condition tracking of urban bike-share fleets.
+
+> **Disclaimer:** Rotten Bikes is an independent, community-driven open-source project. It is not affiliated, associated, authorized, endorsed by, or in any way officially connected with Bicing, Barcelona de Serveis Municipals (B:SM), Smou, the Ajuntament de Barcelona, or any official public transit operator. 
+>
+> All product names, trademarks, and registered trademarks mentioned herein (such as "Bicing") are the property of their respective owners. Any reference to third-party services or marks is strictly for identification, reference, and descriptive nominative fair use purposes.
+
+## Overview
+
+Rotten Bikes allows commuters and riders to crowdsource fleet quality data for public and shared bicycles (such as Barcelona's Bicing system). Users can scan vehicle QR/Barcodes to leave and view ratings across key physical components (brakes, pedals, electric power, seat comfort) to help fellow riders avoid faulty equipment and report maintenance needs.
 
 ## Getting Started
 
