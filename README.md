@@ -84,7 +84,7 @@ make db-reset ENV=local   # or dev / prod
 | `GET` | `/auth/confirm/{token}` | Confirm the emailed magic link and receive a Bearer token. | No |
 | `GET` | `/auth/poll?token=` | Exchange the poll token for the Bearer token once the link has been confirmed (one-time; for cross-device login). | No |
 | `GET` | `/auth/verify` | Verify the current token; returns `poster_id`, `username` and `is_admin`. | **Yes** |
-| `POST` | `/auth/logout` | Revoke the current session's token (other sessions stay valid). | **Yes** |
+| `POST` | `/auth/logout` | Revoke the current session's token (other sessions stay valid). Idempotent: returns 204 even if the token is already invalid or missing. | No |
 | `DELETE` | `/auth/user` | Delete your account. By default your reviews and bikes are kept but unattributed; send `{"delete_poster_subresources": true}` to delete them too. | **Yes** |
 | `GET` | `/users/me/reviews` | List your reviews (`limit`, `offset`). | **Yes** |
 

@@ -224,7 +224,10 @@ func TestConfirmPollFlow(t *testing.T) {
 	expectStatus(t, call(t, "POST", "/auth/logout", second, nil), http.StatusNoContent)
 	expectStatus(t, call(t, "GET", "/auth/verify", second, nil), http.StatusUnauthorized)
 	expectStatus(t, call(t, "GET", "/auth/verify", conf.APIToken, nil), http.StatusOK)
-	expectStatus(t, call(t, "POST", "/auth/logout", "", nil), http.StatusUnauthorized)
+
+	// Logout is idempotent: a dead or missing session is still a logout.
+	expectStatus(t, call(t, "POST", "/auth/logout", second, nil), http.StatusNoContent)
+	expectStatus(t, call(t, "POST", "/auth/logout", "", nil), http.StatusNoContent)
 }
 
 func TestExpiredMagicLink(t *testing.T) {

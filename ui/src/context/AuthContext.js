@@ -4,6 +4,7 @@ import storage from '../utils/storage';
 import api from '../services/api';
 import { useToast } from './ToastContext';
 import { LanguageContext } from './LanguageContext';
+import { singleFlight } from '../utils/session';
 
 export const AuthContext = createContext();
 
@@ -149,9 +150,14 @@ export const AuthProvider = ({ children }) => {
         return false;
     }, [fetchCurrentUser, showToast, t]);
 
-    const logout = useCallback(async () => {
+    // Pass { revokeSession: false } when the server-side session is already
+    // gone (expired, or deleted with the account): there is nothing to revoke.
+    // Concurrent calls share the one in progress.
+    const logout = useMemo(() => singleFlight(async ({ revokeSession = true } = {}) => {
         try {
-            await api.post('/auth/logout');
+            if (revokeSession) {
+                await api.post('/auth/logout');
+            }
         } catch (e) {
             // Silently continue local logout even if network / server fails
             __DEV__ && console.log('Error invalidating token on logout:', e);
@@ -163,7 +169,7 @@ export const AuthProvider = ({ children }) => {
             await storage.deleteItem('userToken');
             DeviceEventEmitter.emit('clear_session');
         }
-    }, []);
+    }), []);
 
     const isLoggedIn = useCallback(async () => {
         try {
@@ -189,7 +195,7 @@ export const AuthProvider = ({ children }) => {
             if (lastUsernameRef.current) {
                 setLastUsername(lastUsernameRef.current);
             }
-            logout();
+            logout({ revokeSession: false });
             showToast(t('session_expired'), 'info');
         });
         return () => sub.remove();

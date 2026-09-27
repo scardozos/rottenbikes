@@ -230,20 +230,16 @@ func TestHandleVerifyToken(t *testing.T) {
 }
 
 func TestHandleLogout(t *testing.T) {
-	revoked := false
+	var revoked []string
+	revokeErr := error(nil)
 	mockService := &MockService{
 		GetPosterByAPITokenFunc: func(ctx context.Context, token string) (*domain.AuthPoster, error) {
-			if token == "active-token" {
-				return &domain.AuthPoster{PosterID: 10, Username: "testuser"}, nil
-			}
+			t.Error("logout must not require a valid session")
 			return nil, domain.ErrInvalidToken
 		},
 		RevokeAPITokenFunc: func(ctx context.Context, token string) error {
-			if token == "active-token" {
-				revoked = true
-				return nil
-			}
-			return errors.New("unknown token")
+			revoked = append(revoked, token)
+			return revokeErr
 		},
 	}
 
@@ -252,29 +248,59 @@ func TestHandleLogout(t *testing.T) {
 		t.Fatalf("failed to create server: %v", err)
 	}
 
-	t.Run("success", func(t *testing.T) {
+	logout := func(authHeader string) *httptest.ResponseRecorder {
 		req := httptest.NewRequest(http.MethodPost, "/auth/logout", nil)
-		req.Header.Set("Authorization", "Bearer active-token")
+		if authHeader != "" {
+			req.Header.Set("Authorization", authHeader)
+		}
 		w := httptest.NewRecorder()
-
 		srv.server.Handler.ServeHTTP(w, req)
+		return w
+	}
 
-		if w.Code != http.StatusNoContent {
+	t.Run("revokes the session", func(t *testing.T) {
+		revoked = nil
+		if w := logout("Bearer active-token"); w.Code != http.StatusNoContent {
 			t.Errorf("expected status 204, got %d", w.Code)
 		}
-		if !revoked {
-			t.Errorf("expected token to be revoked")
+		if len(revoked) != 1 || revoked[0] != "active-token" {
+			t.Errorf("expected active-token to be revoked, got %v", revoked)
 		}
 	})
 
-	t.Run("unauthorized_missing_token", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodPost, "/auth/logout", nil)
-		w := httptest.NewRecorder()
+	// A dead session (already revoked, expired, or deleted with its account)
+	// is still logged out: 204, never 401.
+	t.Run("already invalid token is still 204", func(t *testing.T) {
+		revoked = nil
+		if w := logout("Bearer dead-token"); w.Code != http.StatusNoContent {
+			t.Errorf("expected status 204, got %d", w.Code)
+		}
+		if len(revoked) != 1 {
+			t.Errorf("expected a revoke attempt, got %v", revoked)
+		}
+	})
 
-		srv.server.Handler.ServeHTTP(w, req)
+	for name, header := range map[string]string{
+		"missing token": "",
+		"wrong scheme":  "Basic dXNlcjpwYXNz",
+		"empty bearer":  "Bearer ",
+	} {
+		t.Run(name+" is 204 without revoking", func(t *testing.T) {
+			revoked = nil
+			if w := logout(header); w.Code != http.StatusNoContent {
+				t.Errorf("expected status 204, got %d", w.Code)
+			}
+			if len(revoked) != 0 {
+				t.Errorf("nothing should be revoked, got %v", revoked)
+			}
+		})
+	}
 
-		if w.Code != http.StatusUnauthorized {
-			t.Errorf("expected status 401, got %d", w.Code)
+	t.Run("revoke failure is 500", func(t *testing.T) {
+		revokeErr = errors.New("db down")
+		defer func() { revokeErr = nil }()
+		if w := logout("Bearer active-token"); w.Code != http.StatusInternalServerError {
+			t.Errorf("expected status 500, got %d", w.Code)
 		}
 	})
 }
