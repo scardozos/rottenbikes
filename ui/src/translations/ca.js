@@ -263,6 +263,8 @@ export default {
     // Onboarding
     onboarding_title_1: "Benvingut a RottenBikes!",
     onboarding_body_1: "En escanejar el codi QR d'una bici es llegeix el seu Hash ID únic.",
+    onboarding_title_id: "Troba l'ID",
+    onboarding_body_id: "De vegades el codi QR no hi és o no es pot llegir. Aquí és on l'ID Numèric et salvarà! El trobaràs imprès al quadre de la bici.",
     onboarding_pro_tip: "Consell: si introdueixes manualment l'ID numèric de 4 o 5 dígits que hi ha al quadre de la bici, ajudes tothom a identificar-la molt més fàcilment.",
     onboarding_title_2: "Com funciona",
     onboarding_body_2a: "Quan escanegis una bici, veuràs el seu historial si ja és al nostre sistema.",

@@ -263,6 +263,8 @@ export default {
     // Onboarding
     onboarding_title_1: "Welcome to RottenBikes!",
     onboarding_body_1: "Scanning a bike's QR code reads its unique Hash ID.",
+    onboarding_title_id: "Find the ID",
+    onboarding_body_id: "Sometimes the QR code is missing or unreadable. That's when the Numerical ID comes to the rescue! You'll find it printed on the bike's frame.",
     onboarding_pro_tip: "Pro Tip: If you manually enter the 4 or 5-digit Numerical ID found on the bike frame, it helps everyone identify the bike much more easily!",
     onboarding_title_2: "How it Works",
     onboarding_body_2a: "When you scan a bike, you'll see its history if it's already in our system.",

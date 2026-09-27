@@ -1,12 +1,13 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Easing } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
 import Button from '../components/Button';
 import Icon from '../components/Icon';
 import { ThemeContext } from '../context/ThemeContext';
 import { LanguageContext } from '../context/LanguageContext';
 
-const TOTAL_STEPS = 3;
+const TOTAL_STEPS = 4;
 
 // Step 3: the five rating criteria, each with its Ionicon
 const RATING_CRITERIA = [
@@ -95,18 +96,31 @@ const OnboardingScreen = ({ onFinish }) => {
                 <Animated.View style={[styles.stepContainer, { opacity: stepFade }]}>
                     {step === 1 && (
                         <>
-                            {/* Bike + Numerical ID tag illustration */}
+                            {/* Bike QR SVG */}
                             <View style={styles.visualColumn}>
-                                <View style={styles.bikeCircle}>
-                                    <Icon name="bicycle" size={76} color={theme.colors.primary} />
-                                </View>
-                                <Icon name="arrow-up" size={20} color={theme.colors.secondary} />
-                                <View style={styles.idTag}>
-                                    <Text style={styles.idTagText}>#1234</Text>
-                                </View>
+                                <Image 
+                                    source={require('../../assets/bicing_bike_qr.svg')} 
+                                    style={{ width: 240, height: 320 }} 
+                                    contentFit="contain" 
+                                />
                             </View>
                             <Text style={styles.title}>{t('onboarding_title_1')}</Text>
                             <Text style={styles.body}>{t('onboarding_body_1')}</Text>
+                        </>
+                    )}
+
+                    {step === 2 && (
+                        <>
+                            {/* Bike ID SVG */}
+                            <View style={styles.visualColumn}>
+                                <Image 
+                                    source={require('../../assets/bicing_bike_id.svg')} 
+                                    style={{ width: 240, height: 320 }} 
+                                    contentFit="contain" 
+                                />
+                            </View>
+                            <Text style={styles.title}>{t('onboarding_title_id')}</Text>
+                            <Text style={styles.body}>{t('onboarding_body_id')}</Text>
                             <View style={styles.proTipCard}>
                                 <Icon name="bulb-outline" size={20} color={theme.colors.warning} style={styles.proTipIcon} />
                                 <Text style={styles.proTipText}>{t('onboarding_pro_tip')}</Text>
@@ -114,7 +128,7 @@ const OnboardingScreen = ({ onFinish }) => {
                         </>
                     )}
 
-                    {step === 2 && (
+                    {step === 3 && (
                         <>
                             {/* Lifecycle flow: scan -> add -> review */}
                             <View style={styles.visualColumn}>
@@ -138,7 +152,7 @@ const OnboardingScreen = ({ onFinish }) => {
                         </>
                     )}
 
-                    {step === 3 && (
+                    {step === 4 && (
                         <>
                             <Text style={styles.title}>{t('onboarding_title_3')}</Text>
                             <View style={styles.criteriaList}>
