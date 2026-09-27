@@ -25,11 +25,13 @@ create_secret() {
   local db_password
   local email_token
   local hcaptcha_secret
+  local mailtrap_api_url
 
   db_user=$(get_env_val "$env_file" "DB_USER")
   db_password=$(get_env_val "$env_file" "DB_PASSWORD")
   email_token=$(get_env_val "$env_file" "EMAIL_SENDER_TOKEN_MAILTRAP")
   hcaptcha_secret=$(get_env_val "$env_file" "HCAPTCHA_SECRET")
+  mailtrap_api_url=$(get_env_val "$env_file" "MAILTRAP_API_URL")
 
   # Ensure required keys exist
   if [ -z "$db_user" ] || [ -z "$db_password" ] || [ -z "$email_token" ]; then
@@ -51,6 +53,11 @@ create_secret() {
   # Include HCAPTCHA_SECRET if it's set
   if [ -n "$hcaptcha_secret" ]; then
     cmd+=(--from-literal=HCAPTCHA_SECRET="$hcaptcha_secret")
+  fi
+
+  # Include MAILTRAP_API_URL if it's set (e.g. a sandbox inbox for dev)
+  if [ -n "$mailtrap_api_url" ]; then
+    cmd+=(--from-literal=MAILTRAP_API_URL="$mailtrap_api_url")
   fi
 
   # Add dry-run and apply to make it idempotent

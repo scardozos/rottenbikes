@@ -69,9 +69,9 @@ For a production-like environment, the UI can be built and served by a dedicated
     The Web UI will be available at `http://localhost:8081` (default port).
 
 ### Database Reset
-To drop the database and re-apply all migrations (fresh start):
+To drop the schema and re-apply all migrations, keeping the existing data (it is backed up to `backup_data_<env>.sql` and restored afterwards):
 ```bash
-make db-reset
+make db-reset ENV=local   # or dev / prod
 ```
 
 ## API Endpoints
@@ -79,43 +79,50 @@ make db-reset
 ### Authentication
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/auth/request-magic-link` | Request a magic link for login. | No |
-| `POST` | `/auth/register` | Register a new user. | No |
-| `GET` | `/auth/confirm` | Confirm magic link (via `?token=...` or `/token`) and receive Bearer token. | No |
-| `GET` | `/auth/poll` | Check status of a magic link request (for mobile polling). | No |
-| `GET` | `/auth/verify` | Verify if current token is valid. | **Yes** |
+| `POST` | `/auth/register` | Register a new user and email them a confirmation magic link. Returns a poll token (`magic_token`) for the requesting device. Requires `captcha_token`. | No |
+| `POST` | `/auth/request-magic-link` | Request a login magic link by `email` or `username` (max 2 per user per 24h). Returns a poll token (`magic_token`). Requires `captcha_token`. | No |
+| `GET` | `/auth/confirm/{token}` | Confirm the emailed magic link and receive a Bearer token. | No |
+| `GET` | `/auth/poll?token=` | Exchange the poll token for the Bearer token once the link has been confirmed (one-time; for cross-device login). | No |
+| `GET` | `/auth/verify` | Verify the current token; returns `poster_id`, `username` and `is_admin`. | **Yes** |
+| `POST` | `/auth/logout` | Revoke the current session's token (other sessions stay valid). | **Yes** |
+| `DELETE` | `/auth/user` | Delete your account. By default your reviews and bikes are kept but unattributed; send `{"delete_poster_subresources": true}` to delete them too. | **Yes** |
+| `GET` | `/users/me/reviews` | List your reviews (`limit`, `offset`). | **Yes** |
 
 ### Bikes
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/bikes` | List all bikes. | **Yes** |
+| `GET` | `/bikes` | List bikes. Supports `q` (search on numerical/hash id), `sort` (`recent` (default), `rating`, `most_reviewed`), `limit`, `offset`. | No |
 | `POST` | `/bikes` | Create a new bike. Accepts `was_scanned` (client-declared origin flag for moderation). | **Yes** |
-| `GET` | `/bikes/{id}` | Get details of a specific bike. | **Yes** |
-| `PUT` | `/bikes/{id}` | Update a specific bike. | **Yes** |
-| `DELETE` | `/bikes/{id}` | Delete a specific bike. | **Yes** |
+| `GET` | `/bikes/{id}` | Get details of a specific bike. | No |
+| `PUT` | `/bikes/{id}` | Update a bike's `hash_id` / `is_electric`. Only the bike's creator can update it. | **Yes** |
 | `GET` | `/scan/{hash}` | Look up a bike by its QR `hash_id` and record the scan server-side. Reviews created afterwards get `was_scanned = true` (derived from the recorded scan, so it cannot be spoofed by clients). | **Yes** |
-| `GET` | `/bikes/{id}/details` | Get bike details including aggregate ratings and reviews. | **Yes** |
+| `GET` | `/bikes/{id}/details` | Get bike details including windowed aggregate ratings and reviews (`limit`, `offset` apply to reviews). | No |
+| `GET` | `/bikes/{id}/reviews` | List a bike's reviews (`limit`, `offset`). | No |
 | `POST` | `/bikes/{id}/reviews` | Create a review for a specific bike. `was_scanned` is computed server-side from recorded scans. | **Yes** |
+
+Bikes cannot be deleted by regular users; admins can delete any bike (see below).
 
 ### Reviews
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/reviews/{id}` | Get a specific review. | **Yes** |
-| `PUT` | `/reviews/{id}` | Update a specific review. | **Yes** |
-| `DELETE` | `/reviews/{id}` | Delete a specific review. | **Yes** |
+| `GET` | `/reviews/{id}` | Get a specific review. | No |
+| `PUT` | `/reviews/{id}` | Update one of your reviews. | **Yes** |
+| `DELETE` | `/reviews/{id}` | Delete one of your reviews. | **Yes** |
 
 ### Admin (Moderation)
 Requires the caller to have the **admin role** (see [Admin roles](#admin-roles)).
 
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/admin/users?q=` | Search posters by email/username, with their role, review and bike counts. | **Yes (admin)** |
+| `GET` | `/admin/users?q=` | Search posters by email/username, with their role, review and bike counts (`limit`, max 50). | **Yes (admin)** |
 | `DELETE` | `/admin/users/{id}` | Purge a malicious poster and all their content (reviews, ratings, created bikes, sessions) in one transaction. Deleting their bikes also removes other users' reviews on those bikes. The action is recorded in the `moderation_actions` audit table. Admins cannot purge other admins. | **Yes (admin)** |
+| `DELETE` | `/admin/bikes/{id}` | Delete any bike, together with its reviews. The action is recorded in `moderation_actions`. | **Yes (admin)** |
 
 ### System
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/healthz` | Health check endpoint. | No |
+| `GET` | `/healthz` | Liveness check. | No |
+| `GET` | `/readyz` | Readiness check (pings the database). | No |
 
 ## Key Features
 
@@ -145,8 +152,31 @@ Includes a "frequency limit" preventing users from reviewing the same bike more 
 ### 🔭 Observability
 The API comes with built-in instrumentation:
 - **Prometheus Metrics**: Available on port `9091` at `/metrics`.
+  - `http_requests_total{method,path,status}`, `http_request_duration_seconds`, … — generic HTTP metrics.
+  - `captcha_verifications_total{result}` — `success`, `failure` (hCaptcha rejected the token), `error` (hCaptcha unreachable or bad response), `not_configured` (no `HCAPTCHA_SECRET` outside dev), `skipped` (dev without a secret).
+  - `emails_sent_total{sender,kind,result}` — `kind` is `register` or `magic_link`, `result` is `success` or `failure`.
 - **Request Logging**: Structured logs for all HTTP requests.
-- **Health Checks**: `/healthz` endpoint for liveness probes.
+- **Health Checks**: `/healthz` (liveness) and `/readyz` (readiness, pings the database).
+
+#### Alerting
+Tests cannot pass a real captcha in prod, so sign-up/login breakage there (expired Mailtrap token, rotated hCaptcha secret, hCaptcha outage) is caught by alerts. Suggested Prometheus rules:
+
+```yaml
+- alert: AuthEndpoint5xx
+  expr: sum(rate(http_requests_total{path=~"/auth/(register|request-magic-link)", status=~"5.."}[15m])) > 0
+  for: 5m
+- alert: EmailSendFailing
+  expr: sum(increase(emails_sent_total{result="failure"}[15m])) > 0
+- alert: CaptchaVerificationUnavailable
+  expr: sum(increase(captcha_verifications_total{result=~"error|not_configured"}[15m])) > 0
+- alert: CaptchaRejectingEverything   # e.g. sitekey/secret mismatch after a rotation
+  expr: sum(increase(captcha_verifications_total{result="success"}[6h])) == 0
+        and sum(increase(captcha_verifications_total{result="failure"}[6h])) > 5
+```
+
+If you alert on logs instead, the relevant lines are `failed to send magic link email`, `failed to send registration email` and `hCaptcha request error`.
+
+`/auth/register` and `/auth/request-magic-link` return **403** when hCaptcha rejects the token and **503** when it could not be verified (hCaptcha unreachable or `HCAPTCHA_SECRET` missing), so the two are distinguishable from the outside as well.
 
 ## Configuration
 
@@ -158,11 +188,51 @@ The application is configured via environment variables. Create a `.env` file (o
 | `API_PORT` | Port for the Main API. | `8080` |
 | `METRICS_PORT` | Port for Prometheus metrics. | `9091` |
 | `EMAIL_SENDER_TOKEN_MAILTRAP` | API Token for Mailtrap (for sending emails). | Empty (uses No-op sender) |
+| `MAILTRAP_API_URL` | Mailtrap sending endpoint. Set to `https://sandbox.api.mailtrap.io/api/send/<inbox_id>` to deliver to a sandbox inbox (dev). | `https://send.api.mailtrap.io/api/send` |
 | `EMAIL_FROM_ADDRESS` | Sender email address. | `hello@rottenbik.es` |
-| `HCAPTCHA_SECRET` | Secret key for hCaptcha verification. | Empty (skips verification in dev) |
+| `HCAPTCHA_SECRET` | Secret key for hCaptcha verification. | Empty (skips verification when `APP_ENV` is `local`/`dev`/`development`; otherwise sign-up returns 503) |
+| `APP_ENV` | `local`, `development` or `production`. | Empty |
 | `CORS_ALLOWED_ORIGINS` | Comma-separated allowlist of origins for the API (e.g. `https://rottenbik.es,https://app.rottenbik.es`). When unset, falls back to the local dev UI origins. | `http://localhost:8081,http://localhost:8080` |
 | `UI_HOST` | Hostname for generating magic links. | `localhost` |
 | `UI_PORT` | Port for generating magic links. | `8081` |
+
+## Testing
+
+Tests are layered by environment:
+
+| Layer | What | Where |
+| :--- | :--- | :--- |
+| Unit | Handlers, domain and SQL (sqlmock); hCaptcha verification (success, rejection, unreachable, bad response) and the Mailtrap sender (non-2xx, unreachable) against `httptest` servers; the emailed `/confirm/{token}` link. | `make test-go` |
+| E2E, local with test keys | The full sign-up path through the real API: register → email → confirm → poll, using hCaptcha's test keys (and optionally a Mailtrap sandbox inbox). | `make e2e CAPTCHA_TOKEN=...` (see below) |
+| E2E on dev / prod | Everything except passing the captcha (both use the real captcha and send real emails), plus negative probes that prove captcha is enforced (a bogus token must get 403; required on prod). | `make e2e ENV=dev`, `make e2e ENV=prod CONFIRM=prod` |
+| Monitoring | Prod captcha/email failures (see [Alerting](#alerting)). | Prometheus |
+
+The captcha widget and deep links in the UI are out of scope for the API suite; check them with Playwright or manually (a local UI with the test sitekey `10000000-ffff-ffff-ffff-000000000001` can use the test keys).
+
+### End-to-end tests
+
+The `e2e/` suite exercises the real API over HTTP against a live environment:
+
+```sh
+make e2e                            # local (http://localhost:8080 + local DB)
+make e2e ENV=dev                    # https://api-dev.rottenbik.es, DB from .env.dev
+make e2e ENV=prod CONFIRM=prod      # https://api.rottenbik.es, DB from .env.prod
+make e2e ENV=dev API_URL=http://... # override the API URL
+make e2e CAPTCHA_TOKEN=...          # a captcha token the target accepts
+```
+
+The suite needs access to the target's database (`DATABASE_URL` or the `DB_*` variables from `.env.<env>`). Tests that aren't about sign-up get their users seeded there, the suite promotes test users to admin like `adminctl` does, and it deletes everything it created when it finishes (test users are named `e2etest*`; leftovers of aborted runs are swept on the next run). The suite is behind the `e2e` build tag, so `go test ./...` does not run it.
+
+**Captcha.** The suite probes the target with a bogus token. If captcha is enforced and no accepted token is available, the tests that must call `/auth/register` or `/auth/request-magic-link` are skipped; on prod, captcha *not* being enforced is a failure.
+
+**Full sign-up path (local).** Dev and prod keep the real captcha and deliver emails to real users, so the suite cannot sign up there. To cover register → email → confirm → poll, run a local API with hCaptcha's official test secret, which accepts the public test token:
+
+```sh
+HCAPTCHA_SECRET=0x0000000000000000000000000000000000000000 APP_ENV=local go run ./cmd/api
+make e2e CAPTCHA_TOKEN=10000000-aaaa-bbbb-cccc-000000000001
+```
+
+The API above sends no email (no Mailtrap token), so the suite takes the magic token from the database. To also cover email delivery, point the API at a Mailtrap sandbox inbox (`EMAIL_SENDER_TOKEN_MAILTRAP=<sandbox token>` and `MAILTRAP_API_URL=https://sandbox.api.mailtrap.io/api/send/<inbox_id>`) and set `MAILTRAP_ACCOUNT_ID` and `MAILTRAP_INBOX_ID` in `.env.local` (plus `MAILTRAP_INBOX_API_TOKEN` if reading needs a different token): the suite then reads the magic links from that inbox and deletes them.
 
 ## Admin roles
 

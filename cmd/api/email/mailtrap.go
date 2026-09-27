@@ -10,11 +10,20 @@ import (
 	"time"
 )
 
+// DefaultMailtrapAPIURL is Mailtrap's production sending endpoint. Point
+// APIURL at https://sandbox.api.mailtrap.io/api/send/<inbox_id> to deliver to
+// a sandbox inbox instead (e.g. in dev, so E2E tests can read the emails).
+const DefaultMailtrapAPIURL = "https://send.api.mailtrap.io/api/send"
+
 type MailtrapSender struct {
 	Token     string
 	FromEmail string
 	FromName  string
 	Category  string
+	// APIURL defaults to DefaultMailtrapAPIURL.
+	APIURL string
+	// Client defaults to a client with a 10s timeout.
+	Client *http.Client
 }
 
 type mailtrapAddress struct {
@@ -56,7 +65,12 @@ func (s *MailtrapSender) SendEmail(to string, subject string, body string) error
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, "POST", "https://send.api.mailtrap.io/api/send", bytes.NewBuffer(jsonBody))
+	apiURL := s.APIURL
+	if apiURL == "" {
+		apiURL = DefaultMailtrapAPIURL
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", apiURL, bytes.NewBuffer(jsonBody))
 	if err != nil {
 		return fmt.Errorf("failed to create mailtrap request: %w", err)
 	}
@@ -65,7 +79,10 @@ func (s *MailtrapSender) SendEmail(to string, subject string, body string) error
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{Timeout: 10 * time.Second}
+	client := s.Client
+	if client == nil {
+		client = &http.Client{Timeout: 10 * time.Second}
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to send mailtrap request: %w", err)

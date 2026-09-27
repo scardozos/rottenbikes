@@ -49,9 +49,8 @@ func (s *HTTPServer) handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Verify hCaptcha
 	if err := s.verifyCaptcha(r.Context(), req.Captcha, req.Email); err != nil {
-		s.sendError(w, "invalid captcha", http.StatusForbidden)
+		s.sendCaptchaError(w, err)
 		return
 	}
 
@@ -61,39 +60,20 @@ func (s *HTTPServer) handleRegister(w http.ResponseWriter, r *http.Request) {
 			s.sendError(w, err.Error(), http.StatusConflict)
 			return
 		}
+		if errors.Is(err, domain.ErrValidation) {
+			s.sendError(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 		s.sendInternalServerError(w, r, err)
 		return
 	}
 
-	uiHost := os.Getenv("UI_HOST")
-	if uiHost == "" {
-		uiHost = "localhost"
-	}
-	uiPort := os.Getenv("UI_PORT")
-	if uiPort == "" {
-		uiPort = "8081"
-	}
-
-	scheme := "http"
-	if !isPrivateIP(uiHost) {
-		scheme = "https"
-	}
-	uiURL := fmt.Sprintf("%s://%s:%s/confirm/%s", scheme, uiHost, uiPort, magicToken)
-	if req.Origin != "" {
-		uiURL = fmt.Sprintf("%s?origin=%s", uiURL, url.QueryEscape(req.Origin))
-	}
-
-	uiURLRedacted := fmt.Sprintf("%s://%s:%s/confirm/%s", scheme, uiHost, uiPort, "[REDACTED]")
-	if req.Origin != "" {
-		uiURLRedacted = fmt.Sprintf("%s?origin=%s", uiURLRedacted, url.QueryEscape(req.Origin))
-	}
-
-	zerolog.Ctx(r.Context()).Info().Str("email", req.Email).Str("url", uiURLRedacted).Msg("sending UI confirmation link")
+	zerolog.Ctx(r.Context()).Info().Str("email", req.Email).Str("url", confirmURL("[REDACTED]", req.Origin)).Msg("sending UI confirmation link")
 
 	subject := "Welcome to RottenBikes!"
-	body := fmt.Sprintf("Hello %s,\n\nPlease confirm your registration by clicking the following link:\n\n%s\n\nIf you did not request this, please ignore this email.", req.Username, uiURL)
+	body := fmt.Sprintf("Hello %s,\n\nPlease confirm your registration by clicking the following link:\n\n%s\n\nIf you did not request this, please ignore this email.", req.Username, confirmURL(magicToken, req.Origin))
 
-	if err := s.emailSender.SendEmail(req.Email, subject, body); err != nil {
+	if err := s.sendEmail("register", req.Email, subject, body); err != nil {
 		zerolog.Ctx(r.Context()).Error().Err(err).Str("email", req.Email).Msg("failed to send registration email")
 		s.sendError(w, "failed to send confirmation email", http.StatusInternalServerError)
 		return
@@ -133,9 +113,8 @@ func (s *HTTPServer) handleRequestMagicLink(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Verify hCaptcha
 	if err := s.verifyCaptcha(r.Context(), req.Captcha, identifier); err != nil {
-		s.sendError(w, "invalid captcha", http.StatusForbidden)
+		s.sendCaptchaError(w, err)
 		return
 	}
 
@@ -153,35 +132,12 @@ func (s *HTTPServer) handleRequestMagicLink(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	uiHost := os.Getenv("UI_HOST")
-	if uiHost == "" {
-		uiHost = "localhost"
-	}
-	uiPort := os.Getenv("UI_PORT")
-	if uiPort == "" {
-		uiPort = "8081"
-	}
-
-	scheme := "http"
-	if !isPrivateIP(uiHost) {
-		scheme = "https"
-	}
-	uiURL := fmt.Sprintf("%s://%s:%s/confirm/%s", scheme, uiHost, uiPort, magicToken)
-	if req.Origin != "" {
-		uiURL = fmt.Sprintf("%s?origin=%s", uiURL, url.QueryEscape(req.Origin))
-	}
-
-	uiURLRedacted := fmt.Sprintf("%s://%s:%s/confirm/%s", scheme, uiHost, uiPort, "[REDACTED]")
-	if req.Origin != "" {
-		uiURLRedacted = fmt.Sprintf("%s?origin=%s", uiURLRedacted, url.QueryEscape(req.Origin))
-	}
-
-	zerolog.Ctx(r.Context()).Info().Str("email", targetEmail).Str("url", uiURLRedacted).Msg("sending magic link")
+	zerolog.Ctx(r.Context()).Info().Str("email", targetEmail).Str("url", confirmURL("[REDACTED]", req.Origin)).Msg("sending magic link")
 
 	subject := "Your RottenBikes Magic Link"
-	body := fmt.Sprintf("Hello,\n\nYou requested a magic link to log in to RottenBikes. Click the following link to continue:\n\n%s\n\nIf you did not request this, please ignore this email.", uiURL)
+	body := fmt.Sprintf("Hello,\n\nYou requested a magic link to log in to RottenBikes. Click the following link to continue:\n\n%s\n\nIf you did not request this, please ignore this email.", confirmURL(magicToken, req.Origin))
 
-	if err := s.emailSender.SendEmail(targetEmail, subject, body); err != nil {
+	if err := s.sendEmail("magic_link", targetEmail, subject, body); err != nil {
 		zerolog.Ctx(r.Context()).Error().Err(err).Str("email", targetEmail).Msg("failed to send magic link email")
 		s.sendError(w, "failed to send magic link email", http.StatusInternalServerError)
 		return
@@ -198,46 +154,119 @@ func (s *HTTPServer) handleRequestMagicLink(w http.ResponseWriter, r *http.Reque
 	})
 }
 
+const defaultCaptchaVerifyURL = "https://api.hcaptcha.com/siteverify"
+
+var (
+	// errCaptchaInvalid: hCaptcha rejected the token (the client's fault).
+	errCaptchaInvalid = errors.New("invalid captcha")
+	// errCaptchaUnavailable: the token could not be verified (our side).
+	errCaptchaUnavailable = errors.New("captcha verification unavailable")
+)
+
+// verifyCaptcha checks the token against hCaptcha. It returns nil on success,
+// an error wrapping errCaptchaInvalid when the token is rejected, and one
+// wrapping errCaptchaUnavailable when it could not be verified.
 func (s *HTTPServer) verifyCaptcha(ctx context.Context, token, email string) error {
 	secret := strings.TrimSpace(os.Getenv("HCAPTCHA_SECRET"))
 	appEnv := strings.ToLower(strings.TrimSpace(os.Getenv("APP_ENV")))
 
-	if secret != "" {
-		vreq, err := http.PostForm("https://api.hcaptcha.com/siteverify", url.Values{
-			"secret":   {secret},
-			"response": {token},
-		})
-		if err != nil {
-			zerolog.Ctx(ctx).Error().Err(err).Str("email", email).Msg("hCaptcha request error")
-			return err
-		}
-		defer vreq.Body.Close()
-
-		var vres struct {
-			Success     bool     `json:"success"`
-			ErrorCodes  []string `json:"error-codes"`
-			Hostname    string   `json:"hostname"`
-			ChallengeTS string   `json:"challenge_ts"`
-		}
-		if err := json.NewDecoder(vreq.Body).Decode(&vres); err != nil {
-			zerolog.Ctx(ctx).Error().Err(err).Msg("hCaptcha decode error")
-			return err
-		}
-
-		if !vres.Success {
-			zerolog.Ctx(ctx).Warn().Str("email", email).Strs("errors", vres.ErrorCodes).Msg("hCaptcha verification FAILED")
-			return fmt.Errorf("invalid captcha")
-		}
-		zerolog.Ctx(ctx).Info().Str("email", email).Msg("hCaptcha verification SUCCESS")
-	} else {
+	if secret == "" {
 		if appEnv == "development" || appEnv == "dev" || appEnv == "local" {
+			captchaVerificationsTotal.WithLabelValues("skipped").Inc()
 			zerolog.Ctx(ctx).Warn().Msg("HCAPTCHA_SECRET not set, skipping verification request in development/local mode")
 			return nil
 		}
+		captchaVerificationsTotal.WithLabelValues("not_configured").Inc()
 		zerolog.Ctx(ctx).Error().Msg("HCAPTCHA_SECRET not set, cannot verify captcha in production")
-		return fmt.Errorf("captcha verification not configured")
+		return fmt.Errorf("%w: HCAPTCHA_SECRET not set", errCaptchaUnavailable)
 	}
+
+	vreq, err := http.NewRequestWithContext(ctx, http.MethodPost, s.captchaVerifyURL, strings.NewReader(url.Values{
+		"secret":   {secret},
+		"response": {token},
+	}.Encode()))
+	if err != nil {
+		captchaVerificationsTotal.WithLabelValues("error").Inc()
+		return fmt.Errorf("%w: %v", errCaptchaUnavailable, err)
+	}
+	vreq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	vresp, err := s.httpClient.Do(vreq)
+	if err != nil {
+		captchaVerificationsTotal.WithLabelValues("error").Inc()
+		zerolog.Ctx(ctx).Error().Err(err).Str("email", email).Msg("hCaptcha request error")
+		return fmt.Errorf("%w: %v", errCaptchaUnavailable, err)
+	}
+	defer vresp.Body.Close()
+
+	if vresp.StatusCode != http.StatusOK {
+		captchaVerificationsTotal.WithLabelValues("error").Inc()
+		zerolog.Ctx(ctx).Error().Int("status", vresp.StatusCode).Str("email", email).Msg("hCaptcha request error")
+		return fmt.Errorf("%w: hCaptcha returned status %d", errCaptchaUnavailable, vresp.StatusCode)
+	}
+
+	var vres struct {
+		Success     bool     `json:"success"`
+		ErrorCodes  []string `json:"error-codes"`
+		Hostname    string   `json:"hostname"`
+		ChallengeTS string   `json:"challenge_ts"`
+	}
+	if err := json.NewDecoder(vresp.Body).Decode(&vres); err != nil {
+		captchaVerificationsTotal.WithLabelValues("error").Inc()
+		zerolog.Ctx(ctx).Error().Err(err).Msg("hCaptcha decode error")
+		return fmt.Errorf("%w: decode response: %v", errCaptchaUnavailable, err)
+	}
+
+	if !vres.Success {
+		captchaVerificationsTotal.WithLabelValues("failure").Inc()
+		zerolog.Ctx(ctx).Warn().Str("email", email).Strs("errors", vres.ErrorCodes).Msg("hCaptcha verification FAILED")
+		return errCaptchaInvalid
+	}
+	captchaVerificationsTotal.WithLabelValues("success").Inc()
+	zerolog.Ctx(ctx).Info().Str("email", email).Msg("hCaptcha verification SUCCESS")
 	return nil
+}
+
+func (s *HTTPServer) sendCaptchaError(w http.ResponseWriter, err error) {
+	if errors.Is(err, errCaptchaInvalid) {
+		s.sendError(w, "invalid captcha", http.StatusForbidden)
+		return
+	}
+	s.sendError(w, "captcha verification unavailable, please try again later", http.StatusServiceUnavailable)
+}
+
+// sendEmail sends through the configured sender and records the outcome.
+func (s *HTTPServer) sendEmail(kind, to, subject, body string) error {
+	err := s.emailSender.SendEmail(to, subject, body)
+	result := "success"
+	if err != nil {
+		result = "failure"
+	}
+	emailsSentTotal.WithLabelValues(s.emailSender.Name(), kind, result).Inc()
+	return err
+}
+
+// confirmURL builds the UI link that confirms a magic token, as emailed to
+// the user.
+func confirmURL(token, origin string) string {
+	uiHost := os.Getenv("UI_HOST")
+	if uiHost == "" {
+		uiHost = "localhost"
+	}
+	uiPort := os.Getenv("UI_PORT")
+	if uiPort == "" {
+		uiPort = "8081"
+	}
+
+	scheme := "http"
+	if !isPrivateIP(uiHost) {
+		scheme = "https"
+	}
+	link := fmt.Sprintf("%s://%s:%s/confirm/%s", scheme, uiHost, uiPort, token)
+	if origin != "" {
+		link = fmt.Sprintf("%s?origin=%s", link, url.QueryEscape(origin))
+	}
+	return link
 }
 
 type confirmResponse struct {
@@ -246,18 +275,13 @@ type confirmResponse struct {
 	APITokenExpires time.Time `json:"api_token_expires_at"`
 }
 
-// GET /auth/confirm?token=...
+// GET /auth/confirm/{token}
 func (s *HTTPServer) handleConfirmMagicLink(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	token := r.URL.Query().Get("token")
-	if token == "" {
-		// New path-based format: /auth/confirm/TOKEN
-		token = strings.TrimPrefix(r.URL.Path, "/auth/confirm/")
-		token = strings.Trim(token, "/")
-	}
+	token := r.PathValue("token")
 	if token == "" {
 		s.sendError(w, "token is required", http.StatusBadRequest)
 		return

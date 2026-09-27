@@ -19,6 +19,8 @@ var (
 	getPosterRoleForPurgeQuery string
 	//go:embed sql/insert_moderation_action.sql
 	insertModerationActionQuery string
+	//go:embed sql/insert_bike_moderation_action.sql
+	insertBikeModerationActionQuery string
 )
 
 // PosterRole is a poster's authorization role, stored in posters.role and
@@ -58,11 +60,13 @@ type AdminPoster struct {
 }
 
 // ModerationAudit is written into moderation_actions when an admin acts.
-// It is kept in the same transaction as the action itself.
+// It is kept in the same transaction as the action itself. Exactly one of
+// TargetPosterID / TargetBikeID is set, depending on the action.
 type ModerationAudit struct {
 	AdminPosterID  int64
 	Action         string
 	TargetPosterID int64
+	TargetBikeID   string
 }
 
 // SearchPosters finds posters by email or username substring (admin only).

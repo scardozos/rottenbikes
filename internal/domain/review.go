@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/lib/pq"
 )
 
 var (
@@ -204,6 +206,10 @@ func (s *Store) CreateReviewWithRatings(ctx context.Context, in CreateReviewInpu
 	// Insert review, now including bike_img
 	var reviewID int64
 	if err := tx.QueryRowContext(ctx, insertReviewQuery, in.PosterID, in.BikeID, in.BikeImg, in.Comment).Scan(&reviewID); err != nil {
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) && pqErr.Code == "23503" && pqErr.Constraint == "fk_reviews_bike" {
+			return 0, ErrBikeNotFound
+		}
 		return 0, fmt.Errorf("insert review: %w", err)
 	}
 

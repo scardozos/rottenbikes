@@ -111,20 +111,13 @@ func (s *HTTPServer) handleCreateBike(w http.ResponseWriter, r *http.Request) {
 
 	bike, err := s.service.CreateBike(ctx, numericalID, req.HashID, req.IsElectric, req.WasScanned, creatorID)
 	if err != nil {
-		var pqErr *pq.Error
-		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
-			// Distinguish by constraint/index name
-			switch pqErr.Constraint {
-			case "bikes_pkey":
-				s.sendError(w, "bike with this numerical_id already exists", http.StatusConflict)
-				return
-			case "bikes_hash_id_key":
-				s.sendError(w, "bike with this hash_id already exists", http.StatusConflict)
-				return
-			default:
-				s.sendError(w, "bike already exists (duplicate key)", http.StatusConflict)
-				return
-			}
+		if msg, ok := bikeConflictMessage(err); ok {
+			s.sendError(w, msg, http.StatusConflict)
+			return
+		}
+		if errors.Is(err, domain.ErrValidation) {
+			s.sendError(w, err.Error(), http.StatusBadRequest)
+			return
 		}
 
 		zerolog.Ctx(r.Context()).Error().Err(err).Msg("create bike error")
@@ -179,6 +172,14 @@ func (s *HTTPServer) handleUpdateBike(w http.ResponseWriter, r *http.Request) {
 	if err := s.service.UpdateBike(ctx, bikeID, req.HashID, req.IsElectric, posterID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			s.sendError(w, "bike not found", http.StatusNotFound)
+			return
+		}
+		if msg, ok := bikeConflictMessage(err); ok {
+			s.sendError(w, msg, http.StatusConflict)
+			return
+		}
+		if errors.Is(err, domain.ErrValidation) {
+			s.sendError(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 		zerolog.Ctx(r.Context()).Error().Err(err).Str("bike_id", bikeID).Msg("update bike error")
@@ -249,8 +250,6 @@ func (s *HTTPServer) handleGetBikeByHash(w http.ResponseWriter, r *http.Request)
 	_ = json.NewEncoder(w).Encode(bike)
 }
 
-
-
 // GET /bikes/{id}/details → single bike + ratings + reviews
 func (s *HTTPServer) handleGetBikeDetails(w http.ResponseWriter, r *http.Request) {
 	bikeID := r.PathValue("id")
@@ -277,6 +276,22 @@ func (s *HTTPServer) handleGetBikeDetails(w http.ResponseWriter, r *http.Request
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(details)
+}
+
+// bikeConflictMessage maps a unique violation on bikes to a client message.
+func bikeConflictMessage(err error) (string, bool) {
+	var pqErr *pq.Error
+	if !errors.As(err, &pqErr) || pqErr.Code != "23505" {
+		return "", false
+	}
+	switch pqErr.Constraint {
+	case "bikes_pkey":
+		return "bike with this numerical_id already exists", true
+	case "bikes_hash_id_key":
+		return "bike with this hash_id already exists", true
+	default:
+		return "bike already exists (duplicate key)", true
+	}
 }
 
 func isAlphanumeric(s string) bool {
