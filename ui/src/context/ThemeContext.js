@@ -30,14 +30,14 @@ export const themes = {
         ...baseTheme,
         dark: true,
         colors: {
-            primary: '#E11D48', // Racing Red
+            primary: '#14B8A6', // Electric Teal
             secondary: '#3B82F6', // Cobalt Blue
             background: '#09090B', // True Carbon
             card: '#18181B', // Elevated Carbon
             text: '#F4F4F5', // Off-white
             subtext: '#A1A1AA', // Zinc 400
             border: '#27272A', // Zinc 800
-            notification: '#E11D48',
+            notification: '#14B8A6',
             inputBackground: '#27272A',
             placeholder: '#71717A', // Zinc 500
             error: '#F87171',
@@ -57,14 +57,14 @@ export const themes = {
         ...baseTheme,
         dark: false,
         colors: {
-            primary: '#E11D48', // Racing Red
+            primary: '#0F766E', // Electric Teal
             secondary: '#3B82F6', // Cobalt Blue
             background: '#F4F4F5', // Soft gray
             card: '#FFFFFF',
             text: '#18181B', // Near black
             subtext: '#52525B', // Zinc 600
             border: '#E4E4E7', // Zinc 200
-            notification: '#E11D48',
+            notification: '#0F766E',
             inputBackground: '#F4F4F5',
             placeholder: '#A1A1AA', // Zinc 400
             error: '#DC2626',

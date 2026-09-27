@@ -242,6 +242,8 @@ export default {
     rate_limits_text: 'Per garantir l\'estabilitat del servei, apliquem límits de velocitat en certes accions. Específicament, els usuaris estan limitats a sol·licitar 2 enllaços màgics per dia. A més, només pots enviar 5 ressenyes per hora i has d\'esperar 10 minuts entre ressenyes per a la mateixa bicicleta.',
     accuracy_title: 'Exactitud de les Dades',
     accuracy_text: 'Confiem que els usuaris introdueixen dades precises. Si detectem informació falsa o enganyosa, el teu compte pot ser eliminat.',
+    affiliation_title: 'Sense afiliació amb Bicing',
+    affiliation_text: 'RottenBikes és una plataforma independent i no està de cap manera afiliada, recolzada o associada amb Bicing, B:SM o qualsevol dels seus socis. "Bicing" és una marca registrada dels seus respectius propietaris. Aquest servei es proporciona únicament amb finalitats comunitàries.',
     i_agree_to: 'Accepto la',
     must_accept_terms: 'Has d\'acceptar els Termes i la Política de Privadesa per registrar-te.',
     create_new_bike: "Crear nova bicicleta #{numerical_id}",
