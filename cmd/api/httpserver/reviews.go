@@ -30,6 +30,11 @@ type createReviewRequest struct {
 // POST /bikes/{id}/reviews → create a review with optional subcategory ratings
 func (s *HTTPServer) handleCreateBikeReview(w http.ResponseWriter, r *http.Request) {
 	bikeID := r.PathValue("id")
+	if !isNumeric(bikeID) {
+		s.sendError(w, "invalid bike id", http.StatusBadRequest)
+		return
+	}
+
 	var req createReviewRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		s.sendError(w, "invalid JSON", http.StatusBadRequest)
@@ -68,12 +73,21 @@ func (s *HTTPServer) handleCreateBikeReview(w http.ResponseWriter, r *http.Reque
 			s.sendError(w, "you have reached the hourly limit of 5 reviews", http.StatusTooManyRequests)
 			return
 		}
+		if errors.Is(err, domain.ErrValidation) {
+			s.sendError(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		if errors.Is(err, domain.ErrBikeNotFound) {
+			s.sendError(w, "bike not found", http.StatusNotFound)
+			return
+		}
 
 		zerolog.Ctx(r.Context()).Error().Err(err).Str("bike_id", bikeID).Msg("create review error")
 		s.sendError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"review_id": reviewID,
@@ -119,6 +133,10 @@ func (s *HTTPServer) handleUpdateReview(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			s.sendError(w, "review not found", http.StatusNotFound)
+			return
+		}
+		if errors.Is(err, domain.ErrValidation) {
+			s.sendError(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 		zerolog.Ctx(r.Context()).Error().Err(err).Int64("review_id", reviewID).Msg("update review error")

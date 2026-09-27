@@ -143,7 +143,8 @@ func runDeleteBike(bikeID string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	err = store.AdminDeleteBike(ctx, bikeID)
+	// Out-of-band deletions have no admin poster to attribute, so no audit row.
+	err = store.AdminDeleteBike(ctx, bikeID, nil)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return fmt.Errorf("bike %q not found", bikeID)

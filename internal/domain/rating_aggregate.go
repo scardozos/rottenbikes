@@ -50,7 +50,8 @@ func (s *Store) ListWindowedRatingAggregatesByBike(ctx context.Context, bikeID s
 	}
 	defer rows.Close()
 
-	var aggs []RatingAggregate
+	// Non-nil so a bike without reviews serializes as "ratings": [].
+	aggs := []RatingAggregate{}
 	for rows.Next() {
 		var sub RatingSubcategory
 		var avg1w, avg2w, avgOverall sql.NullFloat64

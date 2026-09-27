@@ -12,7 +12,7 @@ endif
 
 MIGRATIONS_DIR := internal/db/migrations
 
-.PHONY: db-up db-migrate-up db-migrate-down db-reset run test test-go test-ui build lint fmt build-and-push admin-promote admin-demote admin-list
+.PHONY: db-up db-migrate-up db-migrate-down db-reset run test test-go test-ui build lint fmt build-and-push admin-promote admin-demote admin-list e2e
 
 db-up:
 	@echo "Starting local PostgreSQL..."
@@ -90,6 +90,11 @@ test-go:
 test-ui:
 	@echo "Running UI tests..."
 	@cd ui && node scripts/run-tests.js
+
+# End-to-end suite against a live environment: make e2e ENV=local|dev|prod
+# (prod also needs CONFIRM=prod; override the target with API_URL=...)
+e2e:
+	@CONFIRM="$(CONFIRM)" API_URL="$(API_URL)" CAPTCHA_TOKEN="$(CAPTCHA_TOKEN)" .scripts/run-e2e.sh $(or $(ENV),local)
 
 fmt:
 	@echo "Formatting code..."

@@ -3,9 +3,6 @@ package domain
 import (
 	"context"
 	"database/sql"
-	"fmt"
-	"net/mail"
-	"regexp"
 )
 
 type Service interface {
@@ -63,20 +60,14 @@ func NewService(store *Store) Service {
 	return &service{store: store}
 }
 
-var validUsernameRegex = regexp.MustCompile(`^[a-zA-Z0-9.]+$`)
-
 // Auth
 
 func (s *service) Register(ctx context.Context, username, email string) (string, string, error) {
-	// Validate email format
-	_, err := mail.ParseAddress(email)
-	if err != nil {
-		return "", "", fmt.Errorf("invalid email format")
+	if err := validateEmail(email); err != nil {
+		return "", "", err
 	}
-
-	// Validate username format (alphanumeric and dots only)
-	if !validUsernameRegex.MatchString(username) {
-		return "", "", fmt.Errorf("username can only contain letters, numbers and dots")
+	if err := validateUsername(username); err != nil {
+		return "", "", err
 	}
 
 	return s.store.Register(ctx, username, email)
@@ -125,12 +116,14 @@ func (s *service) PurgePoster(ctx context.Context, adminPosterID, targetPosterID
 	})
 }
 
-// AdminDeleteBike allows an admin to delete a bike regardless of who created it.
+// AdminDeleteBike allows an admin to delete a bike regardless of who created
+// it, and writes an audit row so the action is traceable.
 func (s *service) AdminDeleteBike(ctx context.Context, adminPosterID int64, bikeID string) error {
-	// We should probably log a ModerationAudit here too for traceability,
-	// but currently ModerationAudit only supports target_poster_id.
-	// For now, just delete the bike.
-	return s.store.AdminDeleteBike(ctx, bikeID)
+	return s.store.AdminDeleteBike(ctx, bikeID, &ModerationAudit{
+		AdminPosterID: adminPosterID,
+		Action:        "delete_bike",
+		TargetBikeID:  bikeID,
+	})
 }
 
 // Infrastructure
@@ -146,20 +139,8 @@ func (s *service) ListBikes(ctx context.Context, searchQuery, sortBy string, lim
 }
 
 func (s *service) CreateBike(ctx context.Context, numericalID string, hashID *string, isElectric, wasScanned bool, creatorID int64) (*Bike, error) {
-	// Validate numerical_id consistency (4-5 digits)
-	validID := true
-	if len(numericalID) < 4 || len(numericalID) > 5 {
-		validID = false
-	} else {
-		for _, r := range numericalID {
-			if r < '0' || r > '9' {
-				validID = false
-				break
-			}
-		}
-	}
-	if !validID {
-		return nil, fmt.Errorf("numerical_id must be 4-5 digits")
+	if err := validateNumericalID(numericalID); err != nil {
+		return nil, err
 	}
 
 	// Treat empty string hash_id as nil
@@ -167,8 +148,8 @@ func (s *service) CreateBike(ctx context.Context, numericalID string, hashID *st
 		hashID = nil
 	}
 
-	if hashID != nil && !isDomainAlphanumeric(*hashID) {
-		return nil, fmt.Errorf("hash_id must be alphanumeric")
+	if err := validateHashID(hashID); err != nil {
+		return nil, err
 	}
 
 	return s.store.CreateBike(ctx, numericalID, hashID, isElectric, wasScanned, creatorID)
@@ -191,8 +172,8 @@ func (s *service) GetBikeDetails(ctx context.Context, id string, limit, offset i
 }
 
 func (s *service) UpdateBike(ctx context.Context, id string, hashID *string, isElectric *bool, creatorID int64) error {
-	if hashID != nil && *hashID != "" && !isDomainAlphanumeric(*hashID) {
-		return fmt.Errorf("hash_id must be alphanumeric")
+	if err := validateHashID(hashID); err != nil {
+		return err
 	}
 	return s.store.UpdateBike(ctx, id, hashID, isElectric, creatorID)
 }
@@ -218,6 +199,9 @@ func (s *service) ListReviewsWithRatingsByUser(ctx context.Context, posterID int
 }
 
 func (s *service) CreateReviewWithRatings(ctx context.Context, in CreateReviewInput) (int64, error) {
+	if err := validateComment(in.Comment); err != nil {
+		return 0, err
+	}
 	if err := validateReviewScores(in.Overall, in.Breaks, in.Seat, in.Sturdiness, in.Power, in.Pedals); err != nil {
 		return 0, err
 	}
@@ -225,6 +209,9 @@ func (s *service) CreateReviewWithRatings(ctx context.Context, in CreateReviewIn
 }
 
 func (s *service) UpdateReviewWithRatings(ctx context.Context, in UpdateReviewInput) error {
+	if err := validateComment(in.Comment); err != nil {
+		return err
+	}
 	if err := validateReviewScores(in.Overall, in.Breaks, in.Seat, in.Sturdiness, in.Power, in.Pedals); err != nil {
 		return err
 	}
@@ -237,47 +224,4 @@ func (s *service) GetReviewWithRatingsByID(ctx context.Context, reviewID int64) 
 
 func (s *service) DeleteReview(ctx context.Context, reviewID int64, posterID int64) error {
 	return s.store.DeleteReview(ctx, reviewID, posterID)
-}
-
-// Helpers
-
-func validateScore(sub RatingSubcategory, val *int16) error {
-	if val == nil {
-		return nil
-	}
-	if *val < 1 || *val > 5 {
-		return fmt.Errorf("invalid score %d for %s", *val, sub)
-	}
-	return nil
-}
-
-func validateReviewScores(overall, breaks, seat, sturdiness, power, pedals *int16) error {
-	if err := validateScore(RatingSubcategoryOverall, overall); err != nil {
-		return err
-	}
-	if err := validateScore(RatingSubcategoryBreaks, breaks); err != nil {
-		return err
-	}
-	if err := validateScore(RatingSubcategorySeat, seat); err != nil {
-		return err
-	}
-	if err := validateScore(RatingSubcategorySturdiness, sturdiness); err != nil {
-		return err
-	}
-	if err := validateScore(RatingSubcategoryPower, power); err != nil {
-		return err
-	}
-	if err := validateScore(RatingSubcategoryPedals, pedals); err != nil {
-		return err
-	}
-	return nil
-}
-
-func isDomainAlphanumeric(s string) bool {
-	for _, r := range s {
-		if (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') && (r < '0' || r > '9') {
-			return false
-		}
-	}
-	return true
 }

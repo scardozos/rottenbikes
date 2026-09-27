@@ -37,6 +37,7 @@ type Config struct {
 	MetricsPort      string `json:"METRICS_PORT"`
 	EmailSenderType  string `json:"EMAIL_SENDER_TYPE"`
 	MailtrapTokenSet bool   `json:"MAILTRAP_TOKEN_SET"`
+	MailtrapAPIURL   string `json:"MAILTRAP_API_URL"`
 	EmailFromAddress string `json:"EMAIL_FROM_ADDRESS"`
 	EmailFromName    string `json:"EMAIL_FROM_NAME"`
 }
@@ -62,6 +63,7 @@ func main() {
 		EmailSenderType:  "noop",
 		EmailFromAddress: getEnv("EMAIL_FROM_ADDRESS", "hello@rottenbik.es"),
 		EmailFromName:    getEnv("EMAIL_FROM_NAME", "RottenBikes"),
+		MailtrapAPIURL:   getEnv("MAILTRAP_API_URL", email.DefaultMailtrapAPIURL),
 	}
 	if os.Getenv("API_PORT") != "" {
 		cfg.APIPort = os.Getenv("API_PORT")
@@ -98,6 +100,7 @@ func main() {
 			Token:     mailtrapToken,
 			FromEmail: cfg.EmailFromAddress,
 			FromName:  cfg.EmailFromName,
+			APIURL:    cfg.MailtrapAPIURL,
 		}
 	} else {
 		cfg.EmailSenderType = "noop"
@@ -110,6 +113,7 @@ func main() {
 		Str("metrics_port", cfg.MetricsPort).
 		Str("email_sender_type", cfg.EmailSenderType).
 		Bool("mailtrap_token_set", cfg.MailtrapTokenSet).
+		Str("mailtrap_api_url", cfg.MailtrapAPIURL).
 		Str("email_from_address", cfg.EmailFromAddress).
 		Str("email_from_name", cfg.EmailFromName).
 		Msg("starting service")

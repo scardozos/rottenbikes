@@ -218,11 +218,19 @@ func (s *Store) DeleteBike(ctx context.Context, id string, creatorID int64) erro
 	return nil
 }
 
-// AdminDeleteBike deletes a bike without checking creator ownership.
-func (s *Store) AdminDeleteBike(ctx context.Context, id string) error {
-	res, err := s.db.ExecContext(ctx, adminDeleteBikeQuery, id)
+// AdminDeleteBike deletes a bike without checking creator ownership. When
+// audit is non-nil, a moderation_actions row is written in the same
+// transaction.
+func (s *Store) AdminDeleteBike(ctx context.Context, id string, audit *ModerationAudit) error {
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	res, err := tx.ExecContext(ctx, adminDeleteBikeQuery, id)
+	if err != nil {
+		return fmt.Errorf("delete bike: %w", err)
 	}
 	n, err := res.RowsAffected()
 	if err != nil {
@@ -230,6 +238,16 @@ func (s *Store) AdminDeleteBike(ctx context.Context, id string) error {
 	}
 	if n == 0 {
 		return sql.ErrNoRows
+	}
+
+	if audit != nil {
+		if _, err := tx.ExecContext(ctx, insertBikeModerationActionQuery, audit.AdminPosterID, audit.Action, audit.TargetBikeID); err != nil {
+			return fmt.Errorf("insert moderation action: %w", err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit tx: %w", err)
 	}
 	return nil
 }

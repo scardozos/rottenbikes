@@ -22,13 +22,23 @@ type HTTPServer struct {
 	service     domain.Service
 	emailSender email.EmailSender
 	server      *http.Server
+
+	// Outbound calls to hCaptcha. Overridable so tests can point them at a
+	// local server.
+	captchaVerifyURL string
+	httpClient       *http.Client
 }
 
 func New(service domain.Service, sender email.EmailSender, addr string) (*HTTPServer, error) {
 	// Ping check removed as it belongs to the store/db layer, or we can add a HealthCheck method to Service
 	// For now, we'll assume the service is ready or check it if we add a method.
 
-	s := &HTTPServer{service: service, emailSender: sender}
+	s := &HTTPServer{
+		service:          service,
+		emailSender:      sender,
+		captchaVerifyURL: defaultCaptchaVerifyURL,
+		httpClient:       &http.Client{Timeout: 10 * time.Second},
+	}
 
 	mux := http.NewServeMux()
 
