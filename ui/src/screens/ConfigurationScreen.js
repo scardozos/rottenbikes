@@ -29,8 +29,9 @@ const ConfigurationScreen = ({ navigation }) => {
             });
             setDeleteModalVisible(false);
             showToast(t('delete_account_success'), 'success');
-            // On successful deletion, logout to clear state and redirect
-            logout();
+            // On successful deletion, logout to clear state and redirect. The
+            // server already revoked every session along with the account.
+            logout({ revokeSession: false });
         } catch (error) {
             console.error('Failed to delete account:', error);
             setIsDeleting(false);

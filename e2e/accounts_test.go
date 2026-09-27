@@ -18,6 +18,9 @@ func TestDeleteAccountKeepsContent(t *testing.T) {
 	mustStatus(t, call(t, "DELETE", "/auth/user", u.Token, nil), http.StatusNoContent)
 
 	expectStatus(t, call(t, "GET", "/auth/verify", u.Token, nil), http.StatusUnauthorized)
+	// Clients log out after deleting the account; the session is already
+	// gone, which must not be an error (a 401 here caused a logout loop).
+	expectStatus(t, call(t, "POST", "/auth/logout", u.Token, nil), http.StatusNoContent)
 	expectStatus(t, call(t, "GET", "/bikes/"+b.NumericalID, "", nil), http.StatusOK)
 
 	r := call(t, "GET", fmt.Sprintf("/reviews/%d", rid), "", nil)

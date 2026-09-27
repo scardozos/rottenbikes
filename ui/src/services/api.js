@@ -1,6 +1,7 @@
 import axios from 'axios';
 import storage from '../utils/storage';
 import { formatRetryAfter } from '../utils/rate-limit';
+import { isSessionExpiredError } from '../utils/session';
 
 const API_URL = (typeof window !== 'undefined' && window.EXPO_PUBLIC_API_URL) || process.env.EXPO_PUBLIC_API_URL || (__DEV__ ? 'http://localhost:8080' : '');
 
@@ -30,7 +31,7 @@ import { DeviceEventEmitter } from 'react-native';
 api.interceptors.response.use(
     (response) => response,
     (error) => {
-        if (error.response && error.response.status === 401) {
+        if (isSessionExpiredError(error)) {
             DeviceEventEmitter.emit('session_expired');
         } else if (error.response && error.response.status === 429) {
             const retryAfter = error.response.headers['retry-after'];

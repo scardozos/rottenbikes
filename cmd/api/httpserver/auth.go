@@ -357,15 +357,22 @@ func (s *HTTPServer) handlePollMagicLink(w http.ResponseWriter, r *http.Request)
 }
 
 // POST /auth/logout
+//
+// Idempotent: logging out a session that is already gone (revoked, expired,
+// or deleted with its account) is still a successful logout, so this always
+// returns 204 unless revoking fails. It deliberately does not go through
+// middlewareAuth: answering 401 here made clients that react to 401 by
+// logging out call logout again, in a loop.
 func (s *HTTPServer) handleLogout(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		s.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	token, ok := apiTokenFromContext(r.Context())
-	if !ok || token == "" {
-		s.sendError(w, "unauthorized", http.StatusUnauthorized)
+	token, problem := bearerToken(r)
+	if problem != "" {
+		// No session to revoke.
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 
