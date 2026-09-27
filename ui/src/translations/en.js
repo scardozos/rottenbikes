@@ -242,6 +242,8 @@ export default {
     rate_limits_text: 'To ensure service stability, we enforce rate limits on certain actions. Specifically, users are limited to requesting 2 magic links per day. Additionally, you can only submit 5 reviews per hour, and wait 10 minutes between reviews for the same bike.',
     accuracy_title: 'Data Accuracy',
     accuracy_text: 'Users are trusted to input accurate data. If we detect false or misleading information, your account may be deleted.',
+    affiliation_title: 'No Affiliation',
+    affiliation_text: 'RottenBikes is an independent platform and is in no way affiliated with, endorsed by, or associated with Bicing, B:SM, or any of their partners. "Bicing" is a registered trademark of its respective owners. This service is provided for community purposes only.',
     i_agree_to: 'I agree to the',
     must_accept_terms: 'You must accept the Terms & Privacy Policy to register.',
     create_new_bike: "Create new bike #{numerical_id}",

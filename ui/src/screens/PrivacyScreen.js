@@ -60,6 +60,12 @@ const PrivacyScreen = ({ navigation }) => {
             {/* Terms & Conditions Section */}
             <View style={styles.section}>
                 <Text style={styles.sectionTitle}>📜 {t('terms_conditions_title')}</Text>
+                
+                <Text style={styles.subTitle}>{t('affiliation_title')}</Text>
+                <Text style={styles.paragraph}>
+                    {t('affiliation_text')}
+                </Text>
+
                 <Text style={styles.subTitle}>{t('abuse_policy_title')}</Text>
                 <Text style={styles.paragraph}>
                     {t('abuse_policy_text')}
