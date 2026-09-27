@@ -1,141 +1,51 @@
-# Rotten Bikes - Project Context
+# Rotten Bikes - Agent Context
 
-## Project Overview
+Rotten Bikes is a platform for reviewing and rating shared city bikes (e.g. "Bicing"): users scan a bike's QR code, see its condition from other users' reviews, and rate it. Go API + PostgreSQL, React Native (Expo) app for iOS, Android and web.
 
-Rotten Bikes is a platform for reviewing and rating shared city bikes (e.g., "Bicing"). It allows users to scan a bike's QR code, view its maintenance history defined by user reviews, and submit their own ratings on specific attributes like breaks, seat comfort, and sturdiness.
+The project docs live in `docs/` and are the source of truth for everything below. Read the relevant one before changing an area:
 
-**Key Technologies:**
-*   **Backend:** Go (1.25+), Standard `net/http`, `lib/pq`.
-*   **Frontend:** React Native (Expo) for Mobile (iOS/Android) and Web.
-*   **Database:** PostgreSQL.
-*   **Infrastructure:** Kubernetes (k8s), Docker.
-*   **Tools:** `make`, `golang-migrate` (DB migrations).
+| Topic | Doc |
+| :--- | :--- |
+| Code layout, layers, data model, how auth/scanning/reviews work, frontend structure | [docs/architecture.md](docs/architecture.md) |
+| Local setup, running, database tasks, recipes (endpoint, query, migration) | [docs/development.md](docs/development.md) |
+| Endpoints, errors, rate limits | [docs/api.md](docs/api.md) |
+| Environment variables, env files, k8s config | [docs/configuration.md](docs/configuration.md) |
+| Unit and E2E tests | [docs/testing.md](docs/testing.md) |
+| Deployment, admin roles, observability | [docs/operations.md](docs/operations.md) |
+| Workflow, PR checklist, conventions | [docs/contributing.md](docs/contributing.md) |
 
-## Core Concepts and Domain Language
+## Domain language
 
-*   **Bike**: The physical asset being reviewed. Identified by a `numerical_id` (the visible number on the bike frame) and an internal UUID.
-*   **Review**: A structured rating submitted by a user for a specific bike. Includes an overall score and sub-scores (Breaks, Seat, etc.).
-*   **Magic Link**: The primary authentication mechanism. Users request a link via email; no passwords are stored.
-*   **Rating Aggregate**: A denormalized or calculated summary of a bike's performance (e.g., "Average Brake Rating").
-*   **Domain**: Refers to `internal/domain`, where business logic and database interactions reside.
-*   **Seed**: Refers to initial data population (handled by `internal/db/seeds/dev_seeds.sql`).
-
-## Repository Structure
-
-*   **`cmd/api/`**: Main entry point for the Backend API.
-    *   `main.go`: Application bootstrapping.
-    *   `httpserver/`: HTTP handlers and routing logic.
-*   **`internal/domain/`**: The core business logic "Source of Truth".
-    *   Contains types (`bike.go`, `review.go`), service logic, and persistence.
-    *   `sql/`: Raw SQL queries live here (embedded into Go binaries).
-*   **`internal/db/`**: Database artifacts.
-    *   `migrations/`: SQL migration files (Golang Migrate format).
-    *   `seeds/`: Data seeding scripts.
-*   **`ui/`**: The Frontend application (Expo/React Native).
-    *   `App.js` & `src/`: Source code.
-    *   Running `make run` starts this alongside the backend.
-*   **`k8s/`**: Kubernetes manifests.
-    *   Organized by overlay: `base`, `dev`, `prd`.
-*   **`Makefile`**: The control center for local development (`db-up`, `run`, `db-reset`).
-*   **`.scripts/`**: Helper shell scripts used by the Makefile.
-
-## Frontend Architecture
-
-The UI is built with **React Native (Expo)**, targeting both mobile (iOS/Android) and Web.
-
-*   **Tech Stack**:
-    *   **Framework**: Expo (~54.0), React Native (0.81).
-    *   **Navigation**: React Navigation v7 (Native Stack & Bottom Tabs).
-    *   **Networking**: Axios with interceptors for auth tokens.
-    *   **State Management**: React Context API.
-
-*   **Navigation Structure** (`ui/src/navigation/AppNavigator.js`):
-    *   **Public Stack**: `Login` -> `Register`.
-    *   **Main Stack** (Authenticated): Bottom Tab Navigator (`Home`, `BikesList`, `Configuration`).
-    *   **Deep Linking**: Supports `rottenbikes://` and `http` schemes.
-        *   `top-level`: `confirm/:token`, `privacy`.
-    *   **Bikes List Logic**: Custom tab press listener resets the stack when tapping the "Bikes" tab.
-
-*   **Key Directories**:
-    *   `src/context/`: Global state providers (`AuthContext`, `ThemeContext`, `LanguageContext`, `SessionContext`).
-    *   `src/services/`: API client (`api.js`). Automatically attaches `Bearer` token from storage.
-    *   `src/translations/`: i18n JSON files (`en`, `es`, `ca`).
-    *   `src/screens/`: Feature logic. `HomeScreen` handles scanning.
-
-
-## How to Run and Develop Locally
-
-**Standard Workflow:**
-1.  **Prerequisites**: Docker, Go 1.23+, Node/npm.
-2.  **Start All**: Run `make run`.
-    *   This spins up Postgres (local Docker), runs migrations, seeds data, starts the Go backend (:8080), and the Expo UI (:8081).
-3.  **Database Management**:
-    *   `make db-reset`: Wipes the database and re-applies everything (destructive).
-    *   `make db-migrate-up`: Applies pending migrations.
-4.  **Verification**:
-    *   Backend: `http://localhost:8080/healthz`
-    *   Frontend: `http://localhost:8081`
-
-**Configuration:**
-*   Environment variables are loaded from `.env` files (e.g., `.env.local`).
-*   Example defaults are often found in `Makefile` assignments or `.env.example` if available.
-
-## Testing, Linting, and Quality Gates
-
-*   **Go Tests**: Standard `go test ./...` in the root.
-    *   Tests often reside next to the code (e.g., `internal/domain/bike_test.go`).
-    *   Uses `go-sqlmock` for database mocking in unit tests.
-*   **Linting**: Standard Go formatting (`gofmt`) is expected.
-*   **CI**: No active GitHub Actions workflows detected currently.
-*   **Frontend**: `npm start` in `ui/` runs Expo.
-
-## Deployment and Operations
-
-*   **Kubernetes**: The app is deployed to K8s using manifests in `k8s/`.
-    *   Structure suggests a Kustomize-like approach (`base`, `dev`, `prd`).
-*   **Observability**:
-    *   Prometheus metrics exposed at `:9091/metrics`.
-    *   Structured logging to stdout.
-*   **Environments**:
-    *   **Dev**: Uses `k8s/dev` and `api-dev` images.
-    *   **Prd**: Uses `k8s/prd`.
+*   **Bike**: the physical asset being reviewed, identified by its `numerical_id` (the 4–5 digit number on the frame, stored as text so leading zeros are kept) and optionally a QR `hash_id`.
+*   **Poster**: a user. **Admin** is a poster with `role = 'admin'`.
+*   **Review**: a rating of a bike: an overall score plus sub-scores (breaks, seat, sturdiness, power, pedals).
+*   **Rating aggregate**: cached per-bike averages (`rating_aggregates`), recomputed when reviews change.
+*   **Magic link**: the only login mechanism; no passwords are stored.
+*   **Domain**: `internal/domain`, where business logic and database access live.
+*   **Seed**: dev data in `internal/db/seeds/dev_seeds.sql`.
 
 ## How the AI Agent Should Help
 
-**Coding Guidelines:**
+**Coding Guidelines** (full list in [docs/contributing.md](docs/contributing.md#conventions)):
 *   **Language**: Go (Latest/Stable), React (Functional Components + Hooks).
 *   **SQL pattern**: **Do not hardcode SQL in Go strings.**
     *   Put raw SQL in `internal/domain/sql/<descriptive_name>.sql`.
     *   Use `//go:embed` to load it in the domain package.
-*   **Error Handling**: Wrap errors with context in Go. failing loudly is better than silent failure.
-*   **Frontend**: Use `StyleSheet` in React Native. prefer Functional components.
+*   **Error Handling**: Wrap errors with context in Go. Failing loudly is better than silent failure. Invalid client input is a `domain.ValidationError` (400), never a 500.
+*   **Frontend**: Use `StyleSheet` in React Native. Prefer functional components. Every user-facing string goes in `ui/src/translations/{en,es,ca}.js`.
+*   **Tests**: behaviour changes come with unit tests; API changes also with E2E coverage ([docs/testing.md](docs/testing.md)).
+*   **Docs**: when you change behaviour, endpoints, configuration or commands, update the matching file in `docs/`. If docs and code disagree, the code is right: fix the docs.
 
 **Do Not Touch:**
 *   `internal/db/migrations/*.sql` (Old migrations): *Never* edit an existing applied migration file. Create a new one.
 
 **Secrets:**
 *   Never output real secrets. Use placeholders like `REDACTED` or reference env vars.
-
-## Common Tasks and Recipes
-
-**Adding a Repository Method:**
-1.  Write the SQL query in `internal/domain/sql/new_query.sql`.
-2.  Embed it in the relevant Go file (`bike.go`, etc.).
-3.  Add the method to the Service struct.
-4.  Add a test case in `_test.go` using `sqlmock`.
-
-**Adding a New API Endpoint:**
-1.  Define the handler in `cmd/api/httpserver/<resource>.go`.
-2.  Register the route in `cmd/api/main.go` or the router setup.
-3.  Implement the business logic in `internal/domain/`.
-4.  Ensure `Auth Required` logic is applied if it's protected.
-
-**Modifying DB Schema:**
-1.  Create two files in `internal/db/migrations/`: `XXXX_name.up.sql` and `XXXX_name.down.sql`.
-2.  Run `make db-reset` (local) to apply and verify.
+*   Never commit env files or admin identities (admins are a database role).
 
 ## Limitations and Known Quirks
 
-*   **Auth Flow**: The "Magic Link" flow is complex. It involves an initial request, email delivery (mocked/Mailtrap locally), and a "verify" step. Tokens must be handled carefully.
+*   **Auth Flow**: The magic link flow is complex: a request, an emailed magic token (confirm) and a separate poll token (the requesting device), both stored hashed. Auth endpoints must not reveal whether an account exists. See [docs/architecture.md](docs/architecture.md#passwordless-authentication).
 *   **Expo Web vs Native**: The UI runs on both. Verify that UI changes (especially native modules like Camera/Scanner) are compatible with or guarded for Web.
 *   **No ORM**: The project uses raw SQL. You must be comfortable writing and debugging PostgreSQL queries.
+*   **Bikes tab**: a custom tab-press listener in `AppNavigator.js` resets the Bikes stack when the tab is tapped.
