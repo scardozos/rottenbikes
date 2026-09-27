@@ -2,6 +2,8 @@ package httpserver
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -56,8 +58,14 @@ func (s *HTTPServer) handleRegister(w http.ResponseWriter, r *http.Request) {
 
 	magicToken, pollToken, err := s.service.Register(r.Context(), req.Username, req.Email)
 	if err != nil {
-		if errors.Is(err, domain.ErrEmailExists) || errors.Is(err, domain.ErrUsernameExists) {
+		// Usernames are public, so a taken one can be reported. A taken email
+		// is answered exactly like a successful registration (see below).
+		if errors.Is(err, domain.ErrUsernameExists) {
 			s.sendError(w, err.Error(), http.StatusConflict)
+			return
+		}
+		if errors.Is(err, domain.ErrEmailExists) {
+			s.handleRegisterExistingEmail(w, r, req)
 			return
 		}
 		if errors.Is(err, domain.ErrValidation) {
@@ -72,16 +80,39 @@ func (s *HTTPServer) handleRegister(w http.ResponseWriter, r *http.Request) {
 
 	subject := "Welcome to RottenBikes!"
 	body := fmt.Sprintf("Hello %s,\n\nPlease confirm your registration by clicking the following link:\n\n%s\n\nIf you did not request this, please ignore this email.", req.Username, confirmURL(magicToken, req.Origin))
-
-	if err := s.sendEmail("register", req.Email, subject, body); err != nil {
-		zerolog.Ctx(r.Context()).Error().Err(err).Str("email", req.Email).Msg("failed to send registration email")
-		s.sendError(w, "failed to send confirmation email", http.StatusInternalServerError)
-		return
-	}
+	s.sendEmailAsync(r, "register", req.Email, subject, body, "failed to send registration email")
 
 	// The opaque credential returned to the requesting device is the poll token
 	// (raw), used to poll /auth/poll for the api token once the emailed link is
 	// confirmed on another device. It is decoupled from the emailed magic token.
+	s.sendRegisterResponse(w, pollToken)
+}
+
+// handleRegisterExistingEmail answers a registration for an email that
+// already has an account exactly like a new registration, so the response
+// does not reveal which emails are registered. The account's owner gets a
+// login link instead of a welcome email. The requesting device gets a decoy
+// poll token that never resolves: whoever tried to register must not be
+// able to pick up the owner's session when the owner clicks the link.
+func (s *HTTPServer) handleRegisterExistingEmail(w http.ResponseWriter, r *http.Request, req registerRequest) {
+	logger := zerolog.Ctx(r.Context())
+	magicToken, _, targetEmail, err := s.service.CreateMagicLink(r.Context(), req.Email)
+	switch {
+	case errors.Is(err, domain.ErrRateLimitExceeded):
+		logger.Info().Str("email", req.Email).Msg("registration for an existing email: daily magic link limit reached, not emailing")
+	case err != nil:
+		logger.Error().Err(err).Str("email", req.Email).Msg("registration for an existing email: could not issue a login link")
+	default:
+		logger.Info().Str("email", targetEmail).Str("url", confirmURL("[REDACTED]", req.Origin)).Msg("registration for an existing email: sending login link")
+		subject := "Your RottenBikes account"
+		body := fmt.Sprintf("Hello,\n\nSomeone tried to register a new RottenBikes account with this email address, but it already has an account. If it was you, you can log in with the following link:\n\n%s\n\nIf you did not request this, please ignore this email.", confirmURL(magicToken, req.Origin))
+		s.sendEmailAsync(r, "existing_account", targetEmail, subject, body, "failed to send existing account email")
+	}
+
+	s.sendRegisterResponse(w, decoyPollToken())
+}
+
+func (s *HTTPServer) sendRegisterResponse(w http.ResponseWriter, pollToken string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(map[string]string{
@@ -120,10 +151,17 @@ func (s *HTTPServer) handleRequestMagicLink(w http.ResponseWriter, r *http.Reque
 
 	magicToken, pollToken, targetEmail, err := s.service.CreateMagicLink(r.Context(), identifier)
 	if err != nil {
+		// Answer an unknown email/username exactly like a known one, so the
+		// response does not reveal which accounts exist. The decoy poll token
+		// never resolves and nothing is emailed.
 		if errors.Is(err, domain.ErrUserNotFound) {
-			s.sendError(w, "user not found", http.StatusNotFound)
+			zerolog.Ctx(r.Context()).Info().Str("identifier", identifier).Msg("magic link requested for an unknown account")
+			s.sendMagicLinkResponse(w, decoyPollToken())
 			return
 		}
+		// Accepted leak: only an existing account can hit the daily limit, but
+		// probing it takes 3 solved captchas per address, and users need to
+		// know why no email arrives.
 		if errors.Is(err, domain.ErrRateLimitExceeded) {
 			s.sendError(w, "daily magic link limit reached", http.StatusTooManyRequests)
 			return
@@ -136,22 +174,32 @@ func (s *HTTPServer) handleRequestMagicLink(w http.ResponseWriter, r *http.Reque
 
 	subject := "Your RottenBikes Magic Link"
 	body := fmt.Sprintf("Hello,\n\nYou requested a magic link to log in to RottenBikes. Click the following link to continue:\n\n%s\n\nIf you did not request this, please ignore this email.", confirmURL(magicToken, req.Origin))
-
-	if err := s.sendEmail("magic_link", targetEmail, subject, body); err != nil {
-		zerolog.Ctx(r.Context()).Error().Err(err).Str("email", targetEmail).Msg("failed to send magic link email")
-		s.sendError(w, "failed to send magic link email", http.StatusInternalServerError)
-		return
-	}
+	s.sendEmailAsync(r, "magic_link", targetEmail, subject, body, "failed to send magic link email")
 
 	// The opaque credential returned to the requesting device is the poll token
 	// (raw), used to poll /auth/poll for the api token once the emailed link is
 	// confirmed on another device.
+	s.sendMagicLinkResponse(w, pollToken)
+}
+
+func (s *HTTPServer) sendMagicLinkResponse(w http.ResponseWriter, pollToken string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(map[string]string{
 		"message":     "magic link email sent",
 		"magic_token": pollToken,
 	})
+}
+
+// decoyPollToken returns a poll token indistinguishable from a real one (same
+// length and alphabet) that matches no magic link, so polling it never
+// resolves.
+func decoyPollToken() string {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		panic(fmt.Sprintf("crypto/rand: %v", err))
+	}
+	return hex.EncodeToString(b)
 }
 
 const defaultCaptchaVerifyURL = "https://api.hcaptcha.com/siteverify"
@@ -233,6 +281,21 @@ func (s *HTTPServer) sendCaptchaError(w http.ResponseWriter, err error) {
 		return
 	}
 	s.sendError(w, "captcha verification unavailable, please try again later", http.StatusServiceUnavailable)
+}
+
+// sendEmailAsync sends an email in the background, so that how long sending
+// takes cannot tell apart the "account exists" and "account does not exist"
+// responses. Failures are logged (failureMsg) and counted in
+// emails_sent_total; Shutdown waits for pending sends.
+func (s *HTTPServer) sendEmailAsync(r *http.Request, kind, to, subject, body, failureMsg string) {
+	logger := zerolog.Ctx(r.Context())
+	s.pendingEmails.Add(1)
+	go func() {
+		defer s.pendingEmails.Done()
+		if err := s.sendEmail(kind, to, subject, body); err != nil {
+			logger.Error().Err(err).Str("email", to).Msg(failureMsg)
+		}
+	}()
 }
 
 // sendEmail sends through the configured sender and records the outcome.

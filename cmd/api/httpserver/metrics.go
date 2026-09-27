@@ -20,7 +20,7 @@ var (
 		[]string{"result"},
 	)
 
-	// kind: register | magic_link; result: success | failure.
+	// kind: register | magic_link | existing_account; result: success | failure.
 	emailsSentTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "emails_sent_total",

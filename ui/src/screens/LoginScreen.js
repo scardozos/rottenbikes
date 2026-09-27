@@ -129,7 +129,7 @@ const LoginScreen = ({ navigation }) => {
                                 {t('magic_link_requested', { identifier })}!
                             </Text>
                             <Text style={styles.waitingDescription}>
-                                {t('check_email')}
+                                {t('check_email_if_account', { identifier })}
                             </Text>
 
                             {pollingTimeout && (

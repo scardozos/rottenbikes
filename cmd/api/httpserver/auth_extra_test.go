@@ -7,6 +7,8 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/scardozos/rottenbikes/cmd/api/email"
@@ -89,6 +91,9 @@ func TestHandleRegister(t *testing.T) {
 		GetPosterByAPITokenFunc: func(ctx context.Context, token string) (*domain.AuthPoster, error) {
 			return &domain.AuthPoster{PosterID: 1}, nil
 		},
+		CreateMagicLinkFunc: func(ctx context.Context, identifier string) (string, string, string, error) {
+			return "login-magic-for-" + identifier, "owner-poll-token", identifier, nil
+		},
 		RegisterFunc: func(ctx context.Context, username, eml string) (string, string, error) {
 			if eml == "taken@example.com" {
 				return "", "", domain.ErrEmailExists
@@ -103,7 +108,8 @@ func TestHandleRegister(t *testing.T) {
 		},
 	}
 
-	srv, err := New(mockService, &email.NoopSender{}, ":8080")
+	sender := &recordingSender{}
+	srv, err := New(mockService, sender, ":8080")
 	if err != nil {
 		t.Fatalf("failed to create server: %v", err)
 	}
@@ -146,14 +152,60 @@ func TestHandleRegister(t *testing.T) {
 		}
 	})
 
-	t.Run("email_conflict", func(t *testing.T) {
+	// A taken email is answered like a new registration, so the endpoint does
+	// not reveal which emails are registered. The owner gets a login link; the
+	// requester gets a decoy poll token, never the owner's.
+	t.Run("email_conflict_is_indistinguishable", func(t *testing.T) {
 		w := post(map[string]string{
 			"username":      "a",
 			"email":         "taken@example.com",
 			"captcha_token": "x",
 		})
-		if w.Code != http.StatusConflict {
-			t.Errorf("expected 409, got %d", w.Code)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body)
+		}
+		var resp map[string]string
+		_ = json.Unmarshal(w.Body.Bytes(), &resp)
+		if resp["message"] != "confirmation email sent" || !regexp.MustCompile(`^[0-9a-f]{64}$`).MatchString(resp["magic_token"]) {
+			t.Errorf("expected the same shape as a real response, got %v", resp)
+		}
+		if resp["magic_token"] == "owner-poll-token" {
+			t.Error("the requester must not get the owner's poll token")
+		}
+		again := map[string]string{}
+		_ = json.Unmarshal(post(map[string]string{"username": "a", "email": "taken@example.com", "captcha_token": "x"}).Body.Bytes(), &again)
+		if again["magic_token"] == resp["magic_token"] {
+			t.Error("each request must get a fresh decoy")
+		}
+		srv.pendingEmails.Wait()
+
+		srv.pendingEmails.Wait()
+		mail := sender.last(t)
+		if mail.To != "taken@example.com" || !strings.Contains(mail.Body, "already has an account") {
+			t.Errorf("expected an existing-account email to the owner, got %+v", mail)
+		}
+		if link := extractLink(t, mail.Body); link.Path != "/confirm/login-magic-for-taken@example.com" {
+			t.Errorf("unexpected login link %s", link)
+		}
+	})
+
+	t.Run("email_conflict_rate_limited_sends_nothing", func(t *testing.T) {
+		mockService.CreateMagicLinkFunc = func(ctx context.Context, identifier string) (string, string, string, error) {
+			return "", "", "", domain.ErrRateLimitExceeded
+		}
+		defer func() {
+			mockService.CreateMagicLinkFunc = func(ctx context.Context, identifier string) (string, string, string, error) {
+				return "login-magic-for-" + identifier, "owner-poll-token", identifier, nil
+			}
+		}()
+		before := len(sender.sent)
+		w := post(map[string]string{"username": "a", "email": "taken@example.com", "captcha_token": "x"})
+		if w.Code != http.StatusOK {
+			t.Errorf("expected 200, got %d", w.Code)
+		}
+		srv.pendingEmails.Wait()
+		if len(sender.sent) != before {
+			t.Error("no email should be sent when the daily limit is reached")
 		}
 	})
 

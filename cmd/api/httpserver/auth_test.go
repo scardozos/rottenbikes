@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"testing"
 	"time"
 
@@ -50,7 +51,9 @@ func TestHandleRequestMagicLink(t *testing.T) {
 		}
 	})
 
-	t.Run("user_not_found", func(t *testing.T) {
+	// Unknown accounts get the same response as known ones (with a decoy poll
+	// token), so the endpoint does not reveal which emails are registered.
+	t.Run("user_not_found_is_indistinguishable", func(t *testing.T) {
 		reqBody, _ := json.Marshal(map[string]string{
 			"email":         "nonexistent@example.com",
 			"captcha_token": "valid-captcha",
@@ -61,8 +64,15 @@ func TestHandleRequestMagicLink(t *testing.T) {
 
 		srv.server.Handler.ServeHTTP(w, req)
 
-		if w.Code != http.StatusNotFound {
-			t.Errorf("expected status 404, got %d", w.Code)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status 200, got %d", w.Code)
+		}
+		var resp map[string]string
+		if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+			t.Fatalf("failed to decode response: %v", err)
+		}
+		if resp["message"] != "magic link email sent" || !regexp.MustCompile(`^[0-9a-f]{64}$`).MatchString(resp["magic_token"]) {
+			t.Errorf("expected the same shape as a real response, got %v", resp)
 		}
 	})
 
@@ -135,6 +145,46 @@ func TestHandleRequestMagicLink(t *testing.T) {
 			t.Errorf("expected status 429, got %d", w.Code)
 		}
 	})
+}
+
+func TestDecoyPollToken(t *testing.T) {
+	seen := map[string]bool{}
+	for i := 0; i < 100; i++ {
+		tok := decoyPollToken()
+		if !regexp.MustCompile(`^[0-9a-f]{64}$`).MatchString(tok) {
+			t.Fatalf("decoy %q does not look like a real poll token (64 hex chars)", tok)
+		}
+		if seen[tok] {
+			t.Fatalf("decoy %q repeated: decoys must be random, not a fixed or reused value", tok)
+		}
+		seen[tok] = true
+	}
+}
+
+// Every unknown-account request gets its own decoy: a fixed or reused value
+// would make fake responses recognizable.
+func TestUnknownAccountDecoysDiffer(t *testing.T) {
+	t.Setenv("APP_ENV", "local")
+	t.Setenv("HCAPTCHA_SECRET", "")
+	svc := &MockService{
+		CreateMagicLinkFunc: func(ctx context.Context, identifier string) (string, string, string, error) {
+			return "", "", "", domain.ErrUserNotFound
+		},
+	}
+	srv, _ := New(svc, &email.NoopSender{}, ":8080")
+
+	tokens := map[string]bool{}
+	for i := 0; i < 2; i++ {
+		body, _ := json.Marshal(map[string]string{"email": "ghost@example.com", "captcha_token": "x"})
+		w := httptest.NewRecorder()
+		srv.server.Handler.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/auth/request-magic-link", bytes.NewReader(body)))
+		var resp map[string]string
+		_ = json.Unmarshal(w.Body.Bytes(), &resp)
+		tokens[resp["magic_token"]] = true
+	}
+	if len(tokens) != 2 {
+		t.Errorf("expected two different decoys for two requests, got %v", tokens)
+	}
 }
 
 func TestHandleConfirmMagicLink(t *testing.T) {

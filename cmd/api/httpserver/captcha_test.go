@@ -174,6 +174,7 @@ func TestCaptchaVerification(t *testing.T) {
 				before := counterValue(t, counter)
 
 				w := postJSON(srv, ep.path, ep.body)
+				srv.pendingEmails.Wait()
 				if w.Code != c.wantStatus {
 					t.Errorf("expected %d, got %d: %s", c.wantStatus, w.Code, w.Body)
 				}
@@ -267,6 +268,7 @@ func TestEmailContainsConfirmLink(t *testing.T) {
 				if w.Code != http.StatusOK {
 					t.Fatalf("expected 200, got %d: %s", w.Code, w.Body)
 				}
+				srv.pendingEmails.Wait()
 				if counterValue(t, counter)-before != 1 {
 					t.Errorf("emails_sent_total{kind=%q,result=success} not incremented", ep.kind)
 				}
@@ -298,6 +300,8 @@ func TestEmailContainsConfirmLink(t *testing.T) {
 	}
 }
 
+// Emails are sent in the background, so a failed send cannot change the
+// response (that would reveal the account exists); it is counted and logged.
 func TestEmailSendFailure(t *testing.T) {
 	t.Setenv("APP_ENV", "local")
 	t.Setenv("HCAPTCHA_SECRET", "")
@@ -315,9 +319,10 @@ func TestEmailSendFailure(t *testing.T) {
 			before := counterValue(t, counter)
 
 			w := postJSON(srv, ep.path, ep.body)
-			if w.Code != http.StatusInternalServerError {
-				t.Errorf("expected 500, got %d: %s", w.Code, w.Body)
+			if w.Code != http.StatusOK {
+				t.Errorf("expected 200, got %d: %s", w.Code, w.Body)
 			}
+			srv.pendingEmails.Wait()
 			if counterValue(t, counter)-before != 1 {
 				t.Errorf("emails_sent_total{kind=%q,result=failure} not incremented", ep.kind)
 			}

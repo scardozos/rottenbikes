@@ -85,19 +85,49 @@ func TestRegisterValidation(t *testing.T) {
 		expectStatus(t, r, http.StatusBadRequest)
 	})
 
-	t.Run("duplicates conflict", func(t *testing.T) {
+	// Usernames are public, so a taken one is a 409, even if the email is
+	// taken too (the response must not depend on the email).
+	t.Run("taken username conflicts", func(t *testing.T) {
 		requireCaptchaPass(t)
 		u := seedPoster(t)
-		r := call(t, "POST", "/auth/register", "", map[string]string{
-			"username": uniqueUsername(), "email": u.Email, "captcha_token": passingCaptcha(),
-		})
-		if expectStatus(t, r, http.StatusConflict) {
-			expectJSONError(t, r)
+		for _, email := range []string{uniqueUsername() + "@example.com", u.Email} {
+			r := call(t, "POST", "/auth/register", "", map[string]string{
+				"username": u.Username, "email": email, "captcha_token": passingCaptcha(),
+			})
+			if expectStatus(t, r, http.StatusConflict) {
+				expectJSONError(t, r)
+			}
 		}
-		r = call(t, "POST", "/auth/register", "", map[string]string{
-			"username": u.Username, "email": uniqueUsername() + "@example.com", "captcha_token": passingCaptcha(),
+	})
+
+	// A taken email must not be revealed: the response is the same as for a
+	// new registration, the owner gets a login link, and the requester's poll
+	// token never resolves to the owner's session.
+	t.Run("taken email is indistinguishable from a new registration", func(t *testing.T) {
+		requireCaptchaPass(t)
+		owner := seedPoster(t)
+
+		fresh := call(t, "POST", "/auth/register", "", map[string]string{
+			"username": uniqueUsername(), "email": uniqueUsername() + "@example.com", "captcha_token": passingCaptcha(),
 		})
-		expectStatus(t, r, http.StatusConflict)
+		taken := call(t, "POST", "/auth/register", "", map[string]string{
+			"username": uniqueUsername(), "email": owner.Email, "captcha_token": passingCaptcha(),
+		})
+		mustStatus(t, fresh, http.StatusOK)
+		if !expectStatus(t, taken, http.StatusOK) {
+			return
+		}
+		expectSameAuthResponse(t, fresh, taken)
+		decoy := decode[map[string]string](t, taken)["magic_token"]
+
+		// The owner can log in with the emailed link...
+		tok := confirm(t, magicTokenForPoster(t, owner))
+		r := call(t, "GET", "/auth/verify", tok, nil)
+		if expectStatus(t, r, http.StatusOK) && decode[verifyResponse](t, r).PosterID != owner.ID {
+			t.Errorf("the emailed link should log in the existing account: %s", r)
+		}
+		// ...but whoever tried to register cannot pick up that session.
+		expectDecoyUnusable(t, decoy)
 	})
 }
 
@@ -277,11 +307,25 @@ func TestRequestMagicLink(t *testing.T) {
 	requireCaptchaPass(t)
 	u := newUser(t) // already has 1 of the 2 daily links
 
-	t.Run("unknown user", func(t *testing.T) {
-		r := call(t, "POST", "/auth/request-magic-link", "", map[string]string{
-			"username": uniqueUsername(), "captcha_token": passingCaptcha(),
+	// Unknown accounts get the same response as known ones, so the endpoint
+	// does not reveal which emails are registered.
+	t.Run("unknown user is indistinguishable", func(t *testing.T) {
+		known := seedPoster(t)
+		ref := call(t, "POST", "/auth/request-magic-link", "", map[string]string{
+			"email": known.Email, "captcha_token": passingCaptcha(),
 		})
-		expectStatus(t, r, http.StatusNotFound)
+		mustStatus(t, ref, http.StatusOK)
+		for _, body := range []map[string]string{
+			{"email": uniqueUsername() + "@example.com", "captcha_token": passingCaptcha()},
+			{"username": uniqueUsername(), "captcha_token": passingCaptcha()},
+		} {
+			r := call(t, "POST", "/auth/request-magic-link", "", body)
+			if !expectStatus(t, r, http.StatusOK) {
+				continue
+			}
+			expectSameAuthResponse(t, ref, r)
+			expectDecoyUnusable(t, decode[map[string]string](t, r)["magic_token"])
+		}
 	})
 
 	// Login by username, confirm on "another device", poll on this one.

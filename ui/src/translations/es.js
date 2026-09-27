@@ -21,6 +21,7 @@ export default {
     cancel: 'Cancelar',
     magic_link_requested: '¡Enlace mágico solicitado para {identifier}!',
     check_email: 'Comprueba tu correo por el enlace y haz clic para entrar.',
+    check_email_if_account: 'Si existe una cuenta para {identifier}, recibirás un correo con un enlace: haz clic en él para entrar. ¿No te ha llegado? Revisa que esté bien escrito o regístrate.',
     back: 'Volver',
     registration_successful: '¡Registro completado!',
     magic_link_sent: 'Hemos enviado un enlace mágico a {email}.',

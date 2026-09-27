@@ -493,6 +493,50 @@ func interceptMagicLink(t *testing.T, pollToken string) string {
 	return magic
 }
 
+// interceptLatestMagicLink is interceptMagicLink for a link whose poll token
+// the suite never sees (e.g. the login link emailed when someone registers
+// with an existing account's email).
+func interceptLatestMagicLink(t *testing.T, posterID int64) string {
+	t.Helper()
+	magic := randomHex(32)
+	res, err := db.Exec(`UPDATE magic_links SET token = $1
+		WHERE id = (SELECT id FROM magic_links WHERE poster_id = $2 ORDER BY created_ts DESC, id DESC LIMIT 1)`,
+		sha256Hex(magic), posterID)
+	if err != nil {
+		t.Fatalf("intercept magic link: %v", err)
+	}
+	if n, _ := res.RowsAffected(); n != 1 {
+		t.Fatalf("intercept magic link: poster %d has no magic link", posterID)
+	}
+	return magic
+}
+
+// expectSameAuthResponse checks that two register / request-magic-link
+// responses cannot be told apart: same status, same message, and poll tokens
+// of the same shape.
+func expectSameAuthResponse(t *testing.T, a, b response) {
+	t.Helper()
+	if a.Status != b.Status {
+		t.Errorf("responses differ in status: %s vs %s", a, b)
+		return
+	}
+	ra, rb := decode[map[string]string](t, a), decode[map[string]string](t, b)
+	if ra["message"] != rb["message"] || len(ra["magic_token"]) != len(rb["magic_token"]) || len(ra) != len(rb) {
+		t.Errorf("responses can be told apart: %s vs %s", a, b)
+	}
+}
+
+// expectDecoyUnusable checks that a decoy poll token (returned for unknown
+// accounts / taken emails) cannot be turned into a session in any way: it
+// never resolves when polled, is not a valid magic link, and is not an API
+// token.
+func expectDecoyUnusable(t *testing.T, decoy string) {
+	t.Helper()
+	expectStatus(t, call(t, "GET", "/auth/poll?token="+decoy, "", nil), http.StatusNotFound)
+	expectStatus(t, call(t, "GET", "/auth/confirm/"+decoy, "", nil), http.StatusBadRequest)
+	expectStatus(t, call(t, "GET", "/auth/verify", decoy, nil), http.StatusUnauthorized)
+}
+
 // registerViaAPI registers a fresh poster through POST /auth/register and
 // returns it with the raw poll token.
 func registerViaAPI(t *testing.T) (u user, pollToken string) {

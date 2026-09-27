@@ -21,6 +21,7 @@ export default {
     cancel: 'Cancel·lar',
     magic_link_requested: 'Enllaç màgic sol·licitat per {identifier}!',
     check_email: 'Comprova el teu correu per l\'enllaç i clica-hi per entrar.',
+    check_email_if_account: 'Si existeix un compte per a {identifier}, rebràs un correu amb un enllaç: clica-hi per entrar. No t\'ha arribat? Revisa que estigui ben escrit o registra\'t.',
     back: 'Tornar',
     registration_successful: 'Registre completat!',
     magic_link_sent: 'Hem enviat un enllaç màgic a {email}.',

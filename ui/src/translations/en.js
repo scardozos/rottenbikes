@@ -21,6 +21,7 @@ export default {
     cancel: 'Cancel',
     magic_link_requested: 'Magic link requested for {identifier}!',
     check_email: 'Check your email for the link and click it to log in.',
+    check_email_if_account: 'If an account exists for {identifier}, you\'ll get an email with a link: click it to log in. Nothing arrived? Check the spelling, or register.',
     back: 'Back',
     registration_successful: 'Registration successful!',
     magic_link_sent: 'We\'ve sent a magic link to {email}.',
