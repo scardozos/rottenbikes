@@ -8,10 +8,10 @@ namespace: rottenbikes-dev
 images:
 - name: api
   newName: monorailisland/rottenbikes
-  newTag: api-v1.1.10
+  newTag: api-v1.1.10-2
 - name: ui
   newName: monorailisland/rottenbikes
-  newTag: ui-v1.1.10
+  newTag: ui-v1.1.10-2
 
 resources:
 - ../base
