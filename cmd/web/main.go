@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -11,6 +12,24 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
+
+const distDir = "ui/dist"
+
+// Cache policies. Cloudflare sits in front of the UI and follows these.
+const (
+	// index.html references the current build's hashed bundles, so it must
+	// be revalidated on every load; a stale copy points at bundles that no
+	// longer exist after a deploy.
+	cacheNoCache = "no-cache"
+	// Hashed build output never changes under the same name.
+	cacheImmutable = "public, max-age=31536000, immutable"
+	// Missing files must never be cached: during a rollout a new page can ask
+	// an old pod for a new bundle, and a cached error would outlive it.
+	cacheNoStore = "no-store"
+)
+
+// Directories whose file names contain a content hash (expo export).
+var hashedPrefixes = []string{"/_expo/static/", "/assets/"}
 
 func main() {
 	// Configure zerolog
@@ -24,46 +43,10 @@ func main() {
 		port = "8081"
 	}
 
-	// Serve static files from ui/dist, but intercept index.html to inject env vars
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		path := r.URL.Path
-
-		if path == "/healthz" {
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte("ok"))
-			return
-		}
-
-		if path == "/" || path == "/index.html" {
-			serveIndex(w)
-			return
-		}
-
-		// Clean the path to prevent directory traversal
-		cleanedPath := filepath.Clean(path)
-		fullPath := filepath.Join("ui/dist", cleanedPath)
-
-		// Verify that the requested file path stays inside ui/dist
-		rel, err := filepath.Rel("ui/dist", fullPath)
-		if err != nil || strings.HasPrefix(rel, "..") {
-			http.Error(w, "Forbidden", http.StatusForbidden)
-			return
-		}
-
-		// Check if file exists in ui/dist
-		if _, err := os.Stat(fullPath); os.IsNotExist(err) {
-			// Fallback to index.html for SPA routing
-			serveIndex(w)
-			return
-		}
-
-		http.ServeFile(w, r, fullPath)
-	})
-
 	log.Info().Str("port", port).Msg("Web UI server listening")
 	webSrv := &http.Server{
 		Addr:              ":" + port,
-		Handler:           http.DefaultServeMux,
+		Handler:           newHandler(distDir),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      30 * time.Second,
@@ -74,9 +57,76 @@ func main() {
 	}
 }
 
-func serveIndex(w http.ResponseWriter) {
-	data, err := os.ReadFile("./ui/dist/index.html")
+// newHandler serves the exported web UI from dir, injecting the
+// EXPO_PUBLIC_* settings into index.html.
+//
+//   - Existing files are served as-is: hashed build output is cached forever,
+//     anything else is revalidated.
+//   - A missing file (a path with an extension, e.g. a bundle from another
+//     build) is a 404 that nothing caches. It is never answered with
+//     index.html: a 200 HTML response under a .js URL is what a CDN caches
+//     and serves as the bundle, breaking the app for everyone.
+//   - Any other path is an app route (e.g. /confirm/<token>) and gets
+//     index.html (SPA fallback).
+func newHandler(dir string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		p := r.URL.Path
+
+		if p == "/healthz" {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("ok"))
+			return
+		}
+
+		if p == "/" || p == "/index.html" {
+			serveIndex(w, dir)
+			return
+		}
+
+		// Clean the path to prevent directory traversal
+		fullPath := filepath.Join(dir, filepath.Clean("/"+p))
+
+		// Verify that the requested file path stays inside dir
+		rel, err := filepath.Rel(dir, fullPath)
+		if err != nil || strings.HasPrefix(rel, "..") {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+
+		if info, err := os.Stat(fullPath); err == nil && !info.IsDir() {
+			if isHashed(p) {
+				w.Header().Set("Cache-Control", cacheImmutable)
+			} else {
+				w.Header().Set("Cache-Control", cacheNoCache)
+			}
+			http.ServeFile(w, r, fullPath)
+			return
+		}
+
+		if path.Ext(p) != "" {
+			w.Header().Set("Cache-Control", cacheNoStore)
+			http.Error(w, "Not Found", http.StatusNotFound)
+			return
+		}
+
+		// Fallback to index.html for SPA routing
+		serveIndex(w, dir)
+	})
+}
+
+func isHashed(p string) bool {
+	for _, prefix := range hashedPrefixes {
+		if strings.HasPrefix(p, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
+func serveIndex(w http.ResponseWriter, dir string) {
+	data, err := os.ReadFile(filepath.Join(dir, "index.html"))
 	if err != nil {
+		w.Header().Set("Cache-Control", cacheNoStore)
 		http.Error(w, "Could not read index.html", http.StatusInternalServerError)
 		return
 	}
@@ -99,6 +149,7 @@ func serveIndex(w http.ResponseWriter) {
 	replacement := envScript + "</head>"
 	html = strings.Replace(html, "</head>", replacement, 1)
 
-	w.Header().Set("Content-Type", "text/html")
-	w.Write([]byte(html))
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", cacheNoCache)
+	_, _ = w.Write([]byte(html))
 }
