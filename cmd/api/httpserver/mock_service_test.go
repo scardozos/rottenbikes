@@ -17,8 +17,8 @@ type MockService struct {
 	SearchPostersFunc                func(ctx context.Context, query string, limit int) ([]domain.PosterSummary, error)
 	PurgePosterFunc                  func(ctx context.Context, adminPosterID, targetPosterID int64) error
 	AdminDeleteBikeFunc              func(ctx context.Context, adminPosterID int64, bikeID string) error
-	ListBikesFunc                    func(ctx context.Context, searchQuery, sortBy string, limit, offset int) ([]domain.Bike, error)
-	CreateBikeFunc                   func(ctx context.Context, numericalID string, hashID *string, isElectric, wasScanned bool, creatorID int64) (*domain.Bike, error)
+	ListBikesFunc                    func(ctx context.Context, searchQuery, sortBy string, limit, offset int, includeTest bool) ([]domain.Bike, error)
+	CreateBikeFunc                   func(ctx context.Context, numericalID string, hashID *string, isElectric, wasScanned bool, creatorID int64, creatorIsTest bool) (*domain.Bike, error)
 	GetBikeFunc                      func(ctx context.Context, id string) (*domain.Bike, error)
 	GetBikeByHashFunc                func(ctx context.Context, hashID string, posterID int64) (*domain.Bike, error)
 	GetBikeDetailsFunc               func(ctx context.Context, id string, limit, offset int) (*domain.BikeDetails, error)
@@ -89,15 +89,15 @@ func (m *MockService) AdminDeleteBike(ctx context.Context, adminPosterID int64, 
 	return nil
 }
 
-func (m *MockService) ListBikes(ctx context.Context, searchQuery, sortBy string, limit, offset int) ([]domain.Bike, error) {
+func (m *MockService) ListBikes(ctx context.Context, searchQuery, sortBy string, limit, offset int, includeTest bool) ([]domain.Bike, error) {
 	if m.ListBikesFunc != nil {
-		return m.ListBikesFunc(ctx, searchQuery, sortBy, limit, offset)
+		return m.ListBikesFunc(ctx, searchQuery, sortBy, limit, offset, includeTest)
 	}
 	return nil, nil
 }
 
-func (m *MockService) CreateBike(ctx context.Context, numericalID string, hashID *string, isElectric, wasScanned bool, creatorID int64) (*domain.Bike, error) {
-	return m.CreateBikeFunc(ctx, numericalID, hashID, isElectric, wasScanned, creatorID)
+func (m *MockService) CreateBike(ctx context.Context, numericalID string, hashID *string, isElectric, wasScanned bool, creatorID int64, creatorIsTest bool) (*domain.Bike, error) {
+	return m.CreateBikeFunc(ctx, numericalID, hashID, isElectric, wasScanned, creatorID, creatorIsTest)
 }
 
 func (m *MockService) GetBike(ctx context.Context, id string) (*domain.Bike, error) {

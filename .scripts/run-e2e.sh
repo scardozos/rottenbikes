@@ -56,6 +56,11 @@ export E2E_DB_DSN="$DATABASE_URL"
 export E2E_CORS_ORIGIN="${CORS_ORIGIN:-$DEFAULT_CORS_ORIGIN}"
 export E2E_METRICS_URL="${METRICS_URL:-$DEFAULT_METRICS_URL}"
 export E2E_CAPTCHA_TOKEN="${CAPTCHA_TOKEN:-}"
+# Test accounts (hidden, reserved 6-digit bike numbers): off on local, on for
+# dev/prod unless TEST_ACCOUNTS=0/1 says otherwise.
+if [ -n "${TEST_ACCOUNTS:-}" ]; then
+  export E2E_TEST_ACCOUNTS="$TEST_ACCOUNTS"
+fi
 if [ "$ENV_NAME" = "prod" ]; then
   export E2E_REQUIRE_CAPTCHA=1
 fi

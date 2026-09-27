@@ -291,6 +291,9 @@ type AuthPoster struct {
 	Email    string
 	Username string
 	Role     PosterRole
+	// IsTest marks accounts used by the E2E suite; their bikes are hidden
+	// from everyone else's listings.
+	IsTest bool
 }
 
 // GetPosterByAPIToken returns the poster for a valid, non-expired token.
@@ -301,7 +304,7 @@ func (s *Store) GetPosterByAPIToken(ctx context.Context, token string) (*AuthPos
 	var expires sql.NullTime
 	var emailVerified bool
 
-	err := s.db.QueryRowContext(ctx, getPosterByTokenQuery, HashToken(token)).Scan(&p.PosterID, &p.Email, &p.Username, &role, &expires, &emailVerified)
+	err := s.db.QueryRowContext(ctx, getPosterByTokenQuery, HashToken(token)).Scan(&p.PosterID, &p.Email, &p.Username, &role, &expires, &emailVerified, &p.IsTest)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, ErrInvalidToken

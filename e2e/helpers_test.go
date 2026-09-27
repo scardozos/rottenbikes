@@ -9,6 +9,9 @@
 //     sign-up itself (the real flow needs a solved hCaptcha and sends an email);
 //   - reading the emailed magic link when no Mailtrap sandbox inbox is
 //     configured (see mail_test.go);
+//   - on shared environments, flagging its posters as test accounts
+//     (posters.is_test): their bikes use the reserved 6-digit numbers and are
+//     hidden from everyone else's listings (see testAccounts);
 //   - promoting test posters to admin (done out-of-band by adminctl);
 //   - a few post-condition checks (e.g. the moderation audit row);
 //   - cleaning up everything the run created.
@@ -57,6 +60,14 @@ var (
 	// requireCaptcha makes the suite fail if captcha is not enforced (prod).
 	requireCaptcha = os.Getenv("E2E_REQUIRE_CAPTCHA") == "1"
 
+	// testAccounts selects how the suite's users behave. Off (default on
+	// local): regular accounts creating bikes with real 4-5 digit numbers, so
+	// the normal write path is exercised end to end. On (default on dev/prod):
+	// test accounts (posters.is_test) whose bikes use the reserved 6-digit
+	// range and are hidden from real users, so shared environments are never
+	// affected. Override with E2E_TEST_ACCOUNTS=1/0.
+	testAccounts = envBool("E2E_TEST_ACCOUNTS", envName != "local")
+
 	// Captcha probe results (see probeCaptcha). When captcha is enforced and
 	// captchaToken does not pass it, the tests that must call register /
 	// request-magic-link are skipped.
@@ -73,6 +84,16 @@ var (
 		bikes   []string
 	}
 )
+
+func envBool(key string, fallback bool) bool {
+	switch os.Getenv(key) {
+	case "1", "true":
+		return true
+	case "0", "false":
+		return false
+	}
+	return fallback
+}
 
 func envOr(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
@@ -111,10 +132,10 @@ func TestMain(m *testing.M) {
 		tokenCaptchaStatus = probeCaptcha(captchaToken)
 		captchaPasses = tokenCaptchaStatus == http.StatusBadRequest
 	}
-	bikeSeq.Store(10000 + time.Now().UnixNano()%80000)
+	bikeSeq.Store(time.Now().UnixNano() % 900000)
 
-	fmt.Printf("e2e: env=%s api=%s run=%s captcha_enforced=%v captcha_passes=%v mail=%s\n",
-		envName, apiURL, runID, captchaEnforced, captchaPasses, mailSource())
+	fmt.Printf("e2e: env=%s api=%s run=%s test_accounts=%v captcha_enforced=%v captcha_passes=%v mail=%s\n",
+		envName, apiURL, runID, testAccounts, captchaEnforced, captchaPasses, mailSource())
 
 	code := m.Run()
 	cleanup()
@@ -150,8 +171,8 @@ func cleanup() {
 	}
 }
 
-// sweepStale removes leftovers of aborted runs older than an hour (bikes
-// orphaned by account deletion cannot be traced back and are not swept).
+// sweepStale removes leftovers of aborted runs older than an hour: test
+// posters and test bikes (including bikes orphaned by account deletion).
 func sweepStale() {
 	rows, err := db.Query(`SELECT poster_id FROM posters
 		WHERE username LIKE $1 AND email LIKE '%@example.com' AND created_ts < NOW() - INTERVAL '1 hour'`,
@@ -168,14 +189,25 @@ func sweepStale() {
 		}
 	}
 	rows.Close()
-	if len(ids) == 0 {
+	// Test bikes whose creator is already gone (e.g. deleted keeping content).
+	var bikes []string
+	if rows, err := db.Query(`SELECT numerical_id FROM bikes WHERE is_test AND created_ts < NOW() - INTERVAL '1 hour'`); err == nil {
+		for rows.Next() {
+			var id string
+			if rows.Scan(&id) == nil {
+				bikes = append(bikes, id)
+			}
+		}
+		rows.Close()
+	}
+	if len(ids) == 0 && len(bikes) == 0 {
 		return
 	}
-	if err := purge(ids, nil); err != nil {
+	if err := purge(ids, bikes); err != nil {
 		fmt.Fprintf(os.Stderr, "e2e: sweep stale: %v\n", err)
 		return
 	}
-	fmt.Printf("e2e: swept %d stale test posters from earlier runs\n", len(ids))
+	fmt.Printf("e2e: swept %d stale test posters and %d stale test bikes from earlier runs\n", len(ids), len(bikes))
 }
 
 func purge(posters []int64, bikes []string) error {
@@ -186,16 +218,21 @@ func purge(posters []int64, bikes []string) error {
 	defer tx.Rollback()
 	stmts := []struct {
 		query string
-		arg   any
+		args  []any
 	}{
-		{`DELETE FROM bikes WHERE numerical_id = ANY($1)`, pq.Array(bikes)},
-		{`DELETE FROM bikes WHERE creator_id = ANY($1)`, pq.Array(posters)},
-		{`DELETE FROM reviews WHERE poster_id = ANY($1)`, pq.Array(posters)},
-		{`DELETE FROM moderation_actions WHERE admin_poster_id = ANY($1) OR target_poster_id = ANY($1)`, pq.Array(posters)},
-		{`DELETE FROM posters WHERE poster_id = ANY($1)`, pq.Array(posters)},
+		// With test accounts, only ever test bikes: a number the suite used may
+		// have been taken by a real bike after a test deleted its own (6-digit
+		// test numbers make that impossible; this is the second line of
+		// defence). With regular accounts (local), by number.
+		{`DELETE FROM bikes WHERE numerical_id = ANY($1) AND (is_test OR NOT $2::bool)`, []any{pq.Array(bikes), testAccounts}},
+		// Bikes created by the suite's posters are always the suite's.
+		{`DELETE FROM bikes WHERE creator_id = ANY($1)`, []any{pq.Array(posters)}},
+		{`DELETE FROM reviews WHERE poster_id = ANY($1)`, []any{pq.Array(posters)}},
+		{`DELETE FROM moderation_actions WHERE admin_poster_id = ANY($1) OR target_poster_id = ANY($1)`, []any{pq.Array(posters)}},
+		{`DELETE FROM posters WHERE poster_id = ANY($1)`, []any{pq.Array(posters)}},
 	}
 	for i, s := range stmts {
-		res, err := tx.Exec(s.query, s.arg)
+		res, err := tx.Exec(s.query, s.args...)
 		if err != nil {
 			return fmt.Errorf("%s: %w", s.query, err)
 		}
@@ -316,8 +353,9 @@ func track(t *testing.T, r response, reqBody []byte) {
 			Email string `json:"email"`
 		}
 		_ = json.Unmarshal(reqBody, &req)
+		// With test accounts, flag posters created through the real sign-up too.
 		var id int64
-		if err := db.QueryRow(`SELECT poster_id FROM posters WHERE email = $1`, req.Email).Scan(&id); err != nil {
+		if err := db.QueryRow(`UPDATE posters SET is_test = is_test OR $2 WHERE email = $1 RETURNING poster_id`, req.Email, testAccounts).Scan(&id); err != nil {
 			t.Errorf("track registered poster %q: %v", req.Email, err)
 			return
 		}
@@ -433,6 +471,7 @@ type user struct {
 	Username string
 	Email    string
 	Token    string
+	IsTest   bool // posters.is_test
 }
 
 func sha256Hex(s string) string {
@@ -452,13 +491,19 @@ func uniqueUsername() string {
 	return fmt.Sprintf("%s%s%d", posterPrefix, runID, seq.Add(1))
 }
 
-// seedPoster inserts an unverified poster, as POST /auth/register would.
+// seedPoster inserts an unverified poster, as POST /auth/register would; a
+// test account or not depending on the mode (see testAccounts).
 func seedPoster(t *testing.T) user {
 	t.Helper()
+	return seedPosterWith(t, testAccounts)
+}
+
+func seedPosterWith(t *testing.T, isTest bool) user {
+	t.Helper()
 	name := uniqueUsername()
-	u := user{Username: name, Email: name + "@example.com"}
-	if err := db.QueryRow(`INSERT INTO posters (email, username) VALUES ($1, $2) RETURNING poster_id`,
-		u.Email, u.Username).Scan(&u.ID); err != nil {
+	u := user{Username: name, Email: name + "@example.com", IsTest: isTest}
+	if err := db.QueryRow(`INSERT INTO posters (email, username, is_test) VALUES ($1, $2, $3) RETURNING poster_id`,
+		u.Email, u.Username, isTest).Scan(&u.ID); err != nil {
 		t.Fatalf("seed poster: %v", err)
 	}
 	trackPoster(u.ID)
@@ -571,7 +616,14 @@ func confirm(t *testing.T, magic string) string {
 // newUser seeds a poster and logs it in through the API.
 func newUser(t *testing.T) *user {
 	t.Helper()
-	u := seedPoster(t)
+	return newUserWith(t, testAccounts)
+}
+
+// newUserWith is newUser with an explicit test-account flag, for tests about
+// how test accounts are treated.
+func newUserWith(t *testing.T, isTest bool) *user {
+	t.Helper()
+	u := seedPosterWith(t, isTest)
 	magic, _ := seedMagicLink(t, u.ID)
 	u.Token = confirm(t, magic)
 	return &u
@@ -591,17 +643,28 @@ func newAdmin(t *testing.T) *user {
 	return u
 }
 
-// nextBikeID returns a candidate 5-digit id. It may already be taken in a
-// shared environment, so callers creating bikes retry on 409.
+// nextBikeID returns a candidate bike number for the suite's default
+// accounts (see testAccounts). It may be taken, so callers creating bikes
+// retry on 409.
 func nextBikeID() string {
-	return strconv.FormatInt(10000+bikeSeq.Add(1)%90000, 10)
+	return bikeIDFor(testAccounts)
+}
+
+// bikeIDFor returns a candidate number valid for the given kind of account:
+// the reserved 6-digit range for test accounts, 5 digits for regular ones.
+func bikeIDFor(isTest bool) string {
+	n := bikeSeq.Add(1)
+	if isTest {
+		return strconv.FormatInt(100000+n%900000, 10)
+	}
+	return strconv.FormatInt(10000+n%90000, 10)
 }
 
 // newBike creates a bike owned by u, retrying on id collisions.
 func newBike(t *testing.T, u *user, hash string, electric bool) bike {
 	t.Helper()
 	for i := 0; i < 20; i++ {
-		body := map[string]any{"numerical_id": nextBikeID(), "is_electric": electric}
+		body := map[string]any{"numerical_id": bikeIDFor(u.IsTest), "is_electric": electric}
 		if hash != "" {
 			body["hash_id"] = hash
 		}
@@ -619,8 +682,13 @@ func newBike(t *testing.T, u *user, hash string, electric bool) bike {
 // freeBikeID returns an id that no bike currently uses.
 func freeBikeID(t *testing.T) string {
 	t.Helper()
+	return freeBikeIDFor(t, testAccounts)
+}
+
+func freeBikeIDFor(t *testing.T, isTest bool) string {
+	t.Helper()
 	for i := 0; i < 20; i++ {
-		id := nextBikeID()
+		id := bikeIDFor(isTest)
 		var exists bool
 		if err := db.QueryRow(`SELECT EXISTS (SELECT 1 FROM bikes WHERE numerical_id = $1)`, id).Scan(&exists); err != nil {
 			t.Fatal(err)

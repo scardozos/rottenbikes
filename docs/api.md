@@ -33,8 +33,8 @@ Authentication is passwordless: users get a **magic link** by email. The request
 
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/bikes` | List bikes. Supports `q` (search on numerical/hash id), `sort` (`recent` (default), `rating`, `most_reviewed`), `limit`, `offset`. | No |
-| `POST` | `/bikes` | Create a new bike (`numerical_id`: 4–5 digits, leading zeros kept; optional alphanumeric `hash_id`; `is_electric`). Accepts `was_scanned` (client-declared origin flag for moderation). Duplicate id or hash: `409`. | **Yes** |
+| `GET` | `/bikes` | List bikes. Supports `q` (search on numerical/hash id), `sort` (`recent` (default), `rating`, `most_reviewed`), `limit`, `offset`. Bikes created by E2E test accounts are left out unless the caller is a test account (an optional Bearer token is used for that; an invalid one is ignored). | No |
+| `POST` | `/bikes` | Create a new bike (`numerical_id`: 4–5 digits, leading zeros kept; E2E test accounts must use the reserved 6-digit range instead; optional alphanumeric `hash_id`; `is_electric`). Accepts `was_scanned` (client-declared origin flag for moderation). Duplicate id or hash: `409`. | **Yes** |
 | `GET` | `/bikes/{id}` | Get details of a specific bike. | No |
 | `PUT` | `/bikes/{id}` | Update a bike's `hash_id` / `is_electric`. Only the bike's creator can update it (others get `404`). `"hash_id": ""` clears it; a hash used by another bike returns `409`. | **Yes** |
 | `GET` | `/scan/{hash}` | Look up a bike by its QR `hash_id` and record the scan server-side. Reviews created afterwards get `was_scanned = true` (derived from the recorded scan, so it cannot be spoofed by clients). | **Yes** |

@@ -142,7 +142,7 @@ func TestUpdateBikeErrorMapping(t *testing.T) {
 
 func TestCreateBikeValidationError(t *testing.T) {
 	svc := authedMock()
-	svc.CreateBikeFunc = func(ctx context.Context, numericalID string, hashID *string, isElectric, wasScanned bool, creatorID int64) (*domain.Bike, error) {
+	svc.CreateBikeFunc = func(ctx context.Context, numericalID string, hashID *string, isElectric, wasScanned bool, creatorID int64, creatorIsTest bool) (*domain.Bike, error) {
 		return nil, &domain.ValidationError{Msg: "numerical_id must be 4-5 digits"}
 	}
 	srv, _ := New(svc, &email.NoopSender{}, ":0")

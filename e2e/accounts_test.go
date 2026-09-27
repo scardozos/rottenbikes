@@ -137,7 +137,8 @@ func TestAdminPurgePoster(t *testing.T) {
 	t.Run("guards", func(t *testing.T) {
 		expectStatus(t, call(t, "DELETE", "/admin/users/abc", admin.Token, nil), http.StatusBadRequest)
 		expectStatus(t, call(t, "DELETE", fmt.Sprintf("/admin/users/%d", admin.ID), admin.Token, nil), http.StatusBadRequest)
-		expectStatus(t, call(t, "DELETE", "/admin/users/999999999", admin.Token, nil), http.StatusNotFound)
+		// An id no poster can have (max bigint): never risk purging a real one.
+		expectStatus(t, call(t, "DELETE", "/admin/users/9223372036854775807", admin.Token, nil), http.StatusNotFound)
 		otherAdmin := newAdmin(t)
 		expectStatus(t, call(t, "DELETE", fmt.Sprintf("/admin/users/%d", otherAdmin.ID), admin.Token, nil), http.StatusBadRequest)
 		expectStatus(t, call(t, "GET", "/auth/verify", otherAdmin.Token, nil), http.StatusOK)

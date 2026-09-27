@@ -23,7 +23,7 @@ func strPtr(s string) *string {
 func TestHandleListBikes(t *testing.T) {
 	var lastLimit, lastOffset int
 	mockService := &MockService{
-		ListBikesFunc: func(ctx context.Context, searchQuery, sortBy string, limit, offset int) ([]domain.Bike, error) {
+		ListBikesFunc: func(ctx context.Context, searchQuery, sortBy string, limit, offset int, includeTest bool) ([]domain.Bike, error) {
 			lastLimit = limit
 			lastOffset = offset
 			return []domain.Bike{
@@ -54,7 +54,7 @@ func TestHandleListBikes(t *testing.T) {
 	})
 
 	t.Run("empty_list", func(t *testing.T) {
-		mockService.ListBikesFunc = func(ctx context.Context, searchQuery, sortBy string, limit, offset int) ([]domain.Bike, error) {
+		mockService.ListBikesFunc = func(ctx context.Context, searchQuery, sortBy string, limit, offset int, includeTest bool) ([]domain.Bike, error) {
 			return nil, nil // Simulate empty DB returning nil
 		}
 
@@ -75,7 +75,7 @@ func TestHandleListBikes(t *testing.T) {
 	})
 
 	t.Run("pagination_params", func(t *testing.T) {
-		mockService.ListBikesFunc = func(ctx context.Context, searchQuery, sortBy string, limit, offset int) ([]domain.Bike, error) {
+		mockService.ListBikesFunc = func(ctx context.Context, searchQuery, sortBy string, limit, offset int, includeTest bool) ([]domain.Bike, error) {
 			lastLimit = limit
 			lastOffset = offset
 			return []domain.Bike{}, nil
@@ -177,7 +177,7 @@ func TestHandleCreateBike(t *testing.T) {
 				Email:    "test@example.com",
 			}, nil
 		},
-		CreateBikeFunc: func(ctx context.Context, numericalID string, hashID *string, isElectric, wasScanned bool, creatorID int64) (*domain.Bike, error) {
+		CreateBikeFunc: func(ctx context.Context, numericalID string, hashID *string, isElectric, wasScanned bool, creatorID int64, creatorIsTest bool) (*domain.Bike, error) {
 			return &domain.Bike{
 				NumericalID: numericalID,
 				HashID:      hashID,
@@ -248,7 +248,7 @@ func TestHandleCreateBike(t *testing.T) {
 	})
 
 	t.Run("conflict_numerical_id", func(t *testing.T) {
-		mockService.CreateBikeFunc = func(ctx context.Context, numericalID string, hashID *string, isElectric, wasScanned bool, creatorID int64) (*domain.Bike, error) {
+		mockService.CreateBikeFunc = func(ctx context.Context, numericalID string, hashID *string, isElectric, wasScanned bool, creatorID int64, creatorIsTest bool) (*domain.Bike, error) {
 			return nil, &pq.Error{Code: "23505", Constraint: "bikes_pkey"}
 		}
 
@@ -268,7 +268,7 @@ func TestHandleCreateBike(t *testing.T) {
 	})
 
 	t.Run("internal_error", func(t *testing.T) {
-		mockService.CreateBikeFunc = func(ctx context.Context, numericalID string, hashID *string, isElectric, wasScanned bool, creatorID int64) (*domain.Bike, error) {
+		mockService.CreateBikeFunc = func(ctx context.Context, numericalID string, hashID *string, isElectric, wasScanned bool, creatorID int64, creatorIsTest bool) (*domain.Bike, error) {
 			return nil, errors.New("db error")
 		}
 

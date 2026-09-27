@@ -15,6 +15,7 @@ type contextKey string
 const contextKeyPosterID contextKey = "poster_id"
 const contextKeyUsername contextKey = "username"
 const contextKeyRole contextKey = "role"
+const contextKeyIsTest contextKey = "is_test"
 
 func posterIDFromContext(ctx context.Context) (int64, bool) {
 	v := ctx.Value(contextKeyPosterID)
@@ -32,6 +33,13 @@ func usernameFromContext(ctx context.Context) (string, bool) {
 	}
 	u, ok := v.(string)
 	return u, ok
+}
+
+// isTestAccountFromContext reports whether the authenticated poster is an
+// E2E test account (posters.is_test).
+func isTestAccountFromContext(ctx context.Context) bool {
+	v, _ := ctx.Value(contextKeyIsTest).(bool)
+	return v
 }
 
 func roleFromContext(ctx context.Context) (domain.PosterRole, bool) {
@@ -62,6 +70,21 @@ func bearerToken(r *http.Request) (token, problem string) {
 	return token, ""
 }
 
+// optionalPoster returns the poster behind the request's Bearer token, or
+// nil when there is none or it is not valid. For public routes whose output
+// depends on who is asking; it never rejects the request.
+func (s *HTTPServer) optionalPoster(ctx context.Context, r *http.Request) *domain.AuthPoster {
+	token, problem := bearerToken(r)
+	if problem != "" {
+		return nil
+	}
+	poster, err := s.service.GetPosterByAPIToken(ctx, token)
+	if err != nil {
+		return nil
+	}
+	return poster
+}
+
 // middlewareAuth enforces a valid Bearer API token and injects poster_id into context.
 func (s *HTTPServer) middlewareAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -88,6 +111,7 @@ func (s *HTTPServer) middlewareAuth(next http.Handler) http.Handler {
 		ctx = context.WithValue(ctx, contextKeyPosterID, poster.PosterID)
 		ctx = context.WithValue(ctx, contextKeyUsername, poster.Username)
 		ctx = context.WithValue(ctx, contextKeyRole, poster.Role)
+		ctx = context.WithValue(ctx, contextKeyIsTest, poster.IsTest)
 
 		var target *ResponseWriter
 		currentW := w

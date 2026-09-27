@@ -24,8 +24,8 @@ type Service interface {
 	HealthCheck(ctx context.Context) error
 
 	// Bike
-	ListBikes(ctx context.Context, searchQuery, sortBy string, limit, offset int) ([]Bike, error)
-	CreateBike(ctx context.Context, numericalID string, hashID *string, isElectric, wasScanned bool, creatorID int64) (*Bike, error)
+	ListBikes(ctx context.Context, searchQuery, sortBy string, limit, offset int, includeTest bool) ([]Bike, error)
+	CreateBike(ctx context.Context, numericalID string, hashID *string, isElectric, wasScanned bool, creatorID int64, creatorIsTest bool) (*Bike, error)
 	GetBike(ctx context.Context, id string) (*Bike, error)
 	GetBikeByHash(ctx context.Context, hashID string, posterID int64) (*Bike, error)
 	GetBikeDetails(ctx context.Context, id string, limit, offset int) (*BikeDetails, error)
@@ -134,12 +134,12 @@ func (s *service) HealthCheck(ctx context.Context) error {
 
 // Bike
 
-func (s *service) ListBikes(ctx context.Context, searchQuery, sortBy string, limit, offset int) ([]Bike, error) {
-	return s.store.ListBikes(ctx, searchQuery, sortBy, limit, offset)
+func (s *service) ListBikes(ctx context.Context, searchQuery, sortBy string, limit, offset int, includeTest bool) ([]Bike, error) {
+	return s.store.ListBikes(ctx, searchQuery, sortBy, limit, offset, includeTest)
 }
 
-func (s *service) CreateBike(ctx context.Context, numericalID string, hashID *string, isElectric, wasScanned bool, creatorID int64) (*Bike, error) {
-	if err := validateNumericalID(numericalID); err != nil {
+func (s *service) CreateBike(ctx context.Context, numericalID string, hashID *string, isElectric, wasScanned bool, creatorID int64, creatorIsTest bool) (*Bike, error) {
+	if err := ValidateNumericalID(numericalID, creatorIsTest); err != nil {
 		return nil, err
 	}
 
