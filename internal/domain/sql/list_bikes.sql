@@ -16,6 +16,8 @@ LEFT JOIN LATERAL (
     WHERE r.bike_numerical_id = b.numerical_id
 ) rs ON $4::text IN ('most_reviewed', 'recent')
 WHERE 
+	-- Test bikes (E2E suite) are only listed for test accounts.
+	($5::bool OR NOT b.is_test) AND
 	($3::text = '' OR b.numerical_id ILIKE '%' || $3::text || '%' OR b.hash_id ILIKE '%' || $3::text || '%')
 ORDER BY 
     CASE WHEN $4::text = 'rating' THEN ra.average_rating END DESC NULLS LAST,

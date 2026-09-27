@@ -36,7 +36,7 @@
 ## Testing expectations
 
 - **Every behaviour change or bug fix comes with unit tests**: a handler test for HTTP behaviour, a domain/sqlmock test for queries and transactions, and a UI test for logic in `ui/src/utils`.
-- **API changes also get E2E coverage** in `e2e/`, asserting what a client sees. Tests must be safe on shared environments: create their own data, and never assume the database is empty.
+- **API changes also get E2E coverage** in `e2e/`, asserting what a client sees. Tests must be safe on shared environments: create their own data with the suite's helpers (`newUser`, `newBike`, …, so it's flagged as test data and cleaned up), and never assume the database is empty.
 - **Bug fixes start with a test that reproduces the bug.**
 - How to run and write each kind of test: [testing](testing.md).
 

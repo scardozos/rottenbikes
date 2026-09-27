@@ -28,7 +28,13 @@ func (s *HTTPServer) handleListBikes(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
 
-	bikes, err := s.service.ListBikes(ctx, searchQuery, sortBy, limitVal, offsetVal)
+	// Bikes created by E2E test accounts are only listed for test accounts,
+	// so running the suite against a shared environment doesn't show them to
+	// real users.
+	viewer := s.optionalPoster(ctx, r)
+	includeTest := viewer != nil && viewer.IsTest
+
+	bikes, err := s.service.ListBikes(ctx, searchQuery, sortBy, limitVal, offsetVal, includeTest)
 	if err != nil {
 		zerolog.Ctx(r.Context()).Error().Err(err).Msg("list bikes error")
 		s.sendError(w, "internal server error", http.StatusInternalServerError)
@@ -74,23 +80,11 @@ func (s *HTTPServer) handleCreateBike(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate numerical_id consistency (4-5 digits)
-	// We don't parse to int64 anymore to preserve leading zeros, but strictly check format.
-	// Allow 0-9, length 4-5.
-	validID := true
-	if len(req.NumericalID) < 4 || len(req.NumericalID) > 5 {
-		validID = false
-	} else {
-		for _, r := range req.NumericalID {
-			if r < '0' || r > '9' {
-				validID = false
-				break
-			}
-		}
-	}
-
-	if !validID {
-		s.sendError(w, "numerical_id must be 4-5 digits", http.StatusBadRequest)
+	// Kept as a string to preserve leading zeros. 4-5 digits for real bikes;
+	// test accounts must use the reserved 6-digit range instead.
+	isTest := isTestAccountFromContext(r.Context())
+	if err := domain.ValidateNumericalID(req.NumericalID, isTest); err != nil {
+		s.sendError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -109,7 +103,7 @@ func (s *HTTPServer) handleCreateBike(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
 
-	bike, err := s.service.CreateBike(ctx, numericalID, req.HashID, req.IsElectric, req.WasScanned, creatorID)
+	bike, err := s.service.CreateBike(ctx, numericalID, req.HashID, req.IsElectric, req.WasScanned, creatorID, isTest)
 	if err != nil {
 		if msg, ok := bikeConflictMessage(err); ok {
 			s.sendError(w, msg, http.StatusConflict)

@@ -18,7 +18,7 @@ func TestCreateBike(t *testing.T) {
 	})
 
 	t.Run("validation", func(t *testing.T) {
-		for _, id := range []string{"", "123", "123456", "12a4", "-1234", " 1234"} {
+		for _, id := range []string{"", "123", "1234567", "12a456", "-12345", " 12345"} {
 			r := call(t, "POST", "/bikes", u.Token, map[string]any{"numerical_id": id})
 			if expectStatus(t, r, http.StatusBadRequest) {
 				expectJSONError(t, r)
@@ -27,6 +27,23 @@ func TestCreateBike(t *testing.T) {
 		r := call(t, "POST", "/bikes", u.Token, map[string]any{"numerical_id": nextBikeID(), "hash_id": "not-alnum!"})
 		expectStatus(t, r, http.StatusBadRequest)
 		r = call(t, "POST", "/bikes", u.Token, "{bad")
+		expectStatus(t, r, http.StatusBadRequest)
+	})
+
+	// Test accounts can only use the reserved 6-digit range and regular
+	// accounts only real 4-5 digit numbers, so on shared environments the suite
+	// can never take (or clean up) a real bike's number. Only rejected
+	// requests here, so this is safe in every mode.
+	t.Run("reserved number ranges", func(t *testing.T) {
+		tester := newUserWith(t, true)
+		for _, id := range []string{"1234", "12345", "01234"} {
+			r := call(t, "POST", "/bikes", tester.Token, map[string]any{"numerical_id": id})
+			if expectStatus(t, r, http.StatusBadRequest) {
+				expectJSONError(t, r)
+			}
+		}
+		regular := newUserWith(t, false)
+		r := call(t, "POST", "/bikes", regular.Token, map[string]any{"numerical_id": freeBikeIDFor(t, true)})
 		expectStatus(t, r, http.StatusBadRequest)
 	})
 
@@ -87,8 +104,10 @@ func TestGetAndListBikes(t *testing.T) {
 		expectStatus(t, call(t, "GET", "/bikes/abc", "", nil), http.StatusBadRequest)
 	})
 
+	// Listed as the test account that created them: test bikes are hidden from
+	// everyone else (see TestTestBikesAreHidden).
 	t.Run("list and search", func(t *testing.T) {
-		r := call(t, "GET", "/bikes", "", nil)
+		r := call(t, "GET", "/bikes", u.Token, nil)
 		mustStatus(t, r, http.StatusOK)
 		all := decode[[]bike](t, r)
 		found := 0
@@ -103,7 +122,7 @@ func TestGetAndListBikes(t *testing.T) {
 
 		// Search is a substring match on numerical_id and hash_id, so in a
 		// shared environment other bikes may match the id too.
-		r = call(t, "GET", "/bikes?q="+b1.NumericalID, "", nil)
+		r = call(t, "GET", "/bikes?q="+b1.NumericalID, u.Token, nil)
 		mustStatus(t, r, http.StatusOK)
 		hits := decode[[]bike](t, r)
 		found = 0
@@ -116,25 +135,25 @@ func TestGetAndListBikes(t *testing.T) {
 			t.Errorf("search by numerical_id: %s", r)
 		}
 
-		r = call(t, "GET", "/bikes?q="+*b1.HashID, "", nil)
+		r = call(t, "GET", "/bikes?q="+*b1.HashID, u.Token, nil)
 		mustStatus(t, r, http.StatusOK)
 		hits = decode[[]bike](t, r)
 		if len(hits) != 1 || hits[0].NumericalID != b1.NumericalID {
 			t.Errorf("search by hash_id: %s", r)
 		}
 
-		r = call(t, "GET", "/bikes?q=zzzznomatch", "", nil)
+		r = call(t, "GET", "/bikes?q=zzzznomatch", u.Token, nil)
 		if expectStatus(t, r, http.StatusOK) && string(r.Body) != "[]\n" {
 			t.Errorf("empty search should return []: %s", r)
 		}
 
-		r = call(t, "GET", "/bikes?limit=1", "", nil)
+		r = call(t, "GET", "/bikes?limit=1", u.Token, nil)
 		if expectStatus(t, r, http.StatusOK) && len(decode[[]bike](t, r)) != 1 {
 			t.Errorf("limit=1: %s", r)
 		}
 
 		for _, sort := range []string{"rating", "most_reviewed", "recent", "bogus"} {
-			expectStatus(t, call(t, "GET", "/bikes?sort="+sort, "", nil), http.StatusOK)
+			expectStatus(t, call(t, "GET", "/bikes?sort="+sort, u.Token, nil), http.StatusOK)
 		}
 	})
 }
@@ -210,5 +229,67 @@ func TestUpdateBike(t *testing.T) {
 				t.Errorf("bike %s: expected hash_id null after clearing, got %q", x.NumericalID, *got.HashID)
 			}
 		}
+	})
+}
+
+// Bikes created by test accounts (the suite's) must not show up in anyone
+// else's listings or search, so running the suite against a shared
+// environment doesn't show real users test data. They stay reachable by id.
+func TestTestBikesAreHidden(t *testing.T) {
+	// Explicit accounts, so this also runs (and checks the hiding) in the
+	// local mode where the suite otherwise uses regular accounts.
+	tester := newUserWith(t, true)
+	realUser := newUserWith(t, false)
+	hash := uniqueHash()
+	b := newBike(t, tester, hash, false)
+
+	var isTest bool
+	if err := db.QueryRow(`SELECT is_test FROM bikes WHERE numerical_id = $1`, b.NumericalID).Scan(&isTest); err != nil {
+		t.Fatal(err)
+	}
+	if !isTest {
+		t.Fatalf("a bike created by a test account must be flagged as a test bike")
+	}
+
+	listed := func(token string) bool {
+		t.Helper()
+		found := false
+		for _, q := range []string{"/bikes?q=" + hash, "/bikes?q=" + b.NumericalID, "/bikes?sort=recent&limit=100"} {
+			r := call(t, "GET", q, token, nil)
+			mustStatus(t, r, http.StatusOK)
+			for _, x := range decode[[]bike](t, r) {
+				if x.NumericalID == b.NumericalID {
+					found = true
+				}
+			}
+		}
+		return found
+	}
+
+	check := func(t *testing.T) {
+		if listed("") {
+			t.Error("test bike listed for anonymous visitors")
+		}
+		if listed(realUser.Token) {
+			t.Error("test bike listed for a regular account")
+		}
+		if listed("invalid-token") {
+			t.Error("test bike listed for an invalid token")
+		}
+		expectStatus(t, call(t, "GET", "/bikes/"+b.NumericalID, "", nil), http.StatusOK)
+	}
+
+	t.Run("hidden from listings", func(t *testing.T) {
+		check(t)
+		if !listed(tester.Token) {
+			t.Error("test bike should be listed for test accounts")
+		}
+	})
+
+	// The flag belongs to the bike, so it stays hidden once its creator is
+	// gone and the bike is orphaned.
+	t.Run("still hidden after the creator deletes their account", func(t *testing.T) {
+		mustStatus(t, call(t, "DELETE", "/auth/user", tester.Token, nil), http.StatusNoContent)
+		check(t)
 	})
 }

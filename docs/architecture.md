@@ -44,10 +44,10 @@ Requests flow **handler → service → store**:
 
 | Table | Holds |
 | :--- | :--- |
-| `posters` | Users: email, username, `email_verified`, `role` (`user`/`admin`). |
+| `posters` | Users: email, username, `email_verified`, `role` (`user`/`admin`), `is_test` (E2E test account). |
 | `poster_tokens` | API sessions (SHA-256 of the token, expiry). One poster can have several. |
 | `magic_links` | Pending/consumed magic links: hashed magic token, hashed poll token, expiry. |
-| `bikes` | `numerical_id` (text, 4–5 digits, primary key), optional unique `hash_id` (QR code), `is_electric`, creator. |
+| `bikes` | `numerical_id` (text, 4–5 digits, primary key), optional unique `hash_id` (QR code), `is_electric`, creator, `is_test` (inherited from the creator). |
 | `reviews`, `review_ratings` | A review and its per-category scores (1–5). |
 | `rating_aggregates` | Cached per-bike averages, recomputed whenever a review changes. |
 | `scan_events` | Last QR scan per poster and bike (drives `was_scanned`). |

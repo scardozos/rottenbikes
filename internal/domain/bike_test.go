@@ -25,11 +25,11 @@ func TestListBikes(t *testing.T) {
 			AddRow("02", "hash2", false, false, time.Now(), time.Now(), nil)
 
 		mock.ExpectQuery(regexp.QuoteMeta(listBikesQuery)).
-			WithArgs(10, 0, "", "recent").
+			WithArgs(10, 0, "", "recent", false).
 			WillReturnRows(rows)
 
 		store := NewService(NewStore(db))
-		bikes, err := store.ListBikes(ctx, "", "recent", 10, 0)
+		bikes, err := store.ListBikes(ctx, "", "recent", 10, 0, false)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
@@ -123,7 +123,7 @@ func TestCreateBike(t *testing.T) {
 			WillReturnRows(rows)
 
 		store := NewService(NewStore(db))
-		bike, err := store.CreateBike(ctx, numericalID, &hashID, isElectric, wasScanned, creatorID)
+		bike, err := store.CreateBike(ctx, numericalID, &hashID, isElectric, wasScanned, creatorID, false)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}

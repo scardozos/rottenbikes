@@ -233,7 +233,7 @@ func TestAggregatesAndDetails(t *testing.T) {
 	})
 
 	t.Run("sort by rating", func(t *testing.T) {
-		r := call(t, "GET", "/bikes?sort=rating&limit=100", "", nil)
+		r := call(t, "GET", "/bikes?sort=rating&limit=100", a.Token, nil)
 		mustStatus(t, r, http.StatusOK)
 		prev := 6.0
 		for _, x := range decode[[]bike](t, r) {

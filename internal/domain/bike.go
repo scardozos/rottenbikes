@@ -49,12 +49,14 @@ type BikeDetails struct {
 	TotalReviews int                 `json:"total_reviews"`
 }
 
-func (s *Store) ListBikes(ctx context.Context, searchQuery, sortBy string, limit, offset int) ([]Bike, error) {
+// ListBikes lists bikes. Test bikes (created by E2E test accounts) are only
+// included when includeTest is set, i.e. for a test account.
+func (s *Store) ListBikes(ctx context.Context, searchQuery, sortBy string, limit, offset int, includeTest bool) ([]Bike, error) {
 	if sortBy == "" {
 		sortBy = "recent" // default sort
 	}
 
-	rows, err := s.db.QueryContext(ctx, listBikesQuery, limit, offset, searchQuery, sortBy)
+	rows, err := s.db.QueryContext(ctx, listBikesQuery, limit, offset, searchQuery, sortBy, includeTest)
 	if err != nil {
 		return nil, err
 	}

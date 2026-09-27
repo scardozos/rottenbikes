@@ -75,6 +75,37 @@ func TestValidateReviewScores(t *testing.T) {
 	}
 }
 
+func TestValidateNumericalID(t *testing.T) {
+	cases := []struct {
+		id          string
+		testAccount bool
+		ok          bool
+	}{
+		{"1234", false, true},
+		{"12345", false, true},
+		{"01234", false, true},
+		{"123", false, false},
+		{"123456", false, false}, // reserved for test accounts
+		{"12a4", false, false},
+		{"", false, false},
+		{"123456", true, true},
+		{"012345", true, true},
+		{"1234", true, false}, // real bike numbers are off limits for tests
+		{"12345", true, false},
+		{"1234567", true, false},
+		{"12a456", true, false},
+	}
+	for _, c := range cases {
+		err := ValidateNumericalID(c.id, c.testAccount)
+		if c.ok && err != nil {
+			t.Errorf("%q (test account: %v) should be valid: %v", c.id, c.testAccount, err)
+		}
+		if !c.ok && !errors.Is(err, ErrValidation) {
+			t.Errorf("%q (test account: %v) should be invalid, got %v", c.id, c.testAccount, err)
+		}
+	}
+}
+
 // Invalid input is rejected before touching the database.
 func TestServiceValidationBeforeDB(t *testing.T) {
 	db, mock, err := sqlmock.New()
@@ -102,7 +133,7 @@ func TestServiceValidationBeforeDB(t *testing.T) {
 	if err := svc.UpdateReviewWithRatings(ctx, UpdateReviewInput{ReviewID: 1, PosterID: 1, Comment: &long}); !errors.Is(err, ErrValidation) {
 		t.Errorf("UpdateReview long comment: %v", err)
 	}
-	if _, err := svc.CreateBike(ctx, "12", nil, false, false, 1); !errors.Is(err, ErrValidation) {
+	if _, err := svc.CreateBike(ctx, "12", nil, false, false, 1, false); !errors.Is(err, ErrValidation) {
 		t.Errorf("CreateBike invalid id: %v", err)
 	}
 	bad := "not-alnum!"

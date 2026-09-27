@@ -89,14 +89,27 @@ func validateReviewScores(overall, breaks, seat, sturdiness, power, pedals *int1
 	return nil
 }
 
-func validateNumericalID(id string) error {
-	if len(id) < 4 || len(id) > 5 {
-		return validationErrorf("numerical_id must be 4-5 digits")
-	}
+// Real bikes have 4-5 digit numbers. 6-digit numbers are reserved for bikes
+// created by test accounts (the E2E suite), so tests running against a shared
+// environment can never take, conflict with, or clean up a real bike.
+const testNumericalIDLength = 6
+
+// ValidateNumericalID checks a bike number for the kind of account creating
+// it: 4-5 digits for regular accounts, exactly 6 for test accounts.
+func ValidateNumericalID(id string, testAccount bool) error {
 	for _, r := range id {
 		if r < '0' || r > '9' {
 			return validationErrorf("numerical_id must be 4-5 digits")
 		}
+	}
+	if testAccount {
+		if len(id) != testNumericalIDLength {
+			return validationErrorf("test accounts must use 6-digit numerical_ids (4-5 digits are real bike numbers)")
+		}
+		return nil
+	}
+	if len(id) < 4 || len(id) > 5 {
+		return validationErrorf("numerical_id must be 4-5 digits")
 	}
 	return nil
 }
