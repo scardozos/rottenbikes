@@ -49,6 +49,16 @@ func magicTokenFor(t *testing.T, to, pollToken string) string {
 	return readMagicLinkFromInbox(t, to)
 }
 
+// magicTokenForPoster returns the raw magic token of the latest link emailed
+// to the poster, when the suite has no poll token for it.
+func magicTokenForPoster(t *testing.T, u user) string {
+	t.Helper()
+	if !inboxConfigured() {
+		return interceptLatestMagicLink(t, u.ID)
+	}
+	return readMagicLinkFromInbox(t, u.Email)
+}
+
 type mailtrapMessage struct {
 	ID      int64  `json:"id"`
 	ToEmail string `json:"to_email"`

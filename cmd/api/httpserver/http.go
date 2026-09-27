@@ -9,6 +9,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -27,6 +28,9 @@ type HTTPServer struct {
 	// local server.
 	captchaVerifyURL string
 	httpClient       *http.Client
+
+	// Emails sent in the background (see sendEmailAsync).
+	pendingEmails sync.WaitGroup
 }
 
 func New(service domain.Service, sender email.EmailSender, addr string) (*HTTPServer, error) {
@@ -130,7 +134,20 @@ func (s *HTTPServer) Start() error {
 
 func (s *HTTPServer) Shutdown(ctx context.Context) error {
 	log.Info().Msgf("Shutting down HTTP server on %s", s.server.Addr)
-	return s.server.Shutdown(ctx)
+	err := s.server.Shutdown(ctx)
+
+	// Let background emails (magic links) finish rather than dropping them.
+	done := make(chan struct{})
+	go func() {
+		s.pendingEmails.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-ctx.Done():
+		log.Warn().Msg("shutdown deadline reached with emails still being sent")
+	}
+	return err
 }
 
 func corsMiddleware(next http.Handler) http.Handler {

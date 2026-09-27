@@ -23,6 +23,8 @@ var (
 	insertMagicLinkQuery string
 	//go:embed sql/create_poster.sql
 	createPosterQuery string
+	//go:embed sql/check_username_exists.sql
+	checkUsernameExistsQuery string
 	//go:embed sql/update_poster_token.sql
 	updatePosterTokenQuery string
 	//go:embed sql/update_poster_token_expiry.sql
@@ -148,6 +150,17 @@ func (s *Store) Register(ctx context.Context, username, email string) (string, s
 		return "", "", fmt.Errorf("begin tx: %w", err)
 	}
 	defer tx.Rollback()
+
+	// Check the username first: usernames are public, emails are not. When
+	// both are taken the caller must only learn about the username, so that
+	// the response never depends on whether the email has an account.
+	var usernameTaken bool
+	if err := tx.QueryRowContext(ctx, checkUsernameExistsQuery, username).Scan(&usernameTaken); err != nil {
+		return "", "", fmt.Errorf("check username: %w", err)
+	}
+	if usernameTaken {
+		return "", "", ErrUsernameExists
+	}
 
 	var posterID int64
 

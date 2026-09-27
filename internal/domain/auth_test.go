@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/lib/pq"
 )
 
 func TestCreateMagicLink(t *testing.T) {
@@ -109,6 +110,9 @@ func TestRegister(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		mock.ExpectBegin()
+		mock.ExpectQuery("SELECT EXISTS").
+			WithArgs(username).
+			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
 		mock.ExpectQuery("INSERT INTO posters").
 			WithArgs(email, username).
 			WillReturnRows(sqlmock.NewRows([]string{"poster_id"}).
@@ -136,6 +140,43 @@ func TestRegister(t *testing.T) {
 			t.Error("poll token must differ from the magic token")
 		}
 
+		if err := mock.ExpectationsWereMet(); err != nil {
+			t.Errorf("there were unfulfilled expectations: %s", err)
+		}
+	})
+
+	// The username is checked before the email is inserted, so when both are
+	// taken the error is about the (public) username only.
+	t.Run("username_taken_is_reported_before_email", func(t *testing.T) {
+		mock.ExpectBegin()
+		mock.ExpectQuery("SELECT EXISTS").
+			WithArgs(username).
+			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+		mock.ExpectRollback()
+
+		_, _, err := NewService(NewStore(db)).Register(ctx, username, email)
+		if !errors.Is(err, ErrUsernameExists) {
+			t.Errorf("expected ErrUsernameExists, got %v", err)
+		}
+		if err := mock.ExpectationsWereMet(); err != nil {
+			t.Errorf("there were unfulfilled expectations: %s", err)
+		}
+	})
+
+	t.Run("email_taken", func(t *testing.T) {
+		mock.ExpectBegin()
+		mock.ExpectQuery("SELECT EXISTS").
+			WithArgs(username).
+			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+		mock.ExpectQuery("INSERT INTO posters").
+			WithArgs(email, username).
+			WillReturnError(&pq.Error{Code: "23505", Constraint: "posters_email_key"})
+		mock.ExpectRollback()
+
+		_, _, err := NewService(NewStore(db)).Register(ctx, username, email)
+		if !errors.Is(err, ErrEmailExists) {
+			t.Errorf("expected ErrEmailExists, got %v", err)
+		}
 		if err := mock.ExpectationsWereMet(); err != nil {
 			t.Errorf("there were unfulfilled expectations: %s", err)
 		}

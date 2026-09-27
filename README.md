@@ -79,8 +79,8 @@ make db-reset ENV=local   # or dev / prod
 ### Authentication
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/auth/register` | Register a new user and email them a confirmation magic link. Returns a poll token (`magic_token`) for the requesting device. Requires `captcha_token`. | No |
-| `POST` | `/auth/request-magic-link` | Request a login magic link by `email` or `username` (max 2 per user per 24h). Returns a poll token (`magic_token`). Requires `captcha_token`. | No |
+| `POST` | `/auth/register` | Register a new user and email them a confirmation magic link. Returns a poll token (`magic_token`) for the requesting device. Requires `captcha_token`. A taken username returns 409; a taken email gets the same response as a new registration (the account's owner is emailed a login link instead, and the returned poll token never resolves), so the endpoint does not reveal which emails are registered. | No |
+| `POST` | `/auth/request-magic-link` | Request a login magic link by `email` or `username` (max 2 per user per 24h; exceeding it returns 429). Returns a poll token (`magic_token`). Requires `captcha_token`. Unknown accounts get the same response, with a poll token that never resolves and no email. | No |
 | `GET` | `/auth/confirm/{token}` | Confirm the emailed magic link and receive a Bearer token. | No |
 | `GET` | `/auth/poll?token=` | Exchange the poll token for the Bearer token once the link has been confirmed (one-time; for cross-device login). | No |
 | `GET` | `/auth/verify` | Verify the current token; returns `poster_id`, `username` and `is_admin`. | **Yes** |
@@ -154,7 +154,7 @@ The API comes with built-in instrumentation:
 - **Prometheus Metrics**: Available on port `9091` at `/metrics`.
   - `http_requests_total{method,path,status}`, `http_request_duration_seconds`, … — generic HTTP metrics.
   - `captcha_verifications_total{result}` — `success`, `failure` (hCaptcha rejected the token), `error` (hCaptcha unreachable or bad response), `not_configured` (no `HCAPTCHA_SECRET` outside dev), `skipped` (dev without a secret).
-  - `emails_sent_total{sender,kind,result}` — `kind` is `register` or `magic_link`, `result` is `success` or `failure`.
+  - `emails_sent_total{sender,kind,result}` — `kind` is `register`, `magic_link` or `existing_account`, `result` is `success` or `failure`. Emails are sent in the background (so response times don't reveal whether an account exists), so a failed send shows up here and in the logs, not in the HTTP response.
 - **Request Logging**: Structured logs for all HTTP requests.
 - **Health Checks**: `/healthz` (liveness) and `/readyz` (readiness, pings the database).
 
