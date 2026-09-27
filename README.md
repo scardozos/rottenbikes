@@ -158,25 +158,7 @@ The API comes with built-in instrumentation:
 - **Request Logging**: Structured logs for all HTTP requests.
 - **Health Checks**: `/healthz` (liveness) and `/readyz` (readiness, pings the database).
 
-#### Alerting
-Tests cannot pass a real captcha in prod, so sign-up/login breakage there (expired Mailtrap token, rotated hCaptcha secret, hCaptcha outage) is caught by alerts. Suggested Prometheus rules:
-
-```yaml
-- alert: AuthEndpoint5xx
-  expr: sum(rate(http_requests_total{path=~"/auth/(register|request-magic-link)", status=~"5.."}[15m])) > 0
-  for: 5m
-- alert: EmailSendFailing
-  expr: sum(increase(emails_sent_total{result="failure"}[15m])) > 0
-- alert: CaptchaVerificationUnavailable
-  expr: sum(increase(captcha_verifications_total{result=~"error|not_configured"}[15m])) > 0
-- alert: CaptchaRejectingEverything   # e.g. sitekey/secret mismatch after a rotation
-  expr: sum(increase(captcha_verifications_total{result="success"}[6h])) == 0
-        and sum(increase(captcha_verifications_total{result="failure"}[6h])) > 5
-```
-
-If you alert on logs instead, the relevant lines are `failed to send magic link email`, `failed to send registration email` and `hCaptcha request error`.
-
-`/auth/register` and `/auth/request-magic-link` return **403** when hCaptcha rejects the token and **503** when it could not be verified (hCaptcha unreachable or `HCAPTCHA_SECRET` missing), so the two are distinguishable from the outside as well.
+`/auth/register` and `/auth/request-magic-link` return **403** when hCaptcha rejects the token and **503** when it could not be verified (hCaptcha unreachable or `HCAPTCHA_SECRET` missing), so the two can be told apart.
 
 ## Configuration
 
@@ -205,7 +187,7 @@ Tests are layered by environment:
 | Unit | Handlers, domain and SQL (sqlmock); hCaptcha verification (success, rejection, unreachable, bad response) and the Mailtrap sender (non-2xx, unreachable) against `httptest` servers; the emailed `/confirm/{token}` link. | `make test-go` |
 | E2E, local with test keys | The full sign-up path through the real API: register → email → confirm → poll, using hCaptcha's test keys (and optionally a Mailtrap sandbox inbox). | `make e2e CAPTCHA_TOKEN=...` (see below) |
 | E2E on dev / prod | Everything except passing the captcha (both use the real captcha and send real emails), plus negative probes that prove captcha is enforced (a bogus token must get 403; required on prod). | `make e2e ENV=dev`, `make e2e ENV=prod CONFIRM=prod` |
-| Monitoring | Prod captcha/email failures (see [Alerting](#alerting)). | Prometheus |
+| Monitoring | Prod captcha/email failures (see the metrics under Observability). | Prometheus |
 
 The captcha widget and deep links in the UI are out of scope for the API suite; check them with Playwright or manually (a local UI with the test sitekey `10000000-ffff-ffff-ffff-000000000001` can use the test keys).
 
