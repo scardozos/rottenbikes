@@ -104,3 +104,41 @@ func TestAuthMiddlewareUnwrap(t *testing.T) {
 		t.Errorf("expected username 'testuser', got '%s'", customRW.Username)
 	}
 }
+
+// The middleware's lookup timeout must not leak into the handler: handlers
+// set their own (longer) timeouts, and a child context cannot outlive its
+// parent's deadline.
+func TestAuthMiddlewareDoesNotBoundHandlerContext(t *testing.T) {
+	var lookupHadDeadline bool
+	mockService := &MockService{
+		GetPosterByAPITokenFunc: func(ctx context.Context, token string) (*domain.AuthPoster, error) {
+			_, lookupHadDeadline = ctx.Deadline()
+			return &domain.AuthPoster{PosterID: 42, Username: "u"}, nil
+		},
+	}
+	srv := &HTTPServer{service: mockService}
+
+	var handlerHadDeadline, handlerCtxDone bool
+	handler := srv.middlewareAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, handlerHadDeadline = r.Context().Deadline()
+		handlerCtxDone = r.Context().Err() != nil
+		if id, ok := posterIDFromContext(r.Context()); !ok || id != 42 {
+			t.Errorf("expected poster_id 42 in context, got %d (ok=%v)", id, ok)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Authorization", "Bearer valid")
+	handler.ServeHTTP(httptest.NewRecorder(), req)
+
+	if !lookupHadDeadline {
+		t.Error("expected the token lookup to run with a deadline")
+	}
+	if handlerHadDeadline {
+		t.Error("handler context must not inherit the token lookup deadline")
+	}
+	if handlerCtxDone {
+		t.Error("handler context must not be cancelled when the lookup finishes")
+	}
+}

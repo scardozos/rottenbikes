@@ -94,10 +94,11 @@ func (s *HTTPServer) middlewareAuth(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
-		defer cancel()
-
-		poster, err := s.service.GetPosterByAPIToken(ctx, token)
+		// The timeout bounds only the token lookup. Handlers set their own
+		// timeouts, so they must not inherit this one.
+		lookupCtx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+		poster, err := s.service.GetPosterByAPIToken(lookupCtx, token)
+		cancel()
 		if err != nil {
 			if errors.Is(err, domain.ErrInvalidToken) || errors.Is(err, domain.ErrTokenExpired) || errors.Is(err, domain.ErrEmailNotVerified) {
 				s.sendError(w, "invalid or expired api token", http.StatusUnauthorized)
@@ -108,7 +109,7 @@ func (s *HTTPServer) middlewareAuth(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx = context.WithValue(ctx, contextKeyPosterID, poster.PosterID)
+		ctx := context.WithValue(r.Context(), contextKeyPosterID, poster.PosterID)
 		ctx = context.WithValue(ctx, contextKeyUsername, poster.Username)
 		ctx = context.WithValue(ctx, contextKeyRole, poster.Role)
 		ctx = context.WithValue(ctx, contextKeyIsTest, poster.IsTest)

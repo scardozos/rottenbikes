@@ -122,6 +122,30 @@ func TestHandleAdminPurgePoster(t *testing.T) {
 		}
 	})
 
+	t.Run("purge_gets_its_own_timeout", func(t *testing.T) {
+		// A purge may recompute aggregates for many bikes; it must get the
+		// handler's 30s budget, not the auth middleware's 3s lookup timeout.
+		var remaining time.Duration
+		mockService.PurgePosterFunc = func(ctx context.Context, adminPosterID, targetPosterID int64) error {
+			if deadline, ok := ctx.Deadline(); ok {
+				remaining = time.Until(deadline)
+			}
+			return nil
+		}
+		req := httptest.NewRequest(http.MethodDelete, "/admin/users/2", nil)
+		req.Header.Set("Authorization", "Bearer admin_token")
+		w := httptest.NewRecorder()
+
+		srv.server.Handler.ServeHTTP(w, req)
+
+		if w.Code != http.StatusNoContent {
+			t.Fatalf("expected status 204, got %d", w.Code)
+		}
+		if remaining < 20*time.Second {
+			t.Errorf("expected purge deadline ~30s away, got %v", remaining)
+		}
+	})
+
 	t.Run("admin_target_rejected", func(t *testing.T) {
 		mockService.PurgePosterFunc = func(ctx context.Context, adminPosterID, targetPosterID int64) error {
 			return domain.ErrCannotPurgeAdmin
