@@ -7,11 +7,11 @@ import (
 )
 
 type MockService struct {
-	RegisterFunc                     func(ctx context.Context, username, email string) (string, string, error)
-	CreateMagicLinkFunc              func(ctx context.Context, identifier string) (string, string, string, error)
+	RegisterFunc                     func(ctx context.Context, username, email string) (domain.MagicLink, error)
+	CreateMagicLinkFunc              func(ctx context.Context, identifier string) (domain.MagicLink, string, error)
 	ConfirmMagicLinkFunc             func(ctx context.Context, token string) (*domain.ConfirmResult, error)
 	GetPosterByAPITokenFunc          func(ctx context.Context, token string) (*domain.AuthPoster, error)
-	CheckMagicLinkStatusFunc         func(ctx context.Context, token string) (string, error)
+	VerifyLoginCodeFunc              func(ctx context.Context, pollToken, code string) (*domain.ConfirmResult, error)
 	RevokeAPITokenFunc               func(ctx context.Context, token string) error
 	DeletePosterFunc                 func(ctx context.Context, posterID int64, deleteContent bool) error
 	SearchPostersFunc                func(ctx context.Context, query string, limit int) ([]domain.PosterSummary, error)
@@ -34,11 +34,11 @@ type MockService struct {
 	HealthCheckFunc                  func(ctx context.Context) error
 }
 
-func (m *MockService) Register(ctx context.Context, username, email string) (string, string, error) {
+func (m *MockService) Register(ctx context.Context, username, email string) (domain.MagicLink, error) {
 	return m.RegisterFunc(ctx, username, email)
 }
 
-func (m *MockService) CreateMagicLink(ctx context.Context, identifier string) (string, string, string, error) {
+func (m *MockService) CreateMagicLink(ctx context.Context, identifier string) (domain.MagicLink, string, error) {
 	return m.CreateMagicLinkFunc(ctx, identifier)
 }
 
@@ -50,8 +50,8 @@ func (m *MockService) GetPosterByAPIToken(ctx context.Context, token string) (*d
 	return m.GetPosterByAPITokenFunc(ctx, token)
 }
 
-func (m *MockService) CheckMagicLinkStatus(ctx context.Context, token string) (string, error) {
-	return m.CheckMagicLinkStatusFunc(ctx, token)
+func (m *MockService) VerifyLoginCode(ctx context.Context, pollToken, code string) (*domain.ConfirmResult, error) {
+	return m.VerifyLoginCodeFunc(ctx, pollToken, code)
 }
 
 func (m *MockService) RevokeAPIToken(ctx context.Context, token string) error {

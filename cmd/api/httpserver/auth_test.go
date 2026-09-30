@@ -18,14 +18,14 @@ import (
 func TestHandleRequestMagicLink(t *testing.T) {
 	t.Setenv("APP_ENV", "local")
 	mockService := &MockService{
-		RegisterFunc: func(ctx context.Context, username, email string) (string, string, error) {
-			return "magic-token-for-" + email, "poll-token-for-" + email, nil
+		RegisterFunc: func(ctx context.Context, username, email string) (domain.MagicLink, error) {
+			return domain.MagicLink{MagicToken: "magic-token-for-" + email, PollToken: "poll-token-for-" + email, Code: "123456"}, nil
 		},
-		CreateMagicLinkFunc: func(ctx context.Context, identifier string) (string, string, string, error) {
+		CreateMagicLinkFunc: func(ctx context.Context, identifier string) (domain.MagicLink, string, error) {
 			if identifier == "test@example.com" || identifier == "testuser" {
-				return "magic-token-for-" + identifier, "poll-token-for-" + identifier, "test@example.com", nil
+				return domain.MagicLink{MagicToken: "magic-token-for-" + identifier, PollToken: "poll-token-for-" + identifier, Code: "123456"}, "test@example.com", nil
 			}
-			return "", "", "", domain.ErrUserNotFound
+			return domain.MagicLink{}, "", domain.ErrUserNotFound
 		},
 	}
 
@@ -127,8 +127,8 @@ func TestHandleRequestMagicLink(t *testing.T) {
 	})
 
 	t.Run("rate_limit_exceeded", func(t *testing.T) {
-		mockService.CreateMagicLinkFunc = func(ctx context.Context, identifier string) (string, string, string, error) {
-			return "", "", "", domain.ErrRateLimitExceeded
+		mockService.CreateMagicLinkFunc = func(ctx context.Context, identifier string) (domain.MagicLink, string, error) {
+			return domain.MagicLink{}, "", domain.ErrRateLimitExceeded
 		}
 
 		reqBody, _ := json.Marshal(map[string]string{
@@ -167,8 +167,8 @@ func TestUnknownAccountDecoysDiffer(t *testing.T) {
 	t.Setenv("APP_ENV", "local")
 	t.Setenv("HCAPTCHA_SECRET", "")
 	svc := &MockService{
-		CreateMagicLinkFunc: func(ctx context.Context, identifier string) (string, string, string, error) {
-			return "", "", "", domain.ErrUserNotFound
+		CreateMagicLinkFunc: func(ctx context.Context, identifier string) (domain.MagicLink, string, error) {
+			return domain.MagicLink{}, "", domain.ErrUserNotFound
 		},
 	}
 	srv, _ := New(svc, &email.NoopSender{}, ":8080")

@@ -1,3 +1,3 @@
 UPDATE magic_links
-SET consumed_ts = NOW()
+SET code_used_ts = NOW()
 WHERE id = $1

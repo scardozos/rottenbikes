@@ -56,7 +56,7 @@ func (s *HTTPServer) handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	magicToken, pollToken, err := s.service.Register(r.Context(), req.Username, req.Email)
+	link, err := s.service.Register(r.Context(), req.Username, req.Email)
 	if err != nil {
 		// Usernames are public, so a taken one can be reported. A taken email
 		// is answered exactly like a successful registration (see below).
@@ -79,24 +79,23 @@ func (s *HTTPServer) handleRegister(w http.ResponseWriter, r *http.Request) {
 	zerolog.Ctx(r.Context()).Info().Str("email", req.Email).Str("url", confirmURL("[REDACTED]", req.Origin)).Msg("sending UI confirmation link")
 
 	subject := "Welcome to RottenBikes!"
-	body := fmt.Sprintf("Hello %s,\n\nPlease confirm your registration by clicking the following link:\n\n%s\n\nIf you did not request this, please ignore this email.", req.Username, confirmURL(magicToken, req.Origin))
+	body := fmt.Sprintf("Hello %s,\n\nPlease confirm your registration %s\n\nIf you did not request this, please ignore this email.", req.Username, loginInstructions(link, req.Origin))
 	s.sendEmailAsync(r, "register", req.Email, subject, body, "failed to send registration email")
 
-	// The opaque credential returned to the requesting device is the poll token
-	// (raw), used to poll /auth/poll for the api token once the emailed link is
-	// confirmed on another device. It is decoupled from the emailed magic token.
-	s.sendRegisterResponse(w, pollToken)
+	// The requesting device gets the poll token. With the code from the email,
+	// it can log in through /auth/verify-code.
+	s.sendRegisterResponse(w, link.PollToken)
 }
 
 // handleRegisterExistingEmail answers a registration for an email that
 // already has an account exactly like a new registration, so the response
 // does not reveal which emails are registered. The account's owner gets a
 // login link instead of a welcome email. The requesting device gets a decoy
-// poll token that never resolves: whoever tried to register must not be
-// able to pick up the owner's session when the owner clicks the link.
+// poll token that no code redeems: whoever tried to register must not be
+// able to log in as the owner.
 func (s *HTTPServer) handleRegisterExistingEmail(w http.ResponseWriter, r *http.Request, req registerRequest) {
 	logger := zerolog.Ctx(r.Context())
-	magicToken, _, targetEmail, err := s.service.CreateMagicLink(r.Context(), req.Email)
+	link, targetEmail, err := s.service.CreateMagicLink(r.Context(), req.Email)
 	switch {
 	case errors.Is(err, domain.ErrRateLimitExceeded):
 		logger.Info().Str("email", req.Email).Msg("registration for an existing email: daily magic link limit reached, not emailing")
@@ -105,7 +104,7 @@ func (s *HTTPServer) handleRegisterExistingEmail(w http.ResponseWriter, r *http.
 	default:
 		logger.Info().Str("email", targetEmail).Str("url", confirmURL("[REDACTED]", req.Origin)).Msg("registration for an existing email: sending login link")
 		subject := "Your RottenBikes account"
-		body := fmt.Sprintf("Hello,\n\nSomeone tried to register a new RottenBikes account with this email address, but it already has an account. If it was you, you can log in with the following link:\n\n%s\n\nIf you did not request this, please ignore this email.", confirmURL(magicToken, req.Origin))
+		body := fmt.Sprintf("Hello,\n\nSomeone tried to register a new RottenBikes account with this email address, but it already has an account. If it was you, you can log in %s\n\nIf you did not request this, please ignore this email.", loginInstructions(link, req.Origin))
 		s.sendEmailAsync(r, "existing_account", targetEmail, subject, body, "failed to send existing account email")
 	}
 
@@ -149,11 +148,11 @@ func (s *HTTPServer) handleRequestMagicLink(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	magicToken, pollToken, targetEmail, err := s.service.CreateMagicLink(r.Context(), identifier)
+	link, targetEmail, err := s.service.CreateMagicLink(r.Context(), identifier)
 	if err != nil {
 		// Answer an unknown email/username exactly like a known one, so the
-		// response does not reveal which accounts exist. The decoy poll token
-		// never resolves and nothing is emailed.
+		// response does not reveal which accounts exist. No code redeems the
+		// decoy poll token, and nothing is emailed.
 		if errors.Is(err, domain.ErrUserNotFound) {
 			zerolog.Ctx(r.Context()).Info().Str("identifier", identifier).Msg("magic link requested for an unknown account")
 			s.sendMagicLinkResponse(w, decoyPollToken())
@@ -173,13 +172,33 @@ func (s *HTTPServer) handleRequestMagicLink(w http.ResponseWriter, r *http.Reque
 	zerolog.Ctx(r.Context()).Info().Str("email", targetEmail).Str("url", confirmURL("[REDACTED]", req.Origin)).Msg("sending magic link")
 
 	subject := "Your RottenBikes Magic Link"
-	body := fmt.Sprintf("Hello,\n\nYou requested a magic link to log in to RottenBikes. Click the following link to continue:\n\n%s\n\nIf you did not request this, please ignore this email.", confirmURL(magicToken, req.Origin))
+	if req.Origin == originApp {
+		subject = "Your RottenBikes login code"
+	}
+	body := fmt.Sprintf("Hello,\n\nYou asked to log in to RottenBikes. You can log in %s\n\nIf you did not request this, please ignore this email.", loginInstructions(link, req.Origin))
 	s.sendEmailAsync(r, "magic_link", targetEmail, subject, body, "failed to send magic link email")
 
-	// The opaque credential returned to the requesting device is the poll token
-	// (raw), used to poll /auth/poll for the api token once the emailed link is
-	// confirmed on another device.
-	s.sendMagicLinkResponse(w, pollToken)
+	// The requesting device gets the poll token. With the code from the email,
+	// it can log in through /auth/verify-code.
+	s.sendMagicLinkResponse(w, link.PollToken)
+}
+
+// originApp is the origin the mobile app sends with its login requests.
+const originApp = "mobile"
+
+// loginInstructions is the part of a login email that says how to log in,
+// following "you can log in ...".
+//
+// Requests from the app get only the code. The user reads the email on the
+// same phone, and the link would open the browser, not the app (there are no
+// universal links), so it cannot log the app in. Web requests get the link,
+// for logging in wherever the email is opened, and the code, for logging in
+// the device that asked for the email.
+func loginInstructions(link domain.MagicLink, origin string) string {
+	if origin == originApp {
+		return fmt.Sprintf("by entering this code in the RottenBikes app:\n\n%s\n\nThe code expires in 30 minutes.", link.Code)
+	}
+	return fmt.Sprintf("by clicking the following link:\n\n%s\n\nUsing a different device? Enter this code in RottenBikes on the device where you asked for this email:\n\n%s\n\nThe link and the code expire in 30 minutes.", confirmURL(link.MagicToken, origin), link.Code)
 }
 
 func (s *HTTPServer) sendMagicLinkResponse(w http.ResponseWriter, pollToken string) {
@@ -192,8 +211,7 @@ func (s *HTTPServer) sendMagicLinkResponse(w http.ResponseWriter, pollToken stri
 }
 
 // decoyPollToken returns a poll token indistinguishable from a real one (same
-// length and alphabet) that matches no magic link, so polling it never
-// resolves.
+// length and alphabet) that matches no magic link, so no code redeems it.
 func decoyPollToken() string {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
@@ -394,29 +412,66 @@ func (s *HTTPServer) handleVerifyToken(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// GET /auth/poll?token=...
-func (s *HTTPServer) handlePollMagicLink(w http.ResponseWriter, r *http.Request) {
-	token := r.URL.Query().Get("token")
-	if token == "" {
-		s.sendError(w, "token is required", http.StatusBadRequest)
+type verifyLoginCodeRequest struct {
+	Token string `json:"token"`
+	Code  string `json:"code"`
+}
+
+// POST /auth/verify-code
+//
+// Logs in the device that requested a magic link: it sends its poll token
+// (the magic_token from the request response) and the code from the email.
+func (s *HTTPServer) handleVerifyLoginCode(w http.ResponseWriter, r *http.Request) {
+	var req verifyLoginCodeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		s.sendError(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+	// People copy codes with spaces or dashes in them.
+	code := strings.NewReplacer(" ", "", "-", "").Replace(req.Code)
+	if req.Token == "" || code == "" {
+		s.sendError(w, "token and code are required", http.StatusBadRequest)
+		return
+	}
+	if !isLoginCode(code) {
+		s.sendError(w, domain.ErrInvalidLoginCode.Error(), http.StatusBadRequest)
 		return
 	}
 
-	apiToken, err := s.service.CheckMagicLinkStatus(r.Context(), token)
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	res, err := s.service.VerifyLoginCode(ctx, req.Token, code)
 	if err != nil {
-		s.sendError(w, "internal server error", http.StatusInternalServerError)
+		if errors.Is(err, domain.ErrInvalidLoginCode) {
+			s.sendError(w, domain.ErrInvalidLoginCode.Error(), http.StatusBadRequest)
+			return
+		}
+		s.sendInternalServerError(w, r, err)
 		return
 	}
 
-	if apiToken == "" {
-		s.sendError(w, "not confirmed", http.StatusNotFound)
-		return
-	}
+	zerolog.Ctx(r.Context()).Info().Str("email", res.Email).Msg("login code accepted")
 
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]string{
-		"api_token": apiToken,
+	_ = json.NewEncoder(w).Encode(confirmResponse{
+		APIToken:        res.APIToken,
+		Email:           res.Email,
+		APITokenExpires: res.APITokenExpiresAt,
 	})
+}
+
+// isLoginCode reports whether code has the shape of a login code (6 digits).
+func isLoginCode(code string) bool {
+	if len(code) != 6 {
+		return false
+	}
+	for _, c := range code {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 // POST /auth/logout

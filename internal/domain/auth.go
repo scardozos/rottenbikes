@@ -6,9 +6,11 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	_ "embed"
+	"crypto/subtle"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/lib/pq"
@@ -37,8 +39,12 @@ var (
 	consumeMagicLinkQuery string
 	//go:embed sql/get_poster_by_token.sql
 	getPosterByTokenQuery string
-	//go:embed sql/check_magic_link_status.sql
-	checkMagicLinkStatusQuery string
+	//go:embed sql/get_magic_link_by_poll_token.sql
+	getMagicLinkByPollTokenQuery string
+	//go:embed sql/increment_login_code_attempts.sql
+	incrementLoginCodeAttemptsQuery string
+	//go:embed sql/mark_login_code_used.sql
+	markLoginCodeUsedQuery string
 	//go:embed sql/list_user_reviews_for_delete.sql
 	listUserReviewsForDeleteQuery string
 	//go:embed sql/delete_user_ratings.sql
@@ -65,7 +71,16 @@ var (
 	ErrInvalidToken      = errors.New("invalid token")
 	ErrTokenExpired      = errors.New("token expired")
 	ErrEmailNotVerified  = errors.New("email not verified")
+	// ErrInvalidLoginCode covers every reason a login code is refused (wrong
+	// code, unknown request token, used or expired link, too many attempts),
+	// so a response never tells them apart.
+	ErrInvalidLoginCode = errors.New("invalid or expired code")
 )
+
+// maxLoginCodeAttempts is how many wrong codes a link accepts before it stops
+// accepting codes. With a 6-digit code, 5 attempts give a 1 in 200,000 chance
+// of guessing it per link, and links are rate limited per account.
+const maxLoginCodeAttempts = 5
 
 func randomToken(nBytes int) (string, error) {
 	b := make([]byte, nBytes)
@@ -73,6 +88,15 @@ func randomToken(nBytes int) (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(b), nil
+}
+
+// randomLoginCode returns a uniformly random 6-digit code, zero padded.
+func randomLoginCode() (string, error) {
+	n, err := rand.Int(rand.Reader, big.NewInt(1_000_000))
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%06d", n.Int64()), nil
 }
 
 func HashToken(token string) string {
@@ -90,18 +114,28 @@ type Poster struct {
 	EmailVerified     bool
 }
 
+// MagicLink is a freshly issued magic link, with its secrets in the clear.
+// Only their hashes are stored.
+type MagicLink struct {
+	// MagicToken goes in the emailed confirm link. Opening the link logs in
+	// the device that opens it.
+	MagicToken string
+	// Code is the 6-digit login code in the same email. Entered on the
+	// requesting device together with PollToken, it logs that device in.
+	// The link and the code are each usable once, independently.
+	Code string
+	// PollToken is returned to the requesting device (the API calls it
+	// magic_token for compatibility). On its own it grants nothing: the
+	// device also needs the code from the email.
+	PollToken string
+}
+
 // CreateMagicLink issues a magic link for the poster identified by email OR
-// username. It returns:
-//   - magicToken: the RAW one-time token embedded in the emailed confirm link
-//     (only the email recipient ever sees it; it confirm()s the link).
-//   - pollToken: the RAW per-request token returned to the requesting device,
-//     used to poll for the api token once the link is confirmed on another
-//     device. The poll token is decoupled from the magic token so that whoever
-//     requests a link cannot confirm it, and the email recipient cannot poll.
-func (s *Store) CreateMagicLink(ctx context.Context, identifier string) (magicToken string, pollToken string, email string, err error) {
+// username, and returns it together with the poster's email address.
+func (s *Store) CreateMagicLink(ctx context.Context, identifier string) (link MagicLink, email string, err error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return "", "", "", fmt.Errorf("begin tx: %w", err)
+		return MagicLink{}, "", fmt.Errorf("begin tx: %w", err)
 	}
 	defer tx.Rollback()
 
@@ -112,31 +146,31 @@ func (s *Store) CreateMagicLink(ctx context.Context, identifier string) (magicTo
 	err = tx.QueryRowContext(ctx, getPosterQuery, identifier).Scan(&posterID, &userEmail)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return "", "", "", ErrUserNotFound
+			return MagicLink{}, "", ErrUserNotFound
 		}
-		return "", "", "", fmt.Errorf("query poster: %w", err)
+		return MagicLink{}, "", fmt.Errorf("query poster: %w", err)
 	}
 
 	// Rate limit: max 2 links per user per 24 hours
 	var count int
 	err = tx.QueryRowContext(ctx, checkMagicLinkRateLimitQuery, posterID).Scan(&count)
 	if err != nil {
-		return "", "", "", fmt.Errorf("check rate limit: %w", err)
+		return MagicLink{}, "", fmt.Errorf("check rate limit: %w", err)
 	}
 	if count >= 2 {
-		return "", "", "", ErrRateLimitExceeded
+		return MagicLink{}, "", ErrRateLimitExceeded
 	}
 
-	magicToken, pollToken, err = s.issueMagicLink(ctx, tx, posterID)
+	link, err = s.issueMagicLink(ctx, tx, posterID)
 	if err != nil {
-		return "", "", "", err
+		return MagicLink{}, "", err
 	}
 
 	if err := tx.Commit(); err != nil {
-		return "", "", "", fmt.Errorf("commit tx: %w", err)
+		return MagicLink{}, "", fmt.Errorf("commit tx: %w", err)
 	}
 
-	return magicToken, pollToken, userEmail, nil
+	return link, userEmail, nil
 }
 
 var (
@@ -144,10 +178,10 @@ var (
 	ErrUsernameExists = errors.New("username already exists")
 )
 
-func (s *Store) Register(ctx context.Context, username, email string) (string, string, error) {
+func (s *Store) Register(ctx context.Context, username, email string) (MagicLink, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return "", "", fmt.Errorf("begin tx: %w", err)
+		return MagicLink{}, fmt.Errorf("begin tx: %w", err)
 	}
 	defer tx.Rollback()
 
@@ -156,10 +190,10 @@ func (s *Store) Register(ctx context.Context, username, email string) (string, s
 	// the response never depends on whether the email has an account.
 	var usernameTaken bool
 	if err := tx.QueryRowContext(ctx, checkUsernameExistsQuery, username).Scan(&usernameTaken); err != nil {
-		return "", "", fmt.Errorf("check username: %w", err)
+		return MagicLink{}, fmt.Errorf("check username: %w", err)
 	}
 	if usernameTaken {
-		return "", "", ErrUsernameExists
+		return MagicLink{}, ErrUsernameExists
 	}
 
 	var posterID int64
@@ -170,49 +204,49 @@ func (s *Store) Register(ctx context.Context, username, email string) (string, s
 		var pqErr *pq.Error
 		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
 			if pqErr.Constraint == "posters_email_key" {
-				return "", "", ErrEmailExists
+				return MagicLink{}, ErrEmailExists
 			}
 			if pqErr.Constraint == "posters_username_key" {
-				return "", "", ErrUsernameExists
+				return MagicLink{}, ErrUsernameExists
 			}
 		}
-		return "", "", fmt.Errorf("insert poster: %w", err)
+		return MagicLink{}, fmt.Errorf("insert poster: %w", err)
 	}
 
-	magicToken, pollToken, err := s.issueMagicLink(ctx, tx, posterID)
+	link, err := s.issueMagicLink(ctx, tx, posterID)
 	if err != nil {
-		return "", "", err
+		return MagicLink{}, err
 	}
 
 	if err := tx.Commit(); err != nil {
-		return "", "", fmt.Errorf("commit tx: %w", err)
+		return MagicLink{}, fmt.Errorf("commit tx: %w", err)
 	}
 
-	return magicToken, pollToken, nil
+	return link, nil
 }
 
-func (s *Store) issueMagicLink(ctx context.Context, tx *sql.Tx, posterID int64) (magicToken string, pollToken string, err error) {
-	now := time.Now()
-
-	// issue one-time magic token (emailed) and a separate poll token (returned to
-	// the requesting device). Both are stored SHA-256 hashed.
-	magicToken, err = randomToken(32)
-	if err != nil {
-		return "", "", fmt.Errorf("generate magic token: %w", err)
+func (s *Store) issueMagicLink(ctx context.Context, tx *sql.Tx, posterID int64) (MagicLink, error) {
+	// Issue the one-time magic token and login code (both emailed) and a
+	// separate poll token (returned to the requesting device). All three are
+	// stored SHA-256 hashed.
+	var link MagicLink
+	var err error
+	if link.MagicToken, err = randomToken(32); err != nil {
+		return MagicLink{}, fmt.Errorf("generate magic token: %w", err)
 	}
-	pollToken, err = randomToken(32)
-	if err != nil {
-		return "", "", fmt.Errorf("generate poll token: %w", err)
+	if link.PollToken, err = randomToken(32); err != nil {
+		return MagicLink{}, fmt.Errorf("generate poll token: %w", err)
 	}
-
-	hashedMagic := HashToken(magicToken)
-	hashedPoll := HashToken(pollToken)
-	expires := now.Add(30 * time.Minute)
-	if _, err := tx.ExecContext(ctx, insertMagicLinkQuery, posterID, hashedMagic, hashedPoll, expires); err != nil {
-		return "", "", fmt.Errorf("insert magic link: %w", err)
+	if link.Code, err = randomLoginCode(); err != nil {
+		return MagicLink{}, fmt.Errorf("generate login code: %w", err)
 	}
 
-	return magicToken, pollToken, nil
+	expires := time.Now().Add(30 * time.Minute)
+	if _, err := tx.ExecContext(ctx, insertMagicLinkQuery, posterID, HashToken(link.MagicToken), HashToken(link.PollToken), HashToken(link.Code), expires); err != nil {
+		return MagicLink{}, fmt.Errorf("insert magic link: %w", err)
+	}
+
+	return link, nil
 }
 
 // Consume magic link, verify, and return api_token.
@@ -222,13 +256,8 @@ type ConfirmResult struct {
 	APITokenExpiresAt time.Time
 }
 
-// ConfirmMagicLink consumes the one-time emailed magic token, rotates the
-// poster's api token (always issuing a fresh one so we never have to return a
-// token we only have on file as a hash), and returns the RAW api token.
-//
-// The raw token is stored transiently in magic_links.api_token (gated by the
-// poll token + expiry) so the requesting device can retrieve it via
-// CheckMagicLinkStatus. posters.api_token only ever stores its SHA-256 hash.
+// ConfirmMagicLink consumes the one-time emailed magic token and starts a
+// session for the device that opened the link.
 func (s *Store) ConfirmMagicLink(ctx context.Context, token string) (*ConfirmResult, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -236,13 +265,11 @@ func (s *Store) ConfirmMagicLink(ctx context.Context, token string) (*ConfirmRes
 	}
 	defer tx.Rollback()
 
-	var posterID int64
+	var linkID, posterID int64
 	var expires time.Time
 	var consumed sql.NullTime
 
-	hashedToken := HashToken(token)
-
-	err = tx.QueryRowContext(ctx, getMagicLinkQuery, hashedToken).Scan(&posterID, &expires, &consumed)
+	err = tx.QueryRowContext(ctx, getMagicLinkQuery, HashToken(token)).Scan(&linkID, &posterID, &expires, &consumed)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, ErrInvalidToken
@@ -254,29 +281,87 @@ func (s *Store) ConfirmMagicLink(ctx context.Context, token string) (*ConfirmRes
 		return nil, ErrTokenExpired
 	}
 
-	// Always rotate: generate a fresh raw api token, persist only its hash.
+	res, err := s.startSession(ctx, tx, posterID)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := tx.ExecContext(ctx, consumeMagicLinkQuery, linkID); err != nil {
+		return nil, fmt.Errorf("consume magic link: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit tx: %w", err)
+	}
+	return res, nil
+}
+
+// VerifyLoginCode logs in the device that requested a magic link: it holds
+// the poll token, and the user types in the code from the email. The code
+// works once, whether or not the link was opened. Wrong codes are counted,
+// and after maxLoginCodeAttempts the link accepts no more codes. Every
+// refusal is ErrInvalidLoginCode.
+func (s *Store) VerifyLoginCode(ctx context.Context, pollToken, code string) (*ConfirmResult, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	var linkID, posterID int64
+	var codeHash sql.NullString
+	var attempts int
+	var expires time.Time
+	var codeUsed sql.NullTime
+
+	err = tx.QueryRowContext(ctx, getMagicLinkByPollTokenQuery, HashToken(pollToken)).Scan(&linkID, &posterID, &codeHash, &attempts, &expires, &codeUsed)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrInvalidLoginCode
+		}
+		return nil, fmt.Errorf("load magic link: %w", err)
+	}
+
+	// Links issued before login codes existed have no code_hash.
+	if !codeHash.Valid || codeUsed.Valid || time.Now().After(expires) || attempts >= maxLoginCodeAttempts {
+		return nil, ErrInvalidLoginCode
+	}
+
+	if subtle.ConstantTimeCompare([]byte(HashToken(code)), []byte(codeHash.String)) != 1 {
+		if _, err := tx.ExecContext(ctx, incrementLoginCodeAttemptsQuery, linkID); err != nil {
+			return nil, fmt.Errorf("count login code attempt: %w", err)
+		}
+		if err := tx.Commit(); err != nil {
+			return nil, fmt.Errorf("commit tx: %w", err)
+		}
+		return nil, ErrInvalidLoginCode
+	}
+
+	res, err := s.startSession(ctx, tx, posterID)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := tx.ExecContext(ctx, markLoginCodeUsedQuery, linkID); err != nil {
+		return nil, fmt.Errorf("mark login code used: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit tx: %w", err)
+	}
+	return res, nil
+}
+
+// startSession verifies the poster's email and starts a new session in tx.
+// It returns the RAW api token; only its SHA-256 hash is stored (in
+// poster_tokens).
+func (s *Store) startSession(ctx context.Context, tx *sql.Tx, posterID int64) (*ConfirmResult, error) {
 	tok, err := randomToken(32)
 	if err != nil {
 		return nil, fmt.Errorf("generate api token: %w", err)
 	}
-	now := time.Now()
-	exp := now.AddDate(0, 2, 0)
+	exp := time.Now().AddDate(0, 2, 0)
 
 	var apiTokenExpiresAt time.Time
 	var email string
 	if err := tx.QueryRowContext(ctx, updatePosterVerifiedNewTokenQuery, HashToken(tok), exp, posterID).Scan(&apiTokenExpiresAt, &email); err != nil {
-		return nil, fmt.Errorf("rotate api token: %w", err)
-	}
-
-	// Make the raw api token available for one-time poll retrieval (gated by the
-	// poll token + expiry). consume_magic_link matches on magic_links.token and
-	// marks the link consumed.
-	if _, err := tx.ExecContext(ctx, consumeMagicLinkQuery, tok, hashedToken); err != nil {
-		return nil, fmt.Errorf("consume magic link: %w", err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("commit tx: %w", err)
+		return nil, fmt.Errorf("start session: %w", err)
 	}
 
 	return &ConfirmResult{
@@ -322,21 +407,6 @@ func (s *Store) GetPosterByAPIToken(ctx context.Context, token string) (*AuthPos
 	}
 
 	return &p, nil
-}
-
-// CheckMagicLinkStatus returns the api_token if the link was confirmed using the
-// given poll token, otherwise an empty string. The poll token is stored hashed,
-// so the incoming token is hashed before lookup. The link must also be unexpired.
-func (s *Store) CheckMagicLinkStatus(ctx context.Context, token string) (string, error) {
-	var apiToken sql.NullString
-	err := s.db.QueryRowContext(ctx, checkMagicLinkStatusQuery, HashToken(token)).Scan(&apiToken)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return "", nil
-		}
-		return "", err
-	}
-	return apiToken.String, nil
 }
 
 // RevokeAPIToken deletes the given API token session from poster_tokens.

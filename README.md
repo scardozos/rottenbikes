@@ -10,7 +10,7 @@ An open-source platform for community reviews, ratings, and condition tracking o
 
 Rotten Bikes allows commuters and riders to crowdsource fleet quality data for public and shared bicycles (such as Barcelona's Bicing system). Users can scan vehicle QR/Barcodes to leave and view ratings across key physical components (brakes, pedals, electric power, seat comfort) to help fellow riders avoid faulty equipment and report maintenance needs.
 
-- **Passwordless login:** magic links by email, with cross-device login (request on your phone, click the link on your laptop).
+- **Passwordless login:** magic links by email, with a login code for logging in another device (request on your laptop, read the email on your phone).
 - **Bike scanning:** scan a bike's QR code to see its ratings, or add it if it's new.
 - **Reviews:** rate brakes, seat, sturdiness, power and pedals; see how a bike has been doing over the last weeks.
 - **Moderation:** admin tools to remove abusive posters and bikes, with an audit log.

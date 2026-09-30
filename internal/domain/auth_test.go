@@ -34,28 +34,23 @@ func TestCreateMagicLink(t *testing.T) {
 			WithArgs(1).
 			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
 
-		// Insert magic link (now carries a poll_token: 4 args)
+		// Insert magic link: poster_id, magic hash, poll hash, code hash, expires
+		magicHash, pollHash, codeHash := &capturedArg{}, &capturedArg{}, &capturedArg{}
 		mock.ExpectExec("INSERT INTO magic_links").
-			WithArgs(1, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
+			WithArgs(1, magicHash, pollHash, codeHash, sqlmock.AnyArg()).
 			WillReturnResult(sqlmock.NewResult(1, 1))
 
 		mock.ExpectCommit()
 
 		store := NewService(NewStore(db))
-		magicToken, pollToken, _, err := store.CreateMagicLink(ctx, email)
+		link, gotEmail, err := store.CreateMagicLink(ctx, email)
 		if err != nil {
-			t.Errorf("unexpected error: %v", err)
+			t.Fatalf("unexpected error: %v", err)
 		}
-		if magicToken == "" {
-			t.Error("expected magic token to be generated")
+		if gotEmail != email {
+			t.Errorf("expected email %s, got %s", email, gotEmail)
 		}
-		// The poll token is separate and distinct from the magic token.
-		if pollToken == "" {
-			t.Error("expected poll token to be generated")
-		}
-		if pollToken == magicToken {
-			t.Error("poll token must differ from the magic token")
-		}
+		expectIssuedLink(t, link, magicHash, pollHash, codeHash)
 
 		if err := mock.ExpectationsWereMet(); err != nil {
 			t.Errorf("there were unfulfilled expectations: %s", err)
@@ -70,7 +65,7 @@ func TestCreateMagicLink(t *testing.T) {
 		mock.ExpectRollback()
 
 		store := NewService(NewStore(db))
-		_, _, _, err := store.CreateMagicLink(ctx, email)
+		_, _, err := store.CreateMagicLink(ctx, email)
 		if err == nil {
 			t.Error("expected error user not found")
 		}
@@ -90,7 +85,7 @@ func TestCreateMagicLink(t *testing.T) {
 		mock.ExpectRollback()
 
 		store := NewService(NewStore(db))
-		_, _, _, err := store.CreateMagicLink(ctx, email)
+		_, _, err := store.CreateMagicLink(ctx, email)
 		if err == nil || !errors.Is(err, ErrRateLimitExceeded) {
 			t.Errorf("expected ErrRateLimitExceeded, got %v", err)
 		}
@@ -118,27 +113,20 @@ func TestRegister(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"poster_id"}).
 				AddRow(1))
 
-		// Insert magic link (4 args: poster_id, magic_hash, poll_hash, expires)
+		// Insert magic link: poster_id, magic hash, poll hash, code hash, expires
+		magicHash, pollHash, codeHash := &capturedArg{}, &capturedArg{}, &capturedArg{}
 		mock.ExpectExec("INSERT INTO magic_links").
-			WithArgs(1, sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
+			WithArgs(1, magicHash, pollHash, codeHash, sqlmock.AnyArg()).
 			WillReturnResult(sqlmock.NewResult(1, 1))
 
 		mock.ExpectCommit()
 
 		store := NewService(NewStore(db))
-		magicToken, pollToken, err := store.Register(ctx, username, email)
+		link, err := store.Register(ctx, username, email)
 		if err != nil {
-			t.Errorf("unexpected error: %v", err)
+			t.Fatalf("unexpected error: %v", err)
 		}
-		if magicToken == "" {
-			t.Error("expected magic token to be generated")
-		}
-		if pollToken == "" {
-			t.Error("expected poll token to be generated")
-		}
-		if pollToken == magicToken {
-			t.Error("poll token must differ from the magic token")
-		}
+		expectIssuedLink(t, link, magicHash, pollHash, codeHash)
 
 		if err := mock.ExpectationsWereMet(); err != nil {
 			t.Errorf("there were unfulfilled expectations: %s", err)
@@ -154,7 +142,7 @@ func TestRegister(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
 		mock.ExpectRollback()
 
-		_, _, err := NewService(NewStore(db)).Register(ctx, username, email)
+		_, err := NewService(NewStore(db)).Register(ctx, username, email)
 		if !errors.Is(err, ErrUsernameExists) {
 			t.Errorf("expected ErrUsernameExists, got %v", err)
 		}
@@ -173,7 +161,7 @@ func TestRegister(t *testing.T) {
 			WillReturnError(&pq.Error{Code: "23505", Constraint: "posters_email_key"})
 		mock.ExpectRollback()
 
-		_, _, err := NewService(NewStore(db)).Register(ctx, username, email)
+		_, err := NewService(NewStore(db)).Register(ctx, username, email)
 		if !errors.Is(err, ErrEmailExists) {
 			t.Errorf("expected ErrEmailExists, got %v", err)
 		}
@@ -187,7 +175,7 @@ func TestRegister(t *testing.T) {
 		email := "invalid-email" // Missing @ and domain
 
 		store := NewService(NewStore(db))
-		_, _, err := store.Register(ctx, username, email)
+		_, err := store.Register(ctx, username, email)
 		if err == nil {
 			t.Error("expected error for invalid email, got nil")
 		}
@@ -201,7 +189,7 @@ func TestRegister(t *testing.T) {
 		email := "test@example.com"
 
 		store := NewService(NewStore(db))
-		_, _, err := store.Register(ctx, username, email)
+		_, err := store.Register(ctx, username, email)
 		if err == nil {
 			t.Error("expected error for invalid username, got nil")
 		}
@@ -225,21 +213,22 @@ func TestConfirmMagicLink(t *testing.T) {
 		mock.ExpectBegin()
 
 		// Load magic link (FOR UPDATE)
-		mock.ExpectQuery("SELECT poster_id, expires_ts, consumed_ts FROM magic_links").
+		mock.ExpectQuery("SELECT id, poster_id, expires_ts, consumed_ts FROM magic_links").
 			WithArgs(HashToken(token)).
-			WillReturnRows(sqlmock.NewRows([]string{"poster_id", "expires_ts", "consumed_ts"}).
-				AddRow(1, time.Now().Add(time.Hour), nil))
+			WillReturnRows(sqlmock.NewRows([]string{"id", "poster_id", "expires_ts", "consumed_ts"}).
+				AddRow(7, 1, time.Now().Add(time.Hour), nil))
 
 		// Always rotate: issue a fresh api token, store only its hash in poster_tokens, return
 		// expires + email.
+		tokenHash := &capturedArg{}
 		mock.ExpectQuery("WITH updated_poster AS").
-			WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), 1).
+			WithArgs(tokenHash, sqlmock.AnyArg(), 1).
 			WillReturnRows(sqlmock.NewRows([]string{"expires_ts", "email"}).
 				AddRow(time.Now().Add(time.Hour), "test@example.com"))
 
-		// Make the raw api token available for one-time poll retrieval.
-		mock.ExpectExec("UPDATE magic_links").
-			WithArgs(sqlmock.AnyArg(), HashToken(token)).
+		// Mark the link consumed. The raw api token is not stored anywhere.
+		mock.ExpectExec("UPDATE magic_links SET consumed_ts = NOW\\(\\) WHERE id = \\$1").
+			WithArgs(7).
 			WillReturnResult(sqlmock.NewResult(1, 1))
 
 		mock.ExpectCommit()
@@ -252,10 +241,13 @@ func TestConfirmMagicLink(t *testing.T) {
 		if res == nil {
 			t.Fatal("expected result")
 		}
-		// The returned (and poll-retrievable) api token is the RAW 32-byte token
-		// (64 hex chars); posters only stores its hash.
+		// The returned api token is the RAW 32-byte token (64 hex chars);
+		// poster_tokens only stores its hash.
 		if len(res.APIToken) != 64 {
 			t.Errorf("expected raw api token of 64 hex chars, got %d (%q)", len(res.APIToken), res.APIToken)
+		}
+		if tokenHash.value != HashToken(res.APIToken) {
+			t.Error("poster_tokens must store the hash of the returned api token")
 		}
 		if res.Email != "test@example.com" {
 			t.Errorf("expected email test@example.com, got %s", res.Email)
@@ -268,10 +260,10 @@ func TestConfirmMagicLink(t *testing.T) {
 
 	t.Run("already_consumed", func(t *testing.T) {
 		mock.ExpectBegin()
-		mock.ExpectQuery("SELECT poster_id, expires_ts, consumed_ts FROM magic_links").
+		mock.ExpectQuery("SELECT id, poster_id, expires_ts, consumed_ts FROM magic_links").
 			WithArgs(HashToken(token)).
-			WillReturnRows(sqlmock.NewRows([]string{"poster_id", "expires_ts", "consumed_ts"}).
-				AddRow(1, time.Now().Add(time.Hour), time.Now().Add(-time.Minute)))
+			WillReturnRows(sqlmock.NewRows([]string{"id", "poster_id", "expires_ts", "consumed_ts"}).
+				AddRow(7, 1, time.Now().Add(time.Hour), time.Now().Add(-time.Minute)))
 		mock.ExpectRollback()
 
 		store := NewService(NewStore(db))
@@ -283,10 +275,10 @@ func TestConfirmMagicLink(t *testing.T) {
 
 	t.Run("expired", func(t *testing.T) {
 		mock.ExpectBegin()
-		mock.ExpectQuery("SELECT poster_id, expires_ts, consumed_ts FROM magic_links").
+		mock.ExpectQuery("SELECT id, poster_id, expires_ts, consumed_ts FROM magic_links").
 			WithArgs(HashToken(token)).
-			WillReturnRows(sqlmock.NewRows([]string{"poster_id", "expires_ts", "consumed_ts"}).
-				AddRow(1, time.Now().Add(-time.Hour), nil))
+			WillReturnRows(sqlmock.NewRows([]string{"id", "poster_id", "expires_ts", "consumed_ts"}).
+				AddRow(7, 1, time.Now().Add(-time.Hour), nil))
 		mock.ExpectRollback()
 
 		store := NewService(NewStore(db))
@@ -298,7 +290,7 @@ func TestConfirmMagicLink(t *testing.T) {
 
 	t.Run("invalid_token", func(t *testing.T) {
 		mock.ExpectBegin()
-		mock.ExpectQuery("SELECT poster_id, expires_ts, consumed_ts FROM magic_links").
+		mock.ExpectQuery("SELECT id, poster_id, expires_ts, consumed_ts FROM magic_links").
 			WithArgs(HashToken(token)).
 			WillReturnError(sql.ErrNoRows)
 		mock.ExpectRollback()

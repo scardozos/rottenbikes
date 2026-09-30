@@ -102,7 +102,7 @@ func TestRegisterValidation(t *testing.T) {
 
 	// A taken email must not be revealed: the response is the same as for a
 	// new registration, the owner gets a login link, and the requester's poll
-	// token never resolves to the owner's session.
+	// token can never be turned into the owner's session.
 	t.Run("taken email is indistinguishable from a new registration", func(t *testing.T) {
 		requireCaptchaPass(t)
 		owner := seedPoster(t)
@@ -173,35 +173,25 @@ func TestCaptchaConfiguration(t *testing.T) {
 	})
 }
 
-// Registration through the API end to end: register -> email -> confirm ->
-// poll. On dev the magic link is read from the Mailtrap sandbox inbox.
+// Registration through the API end to end: register -> email -> the
+// registering device enters the emailed code. On dev the email is read from
+// the Mailtrap sandbox inbox.
 func TestRegisterViaAPI(t *testing.T) {
 	u, poll := registerViaAPI(t)
-	expectStatus(t, call(t, "GET", "/auth/poll?token="+poll, "", nil), http.StatusNotFound)
-	tok := confirm(t, magicTokenFor(t, u.Email, poll))
-	r := call(t, "GET", "/auth/poll?token="+poll, "", nil)
-	if expectStatus(t, r, http.StatusOK) && decode[map[string]string](t, r)["api_token"] != tok {
-		t.Errorf("poll returned a different token than confirm")
-	}
-	r = call(t, "GET", "/auth/verify", tok, nil)
+	_, code := loginEmailFor(t, u.Email, poll)
+	tok := loginWithCode(t, poll, code)
+	r := call(t, "GET", "/auth/verify", tok, nil)
 	if expectStatus(t, r, http.StatusOK) && decode[verifyResponse](t, r).Username != u.Username {
 		t.Errorf("verify: %s", r)
 	}
 }
 
-func TestConfirmPollFlow(t *testing.T) {
+func TestConfirmFlow(t *testing.T) {
 	u := seedPoster(t)
-	magic, poll := seedMagicLink(t, u.ID)
-
-	// Not confirmed yet.
-	r := call(t, "GET", "/auth/poll?token="+poll, "", nil)
-	expectStatus(t, r, http.StatusNotFound)
-
-	r = call(t, "GET", "/auth/poll", "", nil)
-	expectStatus(t, r, http.StatusBadRequest)
+	magic, poll, code := seedMagicLink(t, u.ID)
 
 	// The poll token must not be usable as the confirm (emailed) token.
-	r = call(t, "GET", "/auth/confirm/"+poll, "", nil)
+	r := call(t, "GET", "/auth/confirm/"+poll, "", nil)
 	expectStatus(t, r, http.StatusBadRequest)
 
 	r = call(t, "GET", "/auth/confirm/"+randomHex(32), "", nil)
@@ -227,15 +217,17 @@ func TestConfirmPollFlow(t *testing.T) {
 	r = call(t, "GET", "/auth/confirm/"+magic, "", nil)
 	expectStatus(t, r, http.StatusBadRequest)
 
-	// The requesting device picks up the same api token exactly once.
-	r = call(t, "GET", "/auth/poll?token="+poll, "", nil)
-	if expectStatus(t, r, http.StatusOK) {
-		if got := decode[map[string]string](t, r)["api_token"]; got != conf.APIToken {
-			t.Errorf("poll returned %q, confirm returned %q", got, conf.APIToken)
-		}
+	// Opening the link (say, on a phone) leaves the code usable on the device
+	// that asked for the email, once. It gets its own session.
+	fromCode := loginWithCode(t, poll, code)
+	if fromCode == conf.APIToken {
+		t.Error("the code must start its own session")
 	}
-	r = call(t, "GET", "/auth/poll?token="+poll, "", nil)
-	expectStatus(t, r, http.StatusNotFound)
+	expectStatus(t, call(t, "GET", "/auth/verify", fromCode, nil), http.StatusOK)
+	expectStatus(t, verifyCode(t, poll, code), http.StatusBadRequest)
+
+	// Polling used to hand the requesting device the confirmed session.
+	expectStatus(t, call(t, "GET", "/auth/poll?token="+poll, "", nil), http.StatusNotFound)
 
 	r = call(t, "GET", "/auth/verify", conf.APIToken, nil)
 	mustStatus(t, r, http.StatusOK)
@@ -245,7 +237,7 @@ func TestConfirmPollFlow(t *testing.T) {
 	}
 
 	// Multiple sessions: a second login keeps the first token valid.
-	magic2, _ := seedMagicLink(t, u.ID)
+	magic2, _, _ := seedMagicLink(t, u.ID)
 	second := confirm(t, magic2)
 	expectStatus(t, call(t, "GET", "/auth/verify", conf.APIToken, nil), http.StatusOK)
 	expectStatus(t, call(t, "GET", "/auth/verify", second, nil), http.StatusOK)
@@ -260,14 +252,70 @@ func TestConfirmPollFlow(t *testing.T) {
 	expectStatus(t, call(t, "POST", "/auth/logout", "", nil), http.StatusNoContent)
 }
 
+// The requesting device logs in with the code from the email, instead of
+// the link.
+func TestLoginCodeFlow(t *testing.T) {
+	u := seedPoster(t)
+	magic, poll, code := seedMagicLink(t, u.ID)
+
+	wrong := otherLoginCode(code)
+	for _, c := range []struct {
+		name       string
+		poll, code string
+	}{
+		{"wrong code", poll, wrong},
+		{"emailed token instead of the poll token", magic, code},
+		{"unknown poll token", randomHex(32), code},
+		{"malformed code", poll, "12345"},
+	} {
+		r := verifyCode(t, c.poll, c.code)
+		if expectStatus(t, r, http.StatusBadRequest) {
+			expectJSONError(t, r)
+		}
+	}
+	expectStatus(t, call(t, "POST", "/auth/verify-code", "", map[string]string{"token": poll}), http.StatusBadRequest)
+
+	// Spaces, as people may type them, are fine.
+	r := verifyCode(t, poll, code[:3]+" "+code[3:])
+	mustStatus(t, r, http.StatusOK)
+	conf := decode[struct {
+		APIToken  string    `json:"api_token"`
+		Email     string    `json:"email"`
+		ExpiresAt time.Time `json:"api_token_expires_at"`
+	}](t, r)
+	if conf.APIToken == "" || conf.Email != u.Email || !conf.ExpiresAt.After(time.Now().Add(24*time.Hour)) {
+		t.Errorf("verify-code response: %s", r)
+	}
+	r = call(t, "GET", "/auth/verify", conf.APIToken, nil)
+	if expectStatus(t, r, http.StatusOK) && decode[verifyResponse](t, r).PosterID != u.ID {
+		t.Errorf("verify: %s", r)
+	}
+
+	// One-time. The link is independent and still works, once.
+	expectStatus(t, verifyCode(t, poll, code), http.StatusBadRequest)
+	confirm(t, magic)
+	expectStatus(t, call(t, "GET", "/auth/confirm/"+magic, "", nil), http.StatusBadRequest)
+}
+
+// After 5 wrong codes a link accepts no code, not even the right one.
+func TestLoginCodeAttemptsAreLimited(t *testing.T) {
+	u := seedPoster(t)
+	_, poll, code := seedMagicLink(t, u.ID)
+	wrong := otherLoginCode(code)
+	for i := 0; i < 5; i++ {
+		expectStatus(t, verifyCode(t, poll, wrong), http.StatusBadRequest)
+	}
+	expectStatus(t, verifyCode(t, poll, code), http.StatusBadRequest)
+}
+
 func TestExpiredMagicLink(t *testing.T) {
 	u := seedPoster(t)
-	magic, poll := seedMagicLink(t, u.ID)
+	magic, poll, code := seedMagicLink(t, u.ID)
 	if _, err := db.Exec(`UPDATE magic_links SET expires_ts = NOW() - INTERVAL '1 minute' WHERE poll_token = $1`, sha256Hex(poll)); err != nil {
 		t.Fatal(err)
 	}
 	expectStatus(t, call(t, "GET", "/auth/confirm/"+magic, "", nil), http.StatusBadRequest)
-	expectStatus(t, call(t, "GET", "/auth/poll?token="+poll, "", nil), http.StatusNotFound)
+	expectStatus(t, verifyCode(t, poll, code), http.StatusBadRequest)
 }
 
 func TestVerifyRejectsBadCredentials(t *testing.T) {
@@ -328,16 +376,17 @@ func TestRequestMagicLink(t *testing.T) {
 		}
 	})
 
-	// Login by username, confirm on "another device", poll on this one.
+	// Login by username, entering the emailed code on this device.
 	r := call(t, "POST", "/auth/request-magic-link", "", map[string]string{
 		"username": u.Username, "captcha_token": passingCaptcha(),
 	})
 	mustStatus(t, r, http.StatusOK)
 	poll := decode[map[string]string](t, r)["magic_token"]
-	second := confirm(t, magicTokenFor(t, u.Email, poll))
-	r = call(t, "GET", "/auth/poll?token="+poll, "", nil)
-	if expectStatus(t, r, http.StatusOK) && decode[map[string]string](t, r)["api_token"] != second {
-		t.Errorf("poll returned a different token than confirm")
+	_, code := loginEmailFor(t, u.Email, poll)
+	second := loginWithCode(t, poll, code)
+	r = call(t, "GET", "/auth/verify", second, nil)
+	if expectStatus(t, r, http.StatusOK) && decode[verifyResponse](t, r).PosterID != u.ID {
+		t.Errorf("the code should log in %s: %s", u.Username, r)
 	}
 
 	// Third link within 24h (by email this time) is rate limited.

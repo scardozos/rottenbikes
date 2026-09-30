@@ -8,6 +8,11 @@ import { singleFlight } from '../utils/session';
 
 export const AuthContext = createContext();
 
+// Login emails for requests from the app contain only the 6-digit code: the
+// emailed link would open the browser, not the app. Web requests get the link
+// and the code. The API tells them apart by origin: 'mobile'.
+export const emailsOnlyCode = Platform.OS !== 'web';
+
 export const AuthProvider = ({ children }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [userToken, setUserToken] = useState(null);
@@ -53,7 +58,7 @@ export const AuthProvider = ({ children }) => {
                 email: email,
                 captcha_token: captcha
             };
-            if (Platform.OS !== 'web') {
+            if (emailsOnlyCode) {
                 data.origin = 'mobile';
             }
             const response = await api.post('/auth/register', data);
@@ -77,7 +82,7 @@ export const AuthProvider = ({ children }) => {
             } else {
                 data.username = identifier;
             }
-            if (Platform.OS !== 'web') {
+            if (emailsOnlyCode) {
                 data.origin = 'mobile';
             }
             if (captcha) {
@@ -95,20 +100,6 @@ export const AuthProvider = ({ children }) => {
             throw e;
         }
     }, []);
-
-    const confirmAttempt = useCallback(async (magicToken) => {
-        try {
-            __DEV__ && console.log(`Confirming magic link attempt (only) for token: ${magicToken}`);
-            await api.get(`/auth/confirm/${magicToken}`);
-            showToast(t('confirmation_successful'), 'success');
-        } catch (e) {
-            console.log('confirmAttempt error', e);
-            if (e.response && e.response.data && e.response.data.error) {
-                throw new Error(e.response.data.error);
-            }
-            throw e;
-        }
-    }, [showToast, t]);
 
     const completeLogin = useCallback(async (magicToken) => {
         try {
@@ -130,24 +121,24 @@ export const AuthProvider = ({ children }) => {
         }
     }, [fetchCurrentUser, showToast, t]);
 
-    const checkLoginStatus = useCallback(async (magicToken) => {
+    // Logs in the device that asked for the login email, with the poll
+    // token it got back and the 6-digit code from the email. Throws an Error
+    // whose status is the HTTP status (400: wrong or expired code).
+    const verifyLoginCode = useCallback(async (pollToken, code) => {
         try {
-            const response = await api.get(`/auth/poll?token=${magicToken}`);
+            const response = await api.post('/auth/verify-code', { token: pollToken, code });
             const { api_token } = response.data;
-            if (api_token) {
-                showToast(t('login_confirmed_success'), 'success');
-                setUserToken(api_token);
-                await storage.setItem('userToken', api_token);
-                fetchCurrentUser();
-                return true;
-            }
+
+            showToast(t('login_confirmed_success'), 'success');
+            setUserToken(api_token);
+            await storage.setItem('userToken', api_token);
+            fetchCurrentUser();
         } catch (e) {
-            if (e.response && e.response.status === 404) {
-                // silenty retry
-            }
-            return false;
+            console.log('verifyLoginCode error', e);
+            const err = new Error(e.response?.data?.error || e.message);
+            err.status = e.response?.status;
+            throw err;
         }
-        return false;
     }, [fetchCurrentUser, showToast, t]);
 
     // Pass { revokeSession: false } when the server-side session is already
@@ -204,9 +195,8 @@ export const AuthProvider = ({ children }) => {
     const contextValue = useMemo(() => ({
         register,
         requestLogin,
-        confirmAttempt,
         completeLogin,
-        checkLoginStatus,
+        verifyLoginCode,
         logout,
         isLoading,
         userToken,
@@ -217,9 +207,8 @@ export const AuthProvider = ({ children }) => {
     }), [
         register,
         requestLogin,
-        confirmAttempt,
         completeLogin,
-        checkLoginStatus,
+        verifyLoginCode,
         logout,
         isLoading,
         userToken,

@@ -1,5 +1,5 @@
 import React, { useEffect, useContext, useState, useCallback } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet, Platform } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import Button from '../components/Button';
 import { AuthContext } from '../context/AuthContext';
 import { ThemeContext } from '../context/ThemeContext';
@@ -7,16 +7,12 @@ import { LanguageContext } from '../context/LanguageContext';
 
 const ConfirmLoginScreen = ({ route, navigation }) => {
     const { token } = route.params || {};
-    // Extract origin from query parameters (if it exists)
-    // React Navigation puts query params in route.params as well
-    const { origin } = route.params || {};
 
-    const { completeLogin, confirmAttempt, userToken } = useContext(AuthContext);
+    const { completeLogin, userToken } = useContext(AuthContext);
     const { theme } = useContext(ThemeContext);
     const { t } = useContext(LanguageContext);
     const [status, setStatus] = useState('loading'); // loading, ready, success, error
     const [errorMsg, setErrorMsg] = useState('');
-    const [isCrossDevice, setIsCrossDevice] = useState(false);
     const [submitting, setSubmitting] = useState(false);
 
     const handleContinueToApp = useCallback(() => {
@@ -36,13 +32,13 @@ const ConfirmLoginScreen = ({ route, navigation }) => {
     }, [userToken, navigation]);
 
     useEffect(() => {
-        if (status === 'success' && !isCrossDevice && userToken) {
+        if (status === 'success' && userToken) {
             const timer = setTimeout(() => {
                 handleContinueToApp();
             }, 600);
             return () => clearTimeout(timer);
         }
-    }, [status, isCrossDevice, userToken, handleContinueToApp]);
+    }, [status, userToken, handleContinueToApp]);
 
     // eslint-disable-next-line react-hooks/set-state-in-effect
     useEffect(() => {
@@ -58,17 +54,8 @@ const ConfirmLoginScreen = ({ route, navigation }) => {
         setSubmitting(true);
         setStatus('loading');
         try {
-            // Determine if we should only confirm (cross-device) or fully login
-            const shouldOnlyConfirm = origin === 'mobile' && Platform.OS === 'web';
-
-            if (shouldOnlyConfirm) {
-                await confirmAttempt(token);
-                setIsCrossDevice(true);
-                setStatus('success');
-            } else {
-                await completeLogin(token);
-                setStatus('success');
-            }
+            await completeLogin(token);
+            setStatus('success');
         } catch (e) {
             setStatus('error');
             setErrorMsg(t('invalid_token'));
@@ -116,12 +103,10 @@ const ConfirmLoginScreen = ({ route, navigation }) => {
         return (
             <View style={styles.container}>
                 <Text style={[styles.text, styles.successText]}>
-                    {isCrossDevice ? t('login_confirmed') : t('login_confirmed_success')}
+                    {t('login_confirmed_success')}
                 </Text>
                 <Text style={styles.subText}>
-                    {isCrossDevice
-                        ? t('mobile_auto_login')
-                        : t('redirecting')}
+                    {t('redirecting')}
                 </Text>
                 <View style={{ marginTop: 20, width: '100%' }}>
                     <Button

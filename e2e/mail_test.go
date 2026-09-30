@@ -16,9 +16,9 @@ import (
 )
 
 // When the target API delivers email to a Mailtrap sandbox inbox (dev), the
-// suite reads magic links from that inbox, covering register -> email ->
-// confirm -> poll with no DB shortcut. Otherwise it falls back to swapping
-// the stored token hash in the DB (interceptMagicLink).
+// suite reads magic links and login codes from that inbox, covering
+// register -> email -> confirm / verify-code with no DB shortcut. Otherwise
+// it falls back to swapping the stored hashes in the DB (interceptMagicLink).
 var (
 	mailtrapToken   = os.Getenv("E2E_MAILTRAP_API_TOKEN")
 	mailtrapAccount = os.Getenv("E2E_MAILTRAP_ACCOUNT_ID")
@@ -26,7 +26,10 @@ var (
 	mailtrapBaseURL = strings.TrimRight(envOr("E2E_MAILTRAP_API_BASE", "https://mailtrap.io"), "/")
 )
 
-var magicLinkRe = regexp.MustCompile(`https?://\S+/confirm/([0-9a-f]{64})\S*`)
+var (
+	magicLinkRe = regexp.MustCompile(`https?://\S+/confirm/([0-9a-f]{64})\S*`)
+	loginCodeRe = regexp.MustCompile(`(?s)Enter this code.*?\b(\d{6})\b`)
+)
 
 func inboxConfigured() bool {
 	return mailtrapToken != "" && mailtrapAccount != "" && mailtrapInbox != ""
@@ -39,14 +42,14 @@ func mailSource() string {
 	return "db-intercept"
 }
 
-// magicTokenFor returns the raw magic token emailed to `to` for the link
-// identified by pollToken.
-func magicTokenFor(t *testing.T, to, pollToken string) string {
+// loginEmailFor returns the raw magic token and login code emailed to `to`
+// for the link identified by pollToken.
+func loginEmailFor(t *testing.T, to, pollToken string) (magic, code string) {
 	t.Helper()
 	if !inboxConfigured() {
 		return interceptMagicLink(t, pollToken)
 	}
-	return readMagicLinkFromInbox(t, to)
+	return readLoginEmailFromInbox(t, to)
 }
 
 // magicTokenForPoster returns the raw magic token of the latest link emailed
@@ -56,7 +59,8 @@ func magicTokenForPoster(t *testing.T, u user) string {
 	if !inboxConfigured() {
 		return interceptLatestMagicLink(t, u.ID)
 	}
-	return readMagicLinkFromInbox(t, u.Email)
+	magic, _ := readLoginEmailFromInbox(t, u.Email)
+	return magic
 }
 
 type mailtrapMessage struct {
@@ -85,9 +89,10 @@ func mailtrapRequest(t *testing.T, method, path string) []byte {
 	return body
 }
 
-// readMagicLinkFromInbox waits for the email sent to `to`, checks the link
-// is well formed, deletes the message and returns the magic token.
-func readMagicLinkFromInbox(t *testing.T, to string) string {
+// readLoginEmailFromInbox waits for the email sent to `to`, checks the link
+// is well formed, deletes the message and returns the magic token and the
+// login code.
+func readLoginEmailFromInbox(t *testing.T, to string) (magic, code string) {
 	t.Helper()
 	deadline := time.Now().Add(60 * time.Second)
 	for {
@@ -114,8 +119,12 @@ func readMagicLinkFromInbox(t *testing.T, to string) string {
 			if link.Scheme != "https" && envName != "local" {
 				t.Errorf("confirm link should be https on %s: %s", envName, link)
 			}
-			t.Logf("magic link read from the Mailtrap inbox (%s)", link.Host)
-			return match[1]
+			codeMatch := loginCodeRe.FindStringSubmatch(text)
+			if codeMatch == nil {
+				t.Fatalf("email %q to %s has no login code:\n%s", m.Subject, to, text)
+			}
+			t.Logf("magic link and login code read from the Mailtrap inbox (%s)", link.Host)
+			return match[1], codeMatch[1]
 		}
 		if time.Now().After(deadline) {
 			t.Fatalf("no email to %s arrived in the Mailtrap inbox within 60s", to)
