@@ -45,7 +45,7 @@ The project docs live in `docs/` and are the source of truth for everything belo
 
 ## Limitations and Known Quirks
 
-*   **Auth Flow**: The magic link flow is complex: a request, an emailed magic token (confirm) and a separate poll token (the requesting device), both stored hashed. Auth endpoints must not reveal whether an account exists. See [docs/architecture.md](docs/architecture.md#passwordless-authentication).
+*   **Auth Flow**: The magic link flow is complex: a request, an emailed magic token (logs in the device that opens the link) and login code, and a separate poll token (the requesting device logs in with it plus the code), all stored hashed. Auth endpoints must not reveal whether an account exists. See [docs/architecture.md](docs/architecture.md#passwordless-authentication).
 *   **Expo Web vs Native**: The UI runs on both. Verify that UI changes (especially native modules like Camera/Scanner) are compatible with or guarded for Web.
 *   **No ORM**: The project uses raw SQL. You must be comfortable writing and debugging PostgreSQL queries.
 *   **Bikes tab**: a custom tab-press listener in `AppNavigator.js` resets the Bikes stack when the tab is tapped.

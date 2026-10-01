@@ -68,7 +68,7 @@ func New(service domain.Service, sender email.EmailSender, addr string) (*HTTPSe
 	// Auth endpoints (public)
 	mux.HandleFunc("POST /auth/request-magic-link", s.handleRequestMagicLink)
 	mux.HandleFunc("GET /auth/confirm/{token}", s.handleConfirmMagicLink)
-	mux.HandleFunc("GET /auth/poll", s.handlePollMagicLink)
+	mux.HandleFunc("POST /auth/verify-code", s.handleVerifyLoginCode)
 	mux.HandleFunc("POST /auth/register", s.handleRegister)
 	mux.HandleFunc("GET /auth/verify", s.middlewareAuth(http.HandlerFunc(s.handleVerifyToken)).ServeHTTP)
 	mux.HandleFunc("POST /auth/logout", s.handleLogout) // idempotent: no auth required

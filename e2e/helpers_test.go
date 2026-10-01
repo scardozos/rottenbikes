@@ -28,6 +28,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/big"
 	"net/http"
 	"os"
 	"strconv"
@@ -511,31 +512,70 @@ func seedPosterWith(t *testing.T, isTest bool) user {
 }
 
 // seedMagicLink issues a magic link for the poster, as register /
-// request-magic-link would, and returns the raw emailed token and poll token.
-func seedMagicLink(t *testing.T, posterID int64) (magic, poll string) {
+// request-magic-link would, and returns the raw emailed token and login code,
+// and the poll token the requesting device would get.
+func seedMagicLink(t *testing.T, posterID int64) (magic, poll, code string) {
 	t.Helper()
-	magic, poll = randomHex(32), randomHex(32)
-	if _, err := db.Exec(`INSERT INTO magic_links (poster_id, token, poll_token, expires_ts)
-		VALUES ($1, $2, $3, NOW() + INTERVAL '30 minutes')`, posterID, sha256Hex(magic), sha256Hex(poll)); err != nil {
+	magic, poll, code = randomHex(32), randomHex(32), randomLoginCode()
+	if _, err := db.Exec(`INSERT INTO magic_links (poster_id, token, poll_token, code_hash, expires_ts)
+		VALUES ($1, $2, $3, $4, NOW() + INTERVAL '30 minutes')`, posterID, sha256Hex(magic), sha256Hex(poll), sha256Hex(code)); err != nil {
 		t.Fatalf("seed magic link: %v", err)
 	}
-	return magic, poll
+	return magic, poll, code
 }
 
 // interceptMagicLink stands in for reading the email sent by a real
 // register / request-magic-link call: the API only stores the SHA-256 of the
-// emailed token, so we swap it for the hash of a token we know.
-func interceptMagicLink(t *testing.T, pollToken string) string {
+// emailed token and code, so we swap them for the hashes of ones we know.
+func interceptMagicLink(t *testing.T, pollToken string) (magic, code string) {
 	t.Helper()
-	magic := randomHex(32)
-	res, err := db.Exec(`UPDATE magic_links SET token = $1 WHERE poll_token = $2`, sha256Hex(magic), sha256Hex(pollToken))
+	magic, code = randomHex(32), randomLoginCode()
+	res, err := db.Exec(`UPDATE magic_links SET token = $1, code_hash = $2 WHERE poll_token = $3`,
+		sha256Hex(magic), sha256Hex(code), sha256Hex(pollToken))
 	if err != nil {
 		t.Fatalf("intercept magic link: %v", err)
 	}
 	if n, _ := res.RowsAffected(); n != 1 {
 		t.Fatalf("intercept magic link: expected 1 magic_links row for poll token, got %d", n)
 	}
-	return magic
+	return magic, code
+}
+
+// randomLoginCode returns a random 6-digit login code.
+func randomLoginCode() string {
+	n, err := rand.Int(rand.Reader, big.NewInt(1_000_000))
+	if err != nil {
+		panic(err)
+	}
+	return fmt.Sprintf("%06d", n.Int64())
+}
+
+// otherLoginCode returns a login code different from code.
+func otherLoginCode(code string) string {
+	for {
+		if c := randomLoginCode(); c != code {
+			return c
+		}
+	}
+}
+
+// verifyCode redeems a login code: the requesting device sends its poll
+// token and the code from the email.
+func verifyCode(t *testing.T, poll, code string) response {
+	t.Helper()
+	return call(t, "POST", "/auth/verify-code", "", map[string]string{"token": poll, "code": code})
+}
+
+// loginWithCode redeems a login code and returns the api token.
+func loginWithCode(t *testing.T, poll, code string) string {
+	t.Helper()
+	r := verifyCode(t, poll, code)
+	mustStatus(t, r, http.StatusOK)
+	tok, _ := decode[map[string]any](t, r)["api_token"].(string)
+	if tok == "" {
+		t.Fatalf("verify-code returned no api_token: %s", r)
+	}
+	return tok
 }
 
 // interceptLatestMagicLink is interceptMagicLink for a link whose poll token
@@ -572,12 +612,11 @@ func expectSameAuthResponse(t *testing.T, a, b response) {
 }
 
 // expectDecoyUnusable checks that a decoy poll token (returned for unknown
-// accounts / taken emails) cannot be turned into a session in any way: it
-// never resolves when polled, is not a valid magic link, and is not an API
-// token.
+// accounts / taken emails) cannot be turned into a session in any way: no
+// code redeems it, it is not a valid magic link, and it is not an API token.
 func expectDecoyUnusable(t *testing.T, decoy string) {
 	t.Helper()
-	expectStatus(t, call(t, "GET", "/auth/poll?token="+decoy, "", nil), http.StatusNotFound)
+	expectStatus(t, verifyCode(t, decoy, randomLoginCode()), http.StatusBadRequest)
 	expectStatus(t, call(t, "GET", "/auth/confirm/"+decoy, "", nil), http.StatusBadRequest)
 	expectStatus(t, call(t, "GET", "/auth/verify", decoy, nil), http.StatusUnauthorized)
 }
@@ -624,7 +663,7 @@ func newUser(t *testing.T) *user {
 func newUserWith(t *testing.T, isTest bool) *user {
 	t.Helper()
 	u := seedPosterWith(t, isTest)
-	magic, _ := seedMagicLink(t, u.ID)
+	magic, _, _ := seedMagicLink(t, u.ID)
 	u.Token = confirm(t, magic)
 	return &u
 }

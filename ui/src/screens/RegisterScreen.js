@@ -4,13 +4,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import Icon from '../components/Icon';
-import { AuthContext } from '../context/AuthContext';
+import { AuthContext, emailsOnlyCode } from '../context/AuthContext';
 import { ThemeContext } from '../context/ThemeContext';
 import { LanguageContext } from '../context/LanguageContext';
 import HCaptchaView from '../components/HCaptchaView';
 import { useToast } from '../context/ToastContext';
 import { isValidUsername, isValidEmail } from '../utils/validation';
-import { useMagicLinkPolling } from '../hooks/useMagicLinkPolling';
+import LoginCodeForm from '../components/LoginCodeForm';
 
 const RegisterScreen = ({ navigation }) => {
     const [username, setUsername] = useState('');
@@ -19,21 +19,16 @@ const RegisterScreen = ({ navigation }) => {
     const [emailError, setEmailError] = useState('');
     const [acceptedTerms, setAcceptedTerms] = useState(false);
     const [showCaptcha, setShowCaptcha] = useState(false);
-    const [step, setStep] = useState(1); // 1: Form, 2: Waiting confirmation
-    const [pendingMagicToken, setPendingMagicToken] = useState(null);
+    const [step, setStep] = useState(1); // 1: Form, 2: Email sent, enter code
+    // Poll token from the request: with the emailed code, it logs this device in.
+    const [pollToken, setPollToken] = useState(null);
     const [loading, setLoading] = useState(false);
-    const { register, checkLoginStatus } = useContext(AuthContext);
+    const { register, verifyLoginCode } = useContext(AuthContext);
     const { showToast } = useToast();
     const { theme } = useContext(ThemeContext);
     const { t } = useContext(LanguageContext);
 
     const HCAPTCHA_SITEKEY = (typeof window !== 'undefined' && window.EXPO_PUBLIC_HCAPTCHA_SITEKEY) || process.env.EXPO_PUBLIC_HCAPTCHA_SITEKEY;
-
-    const { pollingTimeout, resetPolling } = useMagicLinkPolling(
-        step === 2,
-        pendingMagicToken,
-        checkLoginStatus
-    );
 
     const handleRegister = () => {
         setEmailError('');
@@ -65,10 +60,8 @@ const RegisterScreen = ({ navigation }) => {
     const completeRegistration = async (token) => {
         setLoading(true);
         try {
-            const mToken = await register(username.trim(), email.trim(), token);
-            setPendingMagicToken(mToken);
+            setPollToken(await register(username.trim(), email.trim(), token));
             setStep(2);
-            resetPolling();
             setShowCaptcha(false);
         } catch (e) {
             setShowCaptcha(false);
@@ -178,24 +171,15 @@ const RegisterScreen = ({ navigation }) => {
                                 {t('registration_successful')}!
                             </Text>
                             <Text style={styles.waitingDescription}>
-                                {t('magic_link_sent', { email })}.{'\n\n'}
-                                {t('check_email')}
+                                {emailsOnlyCode
+                                    ? t('code_sent', { email })
+                                    : `${t('magic_link_sent', { email })}\n\n${t('check_email')}`}
                             </Text>
 
-                            {pollingTimeout && (
-                                <View style={styles.timeoutContainer}>
-                                    <Text style={styles.timeoutText}>
-                                        {t('polling_timeout')}
-                                    </Text>
-                                    <Button
-                                        title={t('resend_link')}
-                                        onPress={handleRegister}
-                                        variant="primary"
-                                        size="md"
-                                        style={styles.fullWidthBtn}
-                                    />
-                                </View>
-                            )}
+                            <LoginCodeForm
+                                key={pollToken}
+                                onSubmit={(code) => verifyLoginCode(pollToken, code)}
+                            />
 
                             <Button
                                 title={t('back')}
@@ -368,17 +352,6 @@ const createStyles = (theme) => StyleSheet.create({
         textAlign: 'center',
         lineHeight: 22,
         marginBottom: 20,
-    },
-    timeoutContainer: {
-        width: '100%',
-        alignItems: 'center',
-        marginBottom: 16,
-    },
-    timeoutText: {
-        color: theme.colors.error,
-        textAlign: 'center',
-        marginBottom: 10,
-        fontSize: 14,
     },
     backBtn: {
         width: '100%',

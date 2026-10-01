@@ -7,11 +7,11 @@ import (
 
 type Service interface {
 	// Auth
-	Register(ctx context.Context, username, email string) (string, string, error)
-	CreateMagicLink(ctx context.Context, identifier string) (string, string, string, error)
+	Register(ctx context.Context, username, email string) (MagicLink, error)
+	CreateMagicLink(ctx context.Context, identifier string) (MagicLink, string, error)
 	ConfirmMagicLink(ctx context.Context, token string) (*ConfirmResult, error)
 	GetPosterByAPIToken(ctx context.Context, token string) (*AuthPoster, error)
-	CheckMagicLinkStatus(ctx context.Context, token string) (string, error)
+	VerifyLoginCode(ctx context.Context, pollToken, code string) (*ConfirmResult, error)
 	RevokeAPIToken(ctx context.Context, token string) error
 	DeletePoster(ctx context.Context, posterID int64, deleteContent bool) error
 
@@ -62,18 +62,18 @@ func NewService(store *Store) Service {
 
 // Auth
 
-func (s *service) Register(ctx context.Context, username, email string) (string, string, error) {
+func (s *service) Register(ctx context.Context, username, email string) (MagicLink, error) {
 	if err := validateEmail(email); err != nil {
-		return "", "", err
+		return MagicLink{}, err
 	}
 	if err := validateUsername(username); err != nil {
-		return "", "", err
+		return MagicLink{}, err
 	}
 
 	return s.store.Register(ctx, username, email)
 }
 
-func (s *service) CreateMagicLink(ctx context.Context, identifier string) (string, string, string, error) {
+func (s *service) CreateMagicLink(ctx context.Context, identifier string) (MagicLink, string, error) {
 	return s.store.CreateMagicLink(ctx, identifier)
 }
 
@@ -85,8 +85,8 @@ func (s *service) GetPosterByAPIToken(ctx context.Context, token string) (*AuthP
 	return s.store.GetPosterByAPIToken(ctx, token)
 }
 
-func (s *service) CheckMagicLinkStatus(ctx context.Context, token string) (string, error) {
-	return s.store.CheckMagicLinkStatus(ctx, token)
+func (s *service) VerifyLoginCode(ctx context.Context, pollToken, code string) (*ConfirmResult, error) {
+	return s.store.VerifyLoginCode(ctx, pollToken, code)
 }
 
 func (s *service) RevokeAPIToken(ctx context.Context, token string) error {

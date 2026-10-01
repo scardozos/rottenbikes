@@ -10,24 +10,25 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/scardozos/rottenbikes/cmd/api/email"
 	"github.com/scardozos/rottenbikes/internal/domain"
 )
 
-func TestHandlePollMagicLink(t *testing.T) {
+func TestHandleVerifyLoginCode(t *testing.T) {
+	var gotToken, gotCode string
 	mockService := &MockService{
-		CheckMagicLinkStatusFunc: func(ctx context.Context, token string) (string, error) {
-			if token == "good-poll" {
-				return "recovered-api-token", nil
+		VerifyLoginCodeFunc: func(ctx context.Context, pollToken, code string) (*domain.ConfirmResult, error) {
+			gotToken, gotCode = pollToken, code
+			switch {
+			case pollToken == "boom":
+				return nil, errors.New("db down")
+			case pollToken == "good-poll" && code == "123456":
+				return &domain.ConfirmResult{APIToken: "new-api-token", Email: "u@example.com", APITokenExpiresAt: time.Now().Add(time.Hour)}, nil
+			default:
+				return nil, domain.ErrInvalidLoginCode
 			}
-			if token == "pending" {
-				return "", nil
-			}
-			if token == "boom" {
-				return "", errors.New("db down")
-			}
-			return "", nil
 		},
 	}
 
@@ -36,50 +37,94 @@ func TestHandlePollMagicLink(t *testing.T) {
 		t.Fatalf("failed to create server: %v", err)
 	}
 
-	t.Run("confirmed_returns_api_token", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/auth/poll?token=good-poll", nil)
+	post := func(body string) *httptest.ResponseRecorder {
+		gotToken, gotCode = "", ""
+		req := httptest.NewRequest(http.MethodPost, "/auth/verify-code", strings.NewReader(body))
 		w := httptest.NewRecorder()
 		srv.server.Handler.ServeHTTP(w, req)
+		return w
+	}
 
+	t.Run("right_code_returns_api_token", func(t *testing.T) {
+		w := post(`{"token":"good-poll","code":"123456"}`)
 		if w.Code != http.StatusOK {
-			t.Fatalf("expected 200, got %d", w.Code)
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body)
 		}
-		var resp map[string]string
+		var resp map[string]any
 		if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
 			t.Fatalf("decode: %v", err)
 		}
-		if resp["api_token"] != "recovered-api-token" {
-			t.Errorf("expected recovered-api-token, got %q", resp["api_token"])
+		if resp["api_token"] != "new-api-token" || resp["email"] != "u@example.com" || resp["api_token_expires_at"] == nil {
+			t.Errorf("expected the same shape as /auth/confirm, got %v", resp)
 		}
 	})
 
-	t.Run("not_confirmed", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/auth/poll?token=pending", nil)
-		w := httptest.NewRecorder()
-		srv.server.Handler.ServeHTTP(w, req)
-
-		if w.Code != http.StatusNotFound {
-			t.Errorf("expected 404 for unconfirmed link, got %d", w.Code)
+	t.Run("spaces_and_dashes_are_ignored", func(t *testing.T) {
+		if w := post(`{"token":"good-poll","code":" 123-456 "}`); w.Code != http.StatusOK {
+			t.Errorf("expected 200, got %d: %s", w.Code, w.Body)
+		}
+		if gotCode != "123456" {
+			t.Errorf("expected the service to get 123456, got %q", gotCode)
 		}
 	})
 
-	t.Run("missing_token", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/auth/poll", nil)
-		w := httptest.NewRecorder()
-		srv.server.Handler.ServeHTTP(w, req)
+	t.Run("wrong_code", func(t *testing.T) {
+		w := post(`{"token":"good-poll","code":"000000"}`)
+		if w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), "invalid or expired code") {
+			t.Errorf("expected 400 invalid or expired code, got %d: %s", w.Code, w.Body)
+		}
+	})
 
-		if w.Code != http.StatusBadRequest {
-			t.Errorf("expected 400 for missing token, got %d", w.Code)
+	// Malformed codes are refused like wrong ones, without using up one of
+	// the link's attempts.
+	t.Run("malformed_code_is_not_sent_to_the_service", func(t *testing.T) {
+		for _, code := range []string{"12345", "1234567", "12345a", "１２３４５６"} {
+			w := post(`{"token":"good-poll","code":"` + code + `"}`)
+			if w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), "invalid or expired code") {
+				t.Errorf("code %q: expected 400 invalid or expired code, got %d: %s", code, w.Code, w.Body)
+			}
+			if gotToken != "" {
+				t.Errorf("code %q: the service must not be called", code)
+			}
+		}
+	})
+
+	t.Run("missing_fields", func(t *testing.T) {
+		for _, body := range []string{`{}`, `{"token":"good-poll"}`, `{"code":"123456"}`, `{"token":"good-poll","code":" "}`} {
+			if w := post(body); w.Code != http.StatusBadRequest {
+				t.Errorf("%s: expected 400, got %d", body, w.Code)
+			}
+		}
+	})
+
+	t.Run("invalid_body", func(t *testing.T) {
+		if w := post(`not json`); w.Code != http.StatusBadRequest {
+			t.Errorf("expected 400, got %d", w.Code)
 		}
 	})
 
 	t.Run("internal_error", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/auth/poll?token=boom", nil)
+		if w := post(`{"token":"boom","code":"123456"}`); w.Code != http.StatusInternalServerError {
+			t.Errorf("expected 500, got %d", w.Code)
+		}
+	})
+
+	t.Run("wrong_method", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/auth/verify-code", nil)
 		w := httptest.NewRecorder()
 		srv.server.Handler.ServeHTTP(w, req)
+		if w.Code != http.StatusMethodNotAllowed {
+			t.Errorf("expected 405, got %d", w.Code)
+		}
+	})
 
-		if w.Code != http.StatusInternalServerError {
-			t.Errorf("expected 500, got %d", w.Code)
+	// Polling used to hand the session to whoever requested the link.
+	t.Run("poll_endpoint_is_gone", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/auth/poll?token=good-poll", nil)
+		w := httptest.NewRecorder()
+		srv.server.Handler.ServeHTTP(w, req)
+		if w.Code != http.StatusNotFound {
+			t.Errorf("expected 404, got %d", w.Code)
 		}
 	})
 }
@@ -91,20 +136,20 @@ func TestHandleRegister(t *testing.T) {
 		GetPosterByAPITokenFunc: func(ctx context.Context, token string) (*domain.AuthPoster, error) {
 			return &domain.AuthPoster{PosterID: 1}, nil
 		},
-		CreateMagicLinkFunc: func(ctx context.Context, identifier string) (string, string, string, error) {
-			return "login-magic-for-" + identifier, "owner-poll-token", identifier, nil
+		CreateMagicLinkFunc: func(ctx context.Context, identifier string) (domain.MagicLink, string, error) {
+			return domain.MagicLink{MagicToken: "login-magic-for-" + identifier, PollToken: "owner-poll-token", Code: "123456"}, identifier, nil
 		},
-		RegisterFunc: func(ctx context.Context, username, eml string) (string, string, error) {
+		RegisterFunc: func(ctx context.Context, username, eml string) (domain.MagicLink, error) {
 			if eml == "taken@example.com" {
-				return "", "", domain.ErrEmailExists
+				return domain.MagicLink{}, domain.ErrEmailExists
 			}
 			if eml == "baduser@example.com" {
-				return "", "", domain.ErrUsernameExists
+				return domain.MagicLink{}, domain.ErrUsernameExists
 			}
 			if eml == "dbfail@example.com" {
-				return "", "", errors.New("db error")
+				return domain.MagicLink{}, errors.New("db error")
 			}
-			return "emailed-magic-token", "client-poll-token", nil
+			return domain.MagicLink{MagicToken: "emailed-magic-token", PollToken: "client-poll-token", Code: "123456"}, nil
 		},
 	}
 
@@ -143,6 +188,14 @@ func TestHandleRegister(t *testing.T) {
 		if resp["magic_token"] == domain.HashToken("emailed-magic-token") {
 			t.Error("poll token must not equal the hash of the emailed magic token")
 		}
+		srv.pendingEmails.Wait()
+		mail := sender.last(t)
+		if link := extractLink(t, mail.Body); link.Path != "/confirm/emailed-magic-token" {
+			t.Errorf("unexpected confirm link %s", link)
+		}
+		if !strings.Contains(mail.Body, "123456") {
+			t.Errorf("expected the login code in the welcome email, got %q", mail.Body)
+		}
 	})
 
 	t.Run("missing_fields", func(t *testing.T) {
@@ -178,8 +231,6 @@ func TestHandleRegister(t *testing.T) {
 			t.Error("each request must get a fresh decoy")
 		}
 		srv.pendingEmails.Wait()
-
-		srv.pendingEmails.Wait()
 		mail := sender.last(t)
 		if mail.To != "taken@example.com" || !strings.Contains(mail.Body, "already has an account") {
 			t.Errorf("expected an existing-account email to the owner, got %+v", mail)
@@ -187,15 +238,18 @@ func TestHandleRegister(t *testing.T) {
 		if link := extractLink(t, mail.Body); link.Path != "/confirm/login-magic-for-taken@example.com" {
 			t.Errorf("unexpected login link %s", link)
 		}
+		if !strings.Contains(mail.Body, "123456") {
+			t.Errorf("expected the login code in the existing-account email, got %q", mail.Body)
+		}
 	})
 
 	t.Run("email_conflict_rate_limited_sends_nothing", func(t *testing.T) {
-		mockService.CreateMagicLinkFunc = func(ctx context.Context, identifier string) (string, string, string, error) {
-			return "", "", "", domain.ErrRateLimitExceeded
+		mockService.CreateMagicLinkFunc = func(ctx context.Context, identifier string) (domain.MagicLink, string, error) {
+			return domain.MagicLink{}, "", domain.ErrRateLimitExceeded
 		}
 		defer func() {
-			mockService.CreateMagicLinkFunc = func(ctx context.Context, identifier string) (string, string, string, error) {
-				return "login-magic-for-" + identifier, "owner-poll-token", identifier, nil
+			mockService.CreateMagicLinkFunc = func(ctx context.Context, identifier string) (domain.MagicLink, string, error) {
+				return domain.MagicLink{MagicToken: "login-magic-for-" + identifier, PollToken: "owner-poll-token", Code: "123456"}, identifier, nil
 			}
 		}()
 		before := len(sender.sent)

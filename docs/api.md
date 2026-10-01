@@ -12,14 +12,14 @@ The API listens on `API_PORT` (default `8080`). Routes are registered in `cmd/ap
 
 ## Authentication
 
-Authentication is passwordless: users get a **magic link** by email. The requesting device receives a separate **poll token** and polls `/auth/poll` until the link is confirmed (possibly on another device), then gets its API token. See [architecture](architecture.md#passwordless-authentication) for the full flow.
+Authentication is passwordless: users get an email with a **magic link** and a 6-digit **login code**, or only the code when the request says `"origin": "mobile"` (the app). Opening the link logs in that device. The requesting device receives a **poll token** (`magic_token`), and logs in by sending it with the code from the email to `/auth/verify-code`. See [architecture](architecture.md#passwordless-authentication) for the full flow.
 
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/auth/register` | Register a new user and email them a confirmation magic link. Returns a poll token (`magic_token`) for the requesting device. Requires `captcha_token`. A taken username returns 409; a taken email gets the same response as a new registration (the account's owner is emailed a login link instead, and the returned poll token never resolves), so the endpoint does not reveal which emails are registered. | No |
-| `POST` | `/auth/request-magic-link` | Request a login magic link by `email` or `username` (max 2 per user per 24h; exceeding it returns 429). Returns a poll token (`magic_token`). Requires `captcha_token`. Unknown accounts get the same response, with a poll token that never resolves and no email. | No |
-| `GET` | `/auth/confirm/{token}` | Confirm the emailed magic link and receive a Bearer token. | No |
-| `GET` | `/auth/poll?token=` | Exchange the poll token for the Bearer token once the link has been confirmed (one-time; for cross-device login). `404` while not confirmed. | No |
+| `POST` | `/auth/register` | Register a new user and email them a confirmation magic link. Returns a poll token (`magic_token`) for the requesting device. Requires `captcha_token`. A taken username returns 409; a taken email gets the same response as a new registration (the account's owner is emailed a login link and code instead, and no code redeems the returned poll token), so the endpoint does not reveal which emails are registered. | No |
+| `POST` | `/auth/request-magic-link` | Request a login magic link by `email` or `username` (max 2 per user per 24h; exceeding it returns 429). Returns a poll token (`magic_token`). Requires `captcha_token`. Unknown accounts get the same response, with a poll token that no code redeems, and no email. | No |
+| `GET` | `/auth/confirm/{token}` | Confirm the emailed magic link and receive a Bearer token (one-time). | No |
+| `POST` | `/auth/verify-code` | Log in the requesting device: body `{"token": "<poll token>", "code": "<6 digits>"}` (spaces and dashes in the code are ignored). Returns the same body as `/auth/confirm`. One-time, and independent of the link. `400` `invalid or expired code` for a wrong, used or expired code, an unknown poll token, or after 5 wrong codes. | No |
 | `GET` | `/auth/verify` | Verify the current token; returns `poster_id`, `username` and `is_admin`. | **Yes** |
 | `POST` | `/auth/logout` | Revoke the current session's token (other sessions stay valid). Idempotent: returns 204 even if the token is already invalid or missing. | No |
 | `DELETE` | `/auth/user` | Delete your account. By default your reviews and bikes are kept but unattributed; send `{"delete_poster_subresources": true}` to delete them too. | **Yes** |

@@ -61,11 +61,11 @@ func (s *recordingSender) last(t *testing.T) sentEmail {
 
 func authMockService() *MockService {
 	return &MockService{
-		RegisterFunc: func(ctx context.Context, username, email string) (string, string, error) {
-			return "magic-" + username, "poll-" + username, nil
+		RegisterFunc: func(ctx context.Context, username, email string) (domain.MagicLink, error) {
+			return domain.MagicLink{MagicToken: "magic-" + username, PollToken: "poll-" + username, Code: "123456"}, nil
 		},
-		CreateMagicLinkFunc: func(ctx context.Context, identifier string) (string, string, string, error) {
-			return "magic-" + identifier, "poll-" + identifier, identifier + "@example.com", nil
+		CreateMagicLinkFunc: func(ctx context.Context, identifier string) (domain.MagicLink, string, error) {
+			return domain.MagicLink{MagicToken: "magic-" + identifier, PollToken: "poll-" + identifier, Code: "123456"}, identifier + "@example.com", nil
 		},
 	}
 }
@@ -233,6 +233,57 @@ func extractLink(t *testing.T, body string) *url.URL {
 	return u
 }
 
+// Requests from the app get an email with only the code: the link would open
+// the browser, not the app, so it cannot log the app in.
+func TestAppRequestsGetCodeOnlyEmails(t *testing.T) {
+	t.Setenv("APP_ENV", "local")
+	t.Setenv("HCAPTCHA_SECRET", "")
+
+	cases := []struct {
+		name, path, wantTo, wantSubject string
+		body                            map[string]string
+		emailTaken                      bool
+	}{
+		{"register", "/auth/register", "alice@example.com", "Welcome to RottenBikes!",
+			map[string]string{"username": "alice", "email": "alice@example.com", "captcha_token": "x", "origin": "mobile"}, false},
+		{"login", "/auth/request-magic-link", "bob@example.com", "Your RottenBikes login code",
+			map[string]string{"username": "bob", "captcha_token": "x", "origin": "mobile"}, false},
+		{"register with a taken email", "/auth/register", "taken@example.com", "Your RottenBikes account",
+			map[string]string{"username": "carol", "email": "taken@example.com", "captcha_token": "x", "origin": "mobile"}, true},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			svc := authMockService()
+			if c.emailTaken {
+				svc.RegisterFunc = func(ctx context.Context, username, email string) (domain.MagicLink, error) {
+					return domain.MagicLink{}, domain.ErrEmailExists
+				}
+				svc.CreateMagicLinkFunc = func(ctx context.Context, identifier string) (domain.MagicLink, string, error) {
+					return domain.MagicLink{MagicToken: "magic-owner", PollToken: "poll-owner", Code: "123456"}, identifier, nil
+				}
+			}
+			sender := &recordingSender{}
+			srv, _ := New(svc, sender, ":0")
+
+			if w := postJSON(srv, c.path, c.body); w.Code != http.StatusOK {
+				t.Fatalf("expected 200, got %d: %s", w.Code, w.Body)
+			}
+			srv.pendingEmails.Wait()
+
+			mail := sender.last(t)
+			if mail.To != c.wantTo || mail.Subject != c.wantSubject {
+				t.Errorf("email to %q with subject %q, want %q / %q", mail.To, mail.Subject, c.wantTo, c.wantSubject)
+			}
+			if !strings.Contains(mail.Body, "123456") || !strings.Contains(mail.Body, "RottenBikes app") {
+				t.Errorf("expected the code and where to enter it, got %q", mail.Body)
+			}
+			if strings.Contains(mail.Body, "/confirm/") || strings.Contains(mail.Body, "magic-") {
+				t.Errorf("app emails must not contain the link, got %q", mail.Body)
+			}
+		})
+	}
+}
+
 func TestEmailContainsConfirmLink(t *testing.T) {
 	t.Setenv("APP_ENV", "local")
 	t.Setenv("HCAPTCHA_SECRET", "")
@@ -295,6 +346,14 @@ func TestEmailContainsConfirmLink(t *testing.T) {
 				if resp["magic_token"] == ep.wantToken || strings.Contains(w.Body.String(), ep.wantToken) {
 					t.Errorf("response leaks the emailed magic token: %s", w.Body)
 				}
+
+				// The login code, like the magic token, is only in the email.
+				if !strings.Contains(mail.Body, "123456") {
+					t.Errorf("expected the login code in the email, got %q", mail.Body)
+				}
+				if strings.Contains(w.Body.String(), "123456") {
+					t.Errorf("response leaks the login code: %s", w.Body)
+				}
 			})
 		}
 	}
@@ -334,8 +393,8 @@ func TestRegisterValidationError(t *testing.T) {
 	t.Setenv("APP_ENV", "local")
 	t.Setenv("HCAPTCHA_SECRET", "")
 	svc := authMockService()
-	svc.RegisterFunc = func(ctx context.Context, username, email string) (string, string, error) {
-		return "", "", &domain.ValidationError{Msg: "invalid email format"}
+	svc.RegisterFunc = func(ctx context.Context, username, email string) (domain.MagicLink, error) {
+		return domain.MagicLink{}, &domain.ValidationError{Msg: "invalid email format"}
 	}
 	srv, _ := New(svc, &email.NoopSender{}, ":0")
 

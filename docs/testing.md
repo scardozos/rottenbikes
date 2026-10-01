@@ -6,7 +6,7 @@
 | :--- | :--- | :--- |
 | Go unit | Handlers, domain and SQL (sqlmock). Also covers hCaptcha verification (success, rejection, unreachable, bad response) and the Mailtrap sender (non-2xx, unreachable) against `httptest` servers, and the emailed `/confirm/{token}` link. | `make test-go` |
 | UI unit | Pure helpers in `ui/src/utils`, translations and i18n checks. | `make test-ui` |
-| E2E, local with test keys | The full sign-up path through the real API: register → email → confirm → poll, using hCaptcha's test keys (and optionally a Mailtrap sandbox inbox). | `make e2e CAPTCHA_TOKEN=...` ([below](#full-sign-up-path-local)) |
+| E2E, local with test keys | The full sign-up path through the real API: register → email → login code, using hCaptcha's test keys (and optionally a Mailtrap sandbox inbox). | `make e2e CAPTCHA_TOKEN=...` ([below](#full-sign-up-path-local)) |
 | E2E on dev / prod | Everything except passing the captcha (both use the real captcha and send real emails), plus negative probes that prove captcha is enforced (a bogus token must get 403; required on prod). | `make e2e ENV=dev`, `make e2e ENV=prod CONFIRM=prod` |
 | Monitoring | Prod captcha/email failures. | Prometheus metrics ([operations](operations.md#observability)) |
 
@@ -53,7 +53,7 @@ make e2e CAPTCHA_TOKEN=...          # a captcha token the target accepts
 
 ### Full sign-up path (local)
 
-Dev and prod keep the real captcha and deliver emails to real users, so the suite can't sign up there. To cover register → email → confirm → poll, run a local API with hCaptcha's official test secret, which accepts the public test token:
+Dev and prod keep the real captcha and deliver emails to real users, so the suite can't sign up there. To cover register → email → login code, run a local API with hCaptcha's official test secret, which accepts the public test token:
 
 ```sh
 HCAPTCHA_SECRET=0x0000000000000000000000000000000000000000 APP_ENV=local go run ./cmd/api

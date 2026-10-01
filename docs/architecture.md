@@ -46,7 +46,7 @@ Requests flow **handler → service → store**:
 | :--- | :--- |
 | `posters` | Users: email, username, `email_verified`, `role` (`user`/`admin`), `is_test` (E2E test account). |
 | `poster_tokens` | API sessions (SHA-256 of the token, expiry). One poster can have several. |
-| `magic_links` | Pending/consumed magic links: hashed magic token, hashed poll token, expiry. |
+| `magic_links` | Magic links: hashed magic token, hashed poll token, hashed login code and its wrong attempts, when the link and the code were used, expiry. |
 | `bikes` | `numerical_id` (text, 4–5 digits, primary key), optional unique `hash_id` (QR code), `is_electric`, creator, `is_test` (inherited from the creator). |
 | `reviews`, `review_ratings` | A review and its per-category scores (1–5). |
 | `rating_aggregates` | Cached per-bike averages, recomputed whenever a review changes. |
@@ -58,13 +58,16 @@ Requests flow **handler → service → store**:
 ### Passwordless authentication
 
 1. The user asks for a link (`/auth/register` or `/auth/request-magic-link`), protected by [hCaptcha](https://www.hcaptcha.com/).
-2. The API creates a **magic token** (emailed as a `/confirm/{token}` link to the UI) and a separate **poll token** (returned to the requesting device). Both are stored hashed.
-3. Clicking the link confirms it (`/auth/confirm/{token}`): the clicking device gets an API token directly, and the poll token becomes redeemable once.
-4. The requesting device, which polls `/auth/poll`, then receives the API token too. That's how "request on mobile, confirm on desktop" logs the phone in.
+2. The API creates a **magic token** and a 6-digit **login code**, both emailed, and a separate **poll token**, returned to the requesting device (as `magic_token`). All three are stored hashed. They expire after 30 minutes. Requests from the app (`origin: "mobile"`) get an email with only the code, because the link would open the browser rather than the app.
+3. Opening the link (`/auth/confirm/{token}`) logs in the device that opens it.
+4. To log in the device that asked for the email instead, the user types the code there: it sends the code with its poll token (`/auth/verify-code`). That's how "request on the laptop, read the email on the phone" works.
 
 Details that matter:
-- API tokens are only stored as SHA-256 hashes.
-- The poll token can't confirm a link, and the emailed token can't poll.
+- API tokens are only stored as SHA-256 hashes, and each login gets its own session.
+- The link and the code are each usable once, independently of each other.
+- A session only goes to a device that has the email: the poll token alone grants nothing. (The requesting device used to poll for the session once the link was opened, so anyone could request a link for a known username and wait for its owner to click it.)
+- A link accepts 5 wrong codes; after that only the link works.
+- The poll token can't confirm a link, and the emailed token isn't a poll token.
 - Neither endpoint reveals whether an account exists (see [API](api.md#authentication)).
 
 ### Bike scanning
@@ -83,7 +86,7 @@ Admins can search posters, purge a poster with all their content, and delete any
 
 - **Stack:** Expo, React Native, React Navigation (native stack + bottom tabs), Axios, React Context for state.
 - **`src/services/api.js`:** the Axios client. It attaches the stored Bearer token and emits `session_expired` on 401s (except from logout).
-- **`src/context/`:** `AuthContext` (login, polling, logout), `ThemeContext`, `LanguageContext`, `SessionContext`, `ToastContext`.
+- **`src/context/`:** `AuthContext` (login, login codes, logout), `ThemeContext`, `LanguageContext`, `SessionContext`, `ToastContext`.
 - **`src/navigation/AppNavigator.js`:**
   - Public stack: Login and Register.
   - Signed-in tabs: Home (scanner), Bikes, My Reviews, Configuration.

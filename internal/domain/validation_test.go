@@ -116,10 +116,10 @@ func TestServiceValidationBeforeDB(t *testing.T) {
 	svc := NewService(NewStore(db))
 	ctx := context.Background()
 
-	if _, _, err := svc.Register(ctx, "alice", "Alice <a@example.com>"); !errors.Is(err, ErrValidation) {
+	if _, err := svc.Register(ctx, "alice", "Alice <a@example.com>"); !errors.Is(err, ErrValidation) {
 		t.Errorf("Register invalid email: %v", err)
 	}
-	if _, _, err := svc.Register(ctx, "bad user", "a@example.com"); !errors.Is(err, ErrValidation) {
+	if _, err := svc.Register(ctx, "bad user", "a@example.com"); !errors.Is(err, ErrValidation) {
 		t.Errorf("Register invalid username: %v", err)
 	}
 	six := int16(6)
