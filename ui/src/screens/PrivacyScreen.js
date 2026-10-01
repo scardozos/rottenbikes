@@ -3,6 +3,8 @@ import { View, ScrollView, Text, StyleSheet, Platform, TouchableOpacity, Linking
 import { ThemeContext } from '../context/ThemeContext';
 import { LanguageContext } from '../context/LanguageContext';
 
+const CONTACT_EMAIL = 'privacy@rottenbik.es';
+
 const PrivacyScreen = ({ navigation }) => {
     const { theme } = useContext(ThemeContext);
     const { t } = useContext(LanguageContext);
@@ -23,16 +25,30 @@ const PrivacyScreen = ({ navigation }) => {
             {/* Privacy Policy Section */}
             <View style={styles.section}>
                 <Text style={styles.sectionTitle}>🔒 {t('privacy_policy_title')}</Text>
+                <Text style={styles.updated}>{t('privacy_last_updated')}</Text>
                 <Text style={styles.paragraph}>{t('privacy_intro')}</Text>
 
+                <Text style={styles.subTitle}>{t('controller_title')}</Text>
+                <Text style={styles.paragraph}>{t('controller_text')}</Text>
+                <TouchableOpacity onPress={() => handleLinkPress(`mailto:${CONTACT_EMAIL}`)}>
+                    <Text style={styles.link}>{CONTACT_EMAIL}</Text>
+                </TouchableOpacity>
+
                 <Text style={styles.subTitle}>{t('data_collection_title')}</Text>
-                <Text style={styles.paragraph}>
-                    {t('data_collection_intro')}
-                </Text>
                 <View style={styles.bulletList}>
-                    <Text style={styles.bulletItem}>• {t('data_collection_user')}</Text>
-                    <Text style={styles.bulletItem}>• {t('data_collection_email')}</Text>
+                    <Text style={styles.bulletItem}>• {t('data_collection_account')}</Text>
+                    <Text style={styles.bulletItem}>• {t('data_collection_content')}</Text>
+                    <Text style={styles.bulletItem}>• {t('data_collection_scans')}</Text>
+                    <Text style={styles.bulletItem}>• {t('data_collection_session')}</Text>
+                    <Text style={styles.bulletItem}>• {t('data_collection_moderation')}</Text>
                 </View>
+                <Text style={styles.paragraph}>{t('data_collection_not')}</Text>
+
+                <Text style={styles.subTitle}>{t('legal_basis_title')}</Text>
+                <Text style={styles.paragraph}>{t('legal_basis_text')}</Text>
+
+                <Text style={styles.subTitle}>{t('storage_title')}</Text>
+                <Text style={styles.paragraph}>{t('storage_text')}</Text>
 
                 <Text style={styles.subTitle}>{t('third_party_title')}</Text>
 
@@ -55,15 +71,46 @@ const PrivacyScreen = ({ navigation }) => {
                         {t('hcaptcha_link_text')}
                     </Text>
                 </TouchableOpacity>
+
+                <Text style={styles.subTitle}>{t('transfers_title')}</Text>
+                <Text style={styles.paragraph}>{t('transfers_text')}</Text>
+
+                <Text style={styles.subTitle}>{t('retention_title')}</Text>
+                <View style={styles.bulletList}>
+                    <Text style={styles.bulletItem}>• {t('retention_account')}</Text>
+                    <Text style={styles.bulletItem}>• {t('retention_login')}</Text>
+                    <Text style={styles.bulletItem}>• {t('retention_deletion')}</Text>
+                    <Text style={styles.bulletItem}>• {t('retention_moderation')}</Text>
+                </View>
+
+                <Text style={styles.subTitle}>{t('rights_title')}</Text>
+                <Text style={styles.paragraph}>{t('rights_text')}</Text>
+                <TouchableOpacity onPress={() => handleLinkPress('https://www.aepd.es')}>
+                    <Text style={styles.link}>{t('aepd_link_text')}</Text>
+                </TouchableOpacity>
+
+                <Text style={styles.subTitle}>{t('age_title')}</Text>
+                <Text style={styles.paragraph}>{t('age_text')}</Text>
             </View>
 
-            {/* Terms & Conditions Section */}
+            {/* Legal Notice & Terms Section */}
             <View style={styles.section}>
                 <Text style={styles.sectionTitle}>📜 {t('terms_conditions_title')}</Text>
-                
+
+                <Text style={styles.subTitle}>{t('legal_owner_title')}</Text>
+                <Text style={styles.paragraph}>{t('legal_owner_text')}</Text>
+                <TouchableOpacity onPress={() => handleLinkPress(`mailto:${CONTACT_EMAIL}`)}>
+                    <Text style={styles.link}>{CONTACT_EMAIL}</Text>
+                </TouchableOpacity>
+
                 <Text style={styles.subTitle}>{t('affiliation_title')}</Text>
                 <Text style={styles.paragraph}>
                     {t('affiliation_text')}
+                </Text>
+
+                <Text style={styles.subTitle}>{t('user_content_title')}</Text>
+                <Text style={styles.paragraph}>
+                    {t('user_content_text')}
                 </Text>
 
                 <Text style={styles.subTitle}>{t('abuse_policy_title')}</Text>
@@ -133,6 +180,11 @@ const createStyles = (theme) => StyleSheet.create({
         marginTop: 15,
         marginBottom: 10,
         color: theme.colors.text,
+    },
+    updated: {
+        fontSize: 14,
+        color: theme.colors.subtext,
+        marginBottom: 10,
     },
     paragraph: {
         fontSize: 16,
