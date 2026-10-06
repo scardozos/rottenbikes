@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Platform, Modal, KeyboardAvoidingView, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, Platform, Modal, KeyboardAvoidingView, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Button from '../components/Button';
 import Input from '../components/Input';
@@ -111,6 +111,10 @@ const LoginScreen = ({ navigation }) => {
                                     style={styles.switchAuthBtn}
                                 />
                             </View>
+
+                            <TouchableOpacity onPress={() => navigation.navigate('Privacy')} activeOpacity={0.7}>
+                                <Text style={styles.privacyLink}>{t('privacy_and_terms_title')}</Text>
+                            </TouchableOpacity>
                         </View>
                     ) : (
                         <View style={styles.waitingCard}>
@@ -262,6 +266,13 @@ const createStyles = (theme) => StyleSheet.create({
     switchAuthBtn: {
         paddingVertical: 4,
         paddingHorizontal: 12,
+    },
+    privacyLink: {
+        fontSize: 13,
+        color: theme.colors.subtext,
+        textDecorationLine: 'underline',
+        textAlign: 'center',
+        marginTop: 16,
     },
     waitingCard: {
         backgroundColor: theme.colors.card,
