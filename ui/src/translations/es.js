@@ -242,7 +242,7 @@ export default {
     legal_basis_title: "Base legal",
     legal_basis_text: "Tratamos los datos de tu cuenta, tu contenido y tu inicio de sesión para prestarte el servicio en el que te registras (art. 6.1.b RGPD). Los escaneos QR, los límites de uso y la moderación se basan en nuestro interés legítimo en mantener el servicio fiable y libre de abusos (art. 6.1.f RGPD).",
     storage_title: "Dónde se guardan tus datos",
-    storage_text: "La aplicación y su base de datos funcionan en servidores de un proveedor de alojamiento en Estrasburgo, Francia, dentro de la UE.",
+    storage_text: "La aplicación funciona en servidores de Estrasburgo, Francia, y su base de datos en un servidor de Madrid, España, ambos dentro de la UE.",
     third_party_title: "Servicios de Terceros",
     mailtrap_title: "Mailtrap",
     mailtrap_text: "Usamos Mailtrap para enviar los correos de inicio de sesión. Recibe tu dirección de correo y el contenido de esos correos.",

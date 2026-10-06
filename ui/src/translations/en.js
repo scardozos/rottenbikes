@@ -242,7 +242,7 @@ export default {
     legal_basis_title: "Legal basis",
     legal_basis_text: "We process your account, content and login data to provide the service you sign up for (Art. 6.1.b GDPR). QR scans, rate limits and moderation rely on our legitimate interest in keeping the service reliable and free of abuse (Art. 6.1.f GDPR).",
     storage_title: "Where your data is stored",
-    storage_text: "The application and its database run on servers of a hosting provider in Strasbourg, France, inside the EU.",
+    storage_text: "The application runs on servers in Strasbourg, France, and its database on a server in Madrid, Spain, both inside the EU.",
     third_party_title: "Third Party Services",
     mailtrap_title: "Mailtrap",
     mailtrap_text: "We use Mailtrap to send login emails. It receives your email address and the content of those emails.",

@@ -23,7 +23,7 @@ reviews_list AS (
                 FROM review_ratings rr
                 WHERE rr.review_id = r.review_id
             ), '{}'::json)
-        )), '[]'::json) as reviews
+        ) ORDER BY r.review_id DESC), '[]'::json) as reviews
     FROM (
         SELECT * FROM reviews 
         WHERE bike_numerical_id = $1 
