@@ -37,3 +37,10 @@ COPY --from=ui-builder --chown=appuser:appgroup /app/dist ./ui/dist
 USER 1000:1000
 EXPOSE 8081
 CMD ["./web"]
+
+# --- Migrations Stage ---
+# Run once per release before the rollout, e.g. by the infra repo's `ops deploy`:
+#   migrate -path=/migrations -database=$DATABASE_URL up
+FROM migrate/migrate:v4.18.3 AS migrate
+COPY internal/db/migrations /migrations
+USER 1000:1000
